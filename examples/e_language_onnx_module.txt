@@ -1,0 +1,209 @@
+' CQ_X86.dll 0.14.5（v23.5）易语言 32 位封装模块（本文件保存为UTF-8）
+' 易语言所有文本型输入均按Windows当前ACP传入；标准AI_*接口使用UTF-8；模型、标签、OCR字符表的内存或文件内容仍为UTF-8。
+' 只把 CQ_X86.dll 和 CQ_AI_worker.exe 放在调用程序EXE同目录；ORT、DirectML、VC运行库和内置OCR模型均压缩嵌入Worker。
+.版本 2
+
+.常量 AI_DEVICE_AUTO, "0", , 自动选择设备；先创建完整DirectML池，失败后重建完整CPU池
+.常量 AI_DEVICE_DIRECTML, "1", , 强制使用DirectML；Provider、DX12或Session创建失败时不整体降级
+.常量 AI_DEVICE_CPU, "2", , 强制使用纯CPU执行ONNX推理；不加载DirectML
+.常量 AI_OCR_OUTPUT_TEXT, "1", , OCR纯文本输出；多行按识别顺序直接拼接且不插入分隔符
+.常量 AI_OCR_OUTPUT_JSON, "2", , OCR JSON输出；包含文本、置信度和左上角文本框
+.常量 AI_MODULE_CV, "1", , AI_GetLastLatencyUs使用的CV模块编号
+.常量 AI_MODULE_OCR, "2", , AI_GetLastLatencyUs使用的OCR模块编号
+.常量 AI_MODULE_YOLO, "3", , AI_GetLastLatencyUs使用的YOLO模块编号
+.常量 AI_OCR_STAGE_DETECTION, "1", , AI_GetOcrStageLatencyUs使用的文字检测阶段编号
+.常量 AI_OCR_STAGE_RECOGNITION, "2", , AI_GetOcrStageLatencyUs使用的文字识别阶段编号
+.常量 AI_OCR_STAGE_POSTPROCESS, "3", , AI_GetOcrStageLatencyUs使用的OCR后处理阶段编号
+.常量 AI_ERR_INVALID_HANDLE, "-7", , YOLO模型句柄无效或已经释放
+.常量 AI_ERR_ALREADY_LOADED, "-8", , YOLO句柄已经成功加载模型；同一句柄禁止重复加载
+.常量 AI_ERR_BUSY, "-9", , 资源正在加载或忙；当前操作不能立即执行
+.常量 AI_ERR_RUNTIME, "-100", , DLL、ONNX Runtime或x64 worker运行时错误
+
+.数据类型 CVMatchResult, , , CV模板匹配结果；按1字节对齐；共24字节
+    .成员 x, 整数型, , , 匹配框左上角X坐标；相对于输入BMP原图
+    .成员 y, 整数型, , , 匹配框左上角Y坐标；相对于输入BMP原图
+    .成员 w, 整数型, , , 匹配框宽度；单位为像素
+    .成员 h, 整数型, , , 匹配框高度；单位为像素
+    .成员 sim, 小数型, , , 模板匹配相似度；范围0.0到1.0
+    .成员 template_index, 整数型, , , 图片名列表中的零基模板序号；单模板通常为0
+.数据类型 OCRTextResult, , , OCR文本查找结果；按1字节对齐；共28字节
+    .成员 cx, 整数型, , , 命中目标文本框中心点X坐标
+    .成员 cy, 整数型, , , 命中目标文本框中心点Y坐标
+    .成员 x, 整数型, , , 命中目标文本框左上角X坐标；相对于输入BMP原图
+    .成员 y, 整数型, , , 命中目标文本框左上角Y坐标；相对于输入BMP原图
+    .成员 w, 整数型, , , 命中目标文本子框宽度；单位为像素
+    .成员 h, 整数型, , , 命中目标文本子框高度；单位为像素
+    .成员 score, 小数型, , , OCR CTC非空白字符平均置信度；范围0.0到1.0
+.数据类型 OCRCoordResult, , , OCR坐标查找结果；按1字节对齐；共20字节
+    .成员 x, 整数型, , , 命中目标文本框中心点X坐标
+    .成员 y, 整数型, , , 命中目标文本框中心点Y坐标
+    .成员 w, 整数型, , , 命中目标文本子框宽度；单位为像素
+    .成员 h, 整数型, , , 命中目标文本子框高度；单位为像素
+    .成员 target_index, 整数型, , , 目标文本列表中的零基序号；单目标固定为0
+.数据类型 AIOcrRuntimeOptions, , , OCR内置模型高级运行选项；按1字节对齐；共24字节
+    .成员 det_input_width, 整数型, , , 检测输入宽度；0表示使用模型原生尺寸；静态模型必须匹配实际形状
+    .成员 det_input_height, 整数型, , , 检测输入高度；0表示使用模型原生尺寸；静态模型必须匹配实际形状
+    .成员 intra_op_threads, 整数型, , , 单Session算子内线程数；0表示按CPU和Session数量自动计算
+    .成员 det_binary_threshold, 小数型, , , DB概率图二值化阈值；0表示使用模型配置值；有效值范围0.0到1.0
+    .成员 det_box_score_threshold, 小数型, , , DB文本框平均分阈值；0表示使用模型配置值；有效值范围0.0到1.0
+    .成员 det_unclip_ratio, 小数型, , , DB文本框扩张比例；0表示使用模型配置值；非零时必须大于0
+.DLL命令 CV_Create, 整数型, "CQ_X86.dll", "CV_Create", 公开, 创建独立CV模板实例；成功返回0并写入正整数句柄；失败返回负错误码
+    .参数 实例句柄, 整数型, 参考, 输出参数；成功时写入大于0且进程内不复用的CV实例句柄
+.DLL命令 CV_LoadTemplateDir, 整数型, "CQ_X86.dll", "CV_LoadTemplateDir", 公开, 从目录加载BMP模板并原子替换指定实例的模板集；返回加载数量；失败返回负错误码
+    .参数 实例句柄, 整数型, , CV_Create返回的有效句柄；不同句柄的模板缓存互相隔离
+    .参数 模板目录, 文本型, , 输入Windows当前ACP目录路径；绝对路径直接使用，相对路径以调用程序EXE所在目录为基准；ACP路径不存在时才兼容尝试UTF-8；目录内文件必须是DLL支持的未压缩BMP
+    .参数 递归加载, 整数型, , 输入扫描方式；0仅扫描当前目录；非0同时扫描所有子目录
+.DLL命令 CV_LoadTemplateZipFromMemory, 整数型, "CQ_X86.dll", "CV_LoadTemplateZipFromMemory", 公开, 从内存标准ZIP加载BMP模板并原子替换指定实例模板集；支持Stored和Deflate；失败保留旧模板
+    .参数 实例句柄, 整数型, , CV_Create返回的有效句柄；不同句柄的模板缓存互相隔离
+    .参数 ZIP数据, 整数型, , 输入完整ZIP字节集首地址；可直接使用易语言图片与资源中的压缩包数据
+    .参数 ZIP大小, 整数型, , ZIP数据总字节数；必须大于0且覆盖完整中央目录和文件数据
+.DLL命令 CV_ClearTemplateCache, 整数型, "CQ_X86.dll", "CV_ClearTemplateCache", 公开, 清空指定CV实例的模板缓存但保留句柄；成功返回0；失败返回负错误码
+    .参数 实例句柄, 整数型, , CV_Create返回的有效句柄；清空操作不影响其他CV实例
+.DLL命令 CV_Release, 整数型, "CQ_X86.dll", "CV_Release", 公开, 释放指定CV实例及模板缓存；成功返回0；无效或重复释放返回参数错误
+    .参数 实例句柄, 整数型, , CV_Create返回的句柄；释放后不得继续调用任何带该句柄的CV接口
+.DLL命令 CV_FindOne, 整数型, "CQ_X86.dll", "CV_FindOne", 公开, 在完整BMP中查找一个已加载模板；命中返回1；未命中返回0；失败返回负错误码
+    .参数 实例句柄, 整数型, , 已通过CV_LoadTemplateDir加载模板的有效CV实例句柄
+    .参数 图片名, 文本型, , 输入Windows当前ACP模板文件名或相对模板路径；必须能在该实例缓存中唯一找到；ACP名称未命中时才兼容尝试UTF-8
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；必须包含BMP文件头和像素数据
+    .参数 BMP大小, 整数型, , BMP数据指向内存的总字节数；必须大于0且覆盖整个BMP
+    .参数 相似度, 小数型, , 最低匹配分数；范围0.0到1.0；由业务准确率要求配置
+    .参数 彩色模式, 整数型, , 匹配模式；0为彩色匹配；1为灰度匹配；其他值无效
+    .参数 结果, CVMatchResult, 参考, 输出结构体；命中时写入左上角坐标、宽高、相似度和模板序号
+    .参数 起点_x, 整数型, , 输入窗口区域左上角X；命中坐标加此值；不需要偏移时传0
+    .参数 起点_y, 整数型, , 输入窗口区域左上角Y；命中坐标加此值；不需要偏移时传0
+.DLL命令 CV_FindTransparentOne, 整数型, "CQ_X86.dll", "CV_FindTransparentOne", 公开, 按指定透明色查找一个模板；命中返回1；未命中返回0；失败返回负错误码
+    .参数 实例句柄, 整数型, , 已通过CV_LoadTemplateDir加载透明模板的有效CV实例句柄
+    .参数 图片名, 文本型, , 输入Windows当前ACP模板文件名或相对模板路径；必须存在于指定实例缓存；ACP名称未命中时才兼容尝试UTF-8
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；调用期间内存必须有效
+    .参数 BMP大小, 整数型, , BMP数据总字节数；必须大于0且与BMP文件实际大小一致
+    .参数 相似度, 小数型, , 最低匹配分数；范围0.0到1.0；数值越高匹配越严格
+    .参数 彩色模式, 整数型, , 匹配模式；0使用彩色及透明掩码；1使用灰度及由彩色模板生成的透明掩码
+    .参数 透明色RGB, 文本型, , 输入RGB十六进制透明色文本；接受FF00FF、#FF00FF或0xFF00FF且不区分大小写；模板中等于该颜色的像素不参与评分
+    .参数 结果, CVMatchResult, 参考, 输出结构体；命中时写入原图坐标、框尺寸、相似度和模板序号
+    .参数 起点_x, 整数型, , 输入窗口区域左上角X；命中坐标加此值；不需要偏移时传0
+    .参数 起点_y, 整数型, , 输入窗口区域左上角Y；命中坐标加此值；不需要偏移时传0
+.DLL命令 CV_FindMultiText, 文本型, "CQ_X86.dll", "CV_FindMultiText", 公开, 查找多个模板并返回ID,x,y|ID,x,y；ID为输入列表零基序号；无结果和错误均返回空文本，错误用AI_GetLastError区分
+    .参数 实例句柄, 整数型, , 已加载全部目标模板的有效CV实例句柄
+    .参数 图片名列表, 文本型, , 输入Windows当前ACP模板名；多个名称使用竖线分隔；DLL先整串ACP转UTF-8再拆分，返回序号按照此列表从0开始
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；必须包含BMP头
+    .参数 BMP大小, 整数型, , BMP数据内存总字节数；必须大于0并覆盖所有像素
+    .参数 偏色, 文本型, , 颜色容差十六进制文本；灰度模式用2位；彩色模式用6位；例如20或101010
+    .参数 相似度, 小数型, , 最低最终精确匹配分数；范围0.0到1.0
+    .参数 彩色模式, 整数型, , 匹配模式；0为彩色并要求6位偏色；1为灰度并要求2位偏色
+    .参数 起点_x, 整数型, , 返回文本中所有x坐标增加此值；无结果返回空文本；不需要偏移时传0
+    .参数 起点_y, 整数型, , 返回文本中所有y坐标增加此值；无结果返回空文本；不需要偏移时传0
+.DLL命令 CV_FindTransparentMultiText, 文本型, "CQ_X86.dll", "CV_FindTransparentMultiText", 公开, 按透明色查找多个模板并返回ID,x,y|ID,x,y；ID为输入列表零基序号；无结果和错误均返回空文本
+    .参数 实例句柄, 整数型, , 已加载全部透明模板的有效CV实例句柄
+    .参数 图片名列表, 文本型, , 输入Windows当前ACP模板名；多个名称使用竖线分隔；DLL先整串ACP转UTF-8再拆分，返回序号为输入列表的零基位置
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；不是像素缓冲区地址
+    .参数 BMP大小, 整数型, , BMP数据总字节数；必须与BMP数据地址成对传入
+    .参数 偏色, 文本型, , 彩色匹配容差的6位十六进制文本；例如101010
+    .参数 相似度, 小数型, , 最低最终精确匹配分数；范围0.0到1.0
+    .参数 透明色, 文本型, , 输入RGB十六进制透明色文本；接受FF00FF、#FF00FF或0xFF00FF且不区分大小写
+    .参数 起点_x, 整数型, , 返回文本中所有x坐标增加此值；无结果返回空文本；不需要偏移时传0
+    .参数 起点_y, 整数型, , 返回文本中所有y坐标增加此值；无结果返回空文本；不需要偏移时传0
+
+.DLL命令 OCR_LoadModelFromPath, 整数型, "CQ_X86.dll", "OCR_LoadModelFromPath", 公开, 从文件加载OCR检测、识别ONNX和字符表并创建Session池；成功返回0；失败返回负错误码
+    .参数 检测ONNX路径, 文本型, , 输入Windows当前ACP检测模型路径；相对路径以调用程序EXE所在目录为基准；纯单行识别可传空文本；多行识别和文本定位需要检测模型
+    .参数 识别ONNX路径, 文本型, , 输入Windows当前ACP识别模型路径；相对路径以调用程序EXE所在目录为基准；不能为空；必须与字符表类别顺序匹配
+    .参数 字符表路径, 文本型, , 输入Windows当前ACP字符表文件路径；文件内容必须是UTF-8且每行一个字符；相对路径以调用程序EXE所在目录为基准；不能为空且必须与识别模型匹配
+    .参数 运行设备, 整数型, , 填写AI_DEVICE_AUTO、AI_DEVICE_DIRECTML或AI_DEVICE_CPU；AUTO先尝试完整DirectML池，失败后重建完整CPU池
+    .参数 Session数量, 整数型, , OCR Session池容量；必须大于0；并发超过容量时等待空闲Session
+.DLL命令 OCR_LoadModelFromMemory, 整数型, "CQ_X86.dll", "OCR_LoadModelFromMemory", 公开, 从内存加载OCR模型和字符表；DLL在成功前复制数据；成功返回0；失败返回负错误码
+    .参数 检测模型数据, 整数型, , 输入检测ONNX字节首地址；纯识别模式可传0且检测模型大小同时传0
+    .参数 检测模型大小, 整数型, , 检测ONNX字节数；没有检测模型时传0；非零时必须与检测模型地址对应
+    .参数 识别模型数据, 整数型, , 输入识别ONNX字节首地址；不能为空；加载调用结束前内存必须有效
+    .参数 识别模型大小, 整数型, , 识别ONNX字节数；必须大于0并与识别模型地址指向的数据一致
+    .参数 字符表数据, 整数型, , 输入UTF-8字符表字节首地址；不能为空；加载成功后原字节集可释放
+    .参数 字符表大小, 整数型, , UTF-8字符表总字节数；必须大于0且不要求包含结尾0字符
+    .参数 运行设备, 整数型, , OCR运行设备常量；推荐AI_DEVICE_AUTO；强制DirectML不可用时加载失败
+    .参数 Session数量, 整数型, , OCR Session池容量；必须大于0；根据业务并发量和显存或内存配置
+.DLL命令 OCR_LoadEmbeddedModel, 整数型, "CQ_X86.dll", "OCR_LoadEmbeddedModel", 公开, 加载worker内置PP-OCRv6 tiny FP32检测、识别模型和字符表；成功返回0；失败返回负错误码
+    .参数 运行设备, 整数型, , 填写AI_DEVICE常量；推荐AUTO自动选择可用provider并在GPU不可用时降级CPU
+    .参数 Session数量, 整数型, , OCR worker Session池容量；必须大于0；控制可同时执行的OCR数量
+.DLL命令 OCR_LoadEmbeddedModelEx, 整数型, "CQ_X86.dll", "OCR_LoadEmbeddedModelEx", 公开, 使用高级检测和线程选项加载worker内置PP-OCRv6模型；成功返回0；参数或模型错误返回负值
+    .参数 运行设备, 整数型, , OCR运行设备；填写AI_DEVICE_AUTO、AI_DEVICE_DIRECTML或AI_DEVICE_CPU
+    .参数 Session数量, 整数型, , OCR Session池数量；必须大于0；与单Session算子线程数分别配置
+    .参数 OCR运行选项, AIOcrRuntimeOptions, 参考, 输入24字节高级选项结构体；数值为0的字段按DLL自动策略或模型配置处理
+.DLL命令 AI_GetOcrStageLatencyUs, 整数型, "CQ_X86.dll", "AI_GetOcrStageLatencyUs", 公开, 查询最近一次OCR指定阶段耗时；返回微秒数；尚无数据或阶段无效返回负1
+    .参数 阶段, 整数型, , OCR阶段编号；填写DETECTION、RECOGNITION或POSTPROCESS常量之一
+.DLL命令 OCR_Recognize, 文本型, "CQ_X86.dll", "OCR_Recognize", 公开, 识别完整BMP并直接返回线程局部Windows当前ANSI代码页文本或JSON；TEXT多行直接拼接且不插入换行；无结果返回空文本；错误详情读取AI_GetLastError
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；必须包含文件头；调用期间不得释放
+    .参数 BMP大小, 整数型, , BMP文件数据总字节数；必须大于0且覆盖文件头和全部像素数据
+    .参数 输出格式, 整数型, , 填写AI_OCR_OUTPUT_TEXT或JSON；TEXT多行直接拼接且不添加换行或分隔符
+    .参数 最低置信度, 小数型, , CTC非空白字符平均置信度下限；范围0.0到1.0；0表示不按置信度过滤
+    .参数 滤色规则, 文本型, , 可空；空文本为自动识别；格式RRGGBB-RRGGBB，多条规则用|分隔；例如FFFFFF-202020提取白色文字；仅影响本次识别
+    .参数 起点_x, 整数型, , JSON输出时box.x增加此值；TEXT输出忽略；不需要偏移时传0
+    .参数 起点_y, 整数型, , JSON输出时box.y增加此值；TEXT输出忽略；不需要偏移时传0
+.DLL命令 OCR_FindOneText, 整数型, "CQ_X86.dll", "OCR_FindOneText", 公开, 识别并查找第一个目标文本；命中返回1并写入坐标、尺寸和置信度结果；未命中返回0；失败返回负错误码
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；坐标结果相对于该原始BMP
+    .参数 BMP大小, 整数型, , BMP数据总字节数；必须大于0并与BMP数据地址成对传入
+    .参数 目标文本, 文本型, , 输入易语言当前ANSI代码页的单个目标文本；不能为空；DLL内部转换为UTF-8后按照OCR识别文本执行子串匹配
+    .参数 最低置信度, 小数型, , OCR行最低置信度；范围0.0到1.0；低于阈值的行不参与查找
+    .参数 结果, OCRTextResult, 参考, 输出28字节数值结构体；目标文本已由调用方传入，不重复返回文本；x/y为命中目标子框左上角，cx/cy为中心点，w/h为子框尺寸，score为置信度
+    .参数 滤色规则, 文本型, , 可空；空文本为自动识别；格式RRGGBB-RRGGBB，多条规则用|分隔；非法规则返回AI_ERR_INVALID_ARGUMENT
+    .参数 起点_x, 整数型, , 命中时x和cx增加此值；未命中结构体清零；不需要偏移时传0
+    .参数 起点_y, 整数型, , 命中时y和cy增加此值；未命中结构体清零；不需要偏移时传0
+.DLL命令 OCR_FindMultiText, 文本型, "CQ_X86.dll", "OCR_FindMultiText", 公开, 识别并查找全部目标文本；返回ID,cx,cy|ID,cx,cy；ID为输入列表零基序号；无结果和错误均返回空文本，错误用AI_GetLastError区分
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；调用完成前必须保持内存有效
+    .参数 BMP大小, 整数型, , BMP文件数据总字节数；必须覆盖BMP头和全部像素行
+    .参数 目标文本列表, 文本型, , 多个易语言当前ANSI代码页目标文本使用竖线分隔；不得以竖线开头或结尾且不能包含空目标；DLL内部转换为UTF-8
+    .参数 最低置信度, 小数型, , OCR CTC平均置信度下限；范围0.0到1.0；统一作用于所有目标
+    .参数 滤色规则, 文本型, , 可空；空文本为自动识别；格式RRGGBB-RRGGBB，多条规则用|分隔；例如FFFFFF-202020
+    .参数 起点_x, 整数型, , 返回文本中cx增加此值；无结果返回空文本；不需要偏移时传0
+    .参数 起点_y, 整数型, , 返回文本中cy增加此值；无结果返回空文本；不需要偏移时传0
+.DLL命令 OCR_FindOneCoord, 整数型, "CQ_X86.dll", "OCR_FindOneCoord", 公开, 查找单个目标文本并仅返回中心坐标和框尺寸；命中返回1；未命中返回0；失败返回负值
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；必须是完整BMP而非裸像素
+    .参数 BMP大小, 整数型, , 输入BMP的总字节长度；必须与BMP数据指向的内存范围一致
+    .参数 目标文本, 文本型, , 输入易语言当前ANSI代码页的单个目标文本；不能为空；DLL内部转换后匹配OCR识别文本中的子串
+    .参数 最低置信度, 小数型, , OCR行最低接受置信度；范围0.0到1.0；0表示不过滤
+    .参数 结果, OCRCoordResult, 参考, 输出20字节坐标结构体；x和y为目标子框中心点；target_index固定为0
+    .参数 滤色规则, 文本型, , 可空；空文本为自动识别；格式RRGGBB-RRGGBB，多条规则用|分隔；坐标自动映射回原始BMP
+    .参数 起点_x, 整数型, , 命中中心x增加此值；未命中结构体清零；不需要偏移时传0
+    .参数 起点_y, 整数型, , 命中中心y增加此值；未命中结构体清零；不需要偏移时传0
+.DLL命令 OCR_Release, 整数型, "CQ_X86.dll", "OCR_Release", 公开, 仅释放OCR Session池且不影响YOLO或CV；未加载或重复释放仍返回0
+
+.DLL命令 YOLO_Create, 整数型, "CQ_X86.dll", "YOLO_Create", 公开, 创建空YOLO模型实例；成功返回0并写入正整数模型句柄；失败返回负错误码
+    .参数 模型句柄, 整数型, 参考, 输出参数；成功时写入进程内唯一且不复用的正整数YOLO模型句柄
+.DLL命令 YOLO_LoadModelFromPath, 整数型, "CQ_X86.dll", "YOLO_LoadModelFromPath", 公开, 从文件向空句柄加载一个ONNX模型及标签并创建独立Session池；成功返回0；失败返回负值
+    .参数 模型句柄, 整数型, , YOLO_Create返回的空模型句柄；成功加载后禁止在同一句柄重复加载
+    .参数 模型路径, 文本型, , 输入Windows当前ACP模型文件路径；绝对路径直接使用，相对路径以调用程序EXE所在目录为基准；ACP路径不存在时才兼容尝试UTF-8；不能为空且仅支持ONNX
+    .参数 标签路径, 文本型, , 输入Windows当前ACP标签文件路径；无标签时传空文本；相对路径同样以调用程序EXE所在目录为基准；标签文件内容使用UTF-8且每行一个类别名称
+    .参数 模型尺寸, 整数型, , 方形模型输入边长；填写0表示静态ONNX自动读取实际尺寸；动态模型必须填写320或640；显式填写时必须匹配模型输入
+    .参数 运行设备, 整数型, , 填写AI_DEVICE_AUTO、AI_DEVICE_DIRECTML或AI_DEVICE_CPU；AUTO先尝试DirectML，失败后使用CPU
+    .参数 GPU设备序号, 整数型, , GPU零基序号且必须大于等于0；CPU模式忽略但仍填写0；AUTO也会把该序号传给GPU provider
+    .参数 并发线程数, 整数型, , 当前模型Session池容量且必须大于0；表示可同时推理数量，不是ORT内部线程数；内部线程数由DLL自动计算
+.DLL命令 YOLO_LoadModelFromMemory, 整数型, "CQ_X86.dll", "YOLO_LoadModelFromMemory", 公开, 从内存向空句柄加载ONNX模型和可选标签；DLL成功前复制数据；成功返回0；失败返回负值
+    .参数 模型句柄, 整数型, , YOLO_Create返回且尚未加载模型的有效句柄；加载失败后允许修正参数重试
+    .参数 模型数据, 整数型, , 输入完整ONNX文件字节首地址；不能为空；加载调用结束前必须保持有效
+    .参数 模型字节数, 整数型, , ONNX模型总字节数；必须大于0并与模型数据地址对应
+    .参数 标签数据, 整数型, , 可选UTF-8标签文本字节首地址；无标签时传0且标签大小同时传0
+    .参数 标签字节数, 整数型, , UTF-8标签文本字节数；无标签时传0；加载成功后原模型与标签字节集均可释放
+    .参数 模型尺寸, 整数型, , 方形模型输入边长；填写0表示静态ONNX自动读取实际尺寸；动态模型必须填写320或640；best.onnx和smc.onnx均可填写0自动识别
+    .参数 运行设备, 整数型, , 填写AI_DEVICE_AUTO、AI_DEVICE_DIRECTML或AI_DEVICE_CPU；强制DirectML不可用时加载失败，AUTO允许降级CPU
+    .参数 GPU设备序号, 整数型, , GPU零基序号且必须大于等于0；CPU模式填写0
+    .参数 并发线程数, 整数型, , Session池容量且必须大于0；DLL按逻辑CPU数和该值自动计算每Session内部线程数，最大为4
+.DLL命令 YOLO_InferJson, 文本型, "CQ_X86.dll", "YOLO_InferJson", 公开, 执行YOLO推理并直接返回Windows当前ANSI代码页JSON；无目标返回空数组文本；错误返回空文本
+    .参数 模型句柄, 整数型, , 已成功加载模型的YOLO句柄；同一句柄可由多个业务线程安全共享
+    .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；必须包含BMP文件头和像素数据
+    .参数 BMP大小, 整数型, , BMP文件数据总字节数；必须大于0且与BMP数据地址对应
+    .参数 置信度阈值, 小数型, , YOLO检测置信度下限；范围0.0到1.0；低于阈值的候选被过滤
+    .参数 起点_x, 整数型, , JSON中x1、x2和cx增加此值；无结果仍返回[]；不需要偏移时传0
+    .参数 起点_y, 整数型, , JSON中y1、y2和cy增加此值；无结果仍返回[]；不需要偏移时传0
+.DLL命令 YOLO_GetRuntimeStatusJson, 整数型, "CQ_X86.dll", "YOLO_GetRuntimeStatusJson", 公开, 查询指定模型实际provider、降级原因、输入尺寸和Session配置；成功返回0并写入UTF-8 JSON
+    .参数 模型句柄, 整数型, , 已创建的有效YOLO模型句柄；通常在模型加载成功后查询真实运行状态
+    .参数 输出文本, 字节集, 参考, 调用方预先分配的可写字节集；接收以0结尾的UTF-8 JSON；DLL不保存该地址
+    .参数 输出大小, 整数型, , 输出文本字节集容量；包含结尾0字符；容量不足返回AI_ERR_BUFFER_TOO_SMALL
+.DLL命令 YOLO_GetLastLatencyUs, 长整数型, "CQ_X86.dll", "YOLO_GetLastLatencyUs", 公开, 查询指定YOLO模型最近一次推理总耗时；返回微秒数；尚未推理或句柄无效返回负1
+    .参数 模型句柄, 整数型, , 已加载模型的有效YOLO句柄；每个模型句柄分别保存最近一次推理耗时
+.DLL命令 YOLO_Release, 整数型, "CQ_X86.dll", "YOLO_Release", 公开, 释放指定YOLO模型及Session池且不影响其他模型或OCR；成功返回0；重复释放返回句柄错误
+    .参数 模型句柄, 整数型, , YOLO_Create返回的模型句柄；释放后新推理失败；JSON返回文本由DLL自动管理
+
+.DLL命令 AI_GetRuntimeStatusJson, 整数型, "CQ_X86.dll", "AI_GetRuntimeStatusJson", 公开, 查询全局或x64 worker最近一次模型加载的实际provider及降级原因；成功返回0并写入UTF-8 JSON
+    .参数 输出文本, 字节集, 参考, 调用方预先分配的可写字节集；接收以0结尾的UTF-8运行状态JSON
+    .参数 输出大小, 整数型, , 输出文本字节容量；必须包含结尾0字符；容量不足返回缓冲区错误
+.DLL命令 AI_GetLastError, 文本型, "CQ_X86.dll", "AI_GetLastError", 公开, 直接返回当前调用线程最近一次错误文本；无需缓冲区、长度或释放
+.DLL命令 AI_GetLastLatencyUs, 长整数型, "CQ_X86.dll", "AI_GetLastLatencyUs", 公开, 按模块查询最近一次CV、OCR或YOLO操作耗时；返回微秒数；无数据返回负1
+    .参数 模块, 整数型, , 填写AI_MODULE_CV、AI_MODULE_OCR或AI_MODULE_YOLO之一
+.DLL命令 AI_Release, , "CQ_X86.dll", "AI_Release", 公开, 释放全部本地及worker中的OCR和YOLO模型资源；CV实例仍应分别调用CV_Release；保留worker进程；无返回值
+.DLL命令 AI_ShutdownWorker, 整数型, "CQ_X86.dll", "AI_ShutdownWorker", 公开, 全局结束x86代理启动的x64 worker；成功返回前等待worker进程真正退出；未启动时返回0；多个程序共享worker时不要由仍在运行的程序调用

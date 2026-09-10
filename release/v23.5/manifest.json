@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "project_version": "0.14.5",
+  "delivery_version": "v23.5",
+  "worker_protocol": 25,
+  "artifacts": [
+    {
+      "kind": "easy-language-x86",
+      "file": "CQ_AI_e_language_v23.5.zip",
+      "size": 26774792,
+      "sha256": "DDCF003BA814577BB01B518CBE630C2229B652BE16715B5855041472C74FD6F7",
+      "members": [
+        {
+          "file": "CQ_X86.dll",
+          "size": 9059840,
+          "sha256": "5218BB92475122B4D4057DE81B5E86CCD4AACABD53EAC239CE4FFEBA113BC9E0"
+        },
+        {
+          "file": "CQ_AI_worker.exe",
+          "size": 24429568,
+          "sha256": "E16321A3BC57C83A78E6B51F5D6A5EAF8B58F3E19838AF1E978571757F455CF4"
+        },
+        {
+          "file": "易语言_DLL_API_说明.html",
+          "size": 137776,
+          "sha256": "898E23C4D1590ADBF642E4C16C9D30524E6E0D2BBDB110FB41111C776F1DF6F3"
+        }
+      ]
+    },
+    {
+      "kind": "python-x64",
+      "file": "cq_ai_engine-0.14.5-py3-none-win_amd64.whl",
+      "size": 27269317,
+      "sha256": "506FC7CBE58EE8C135AB7F4A2E223E4177E6655FB2B7F768BFA9879A16D93429",
+      "platform_tag": "py3-none-win_amd64"
+    }
+  ]
+}

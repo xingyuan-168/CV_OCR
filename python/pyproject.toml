@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel>=0.43"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cq-ai-engine"
+version = "0.14.5"
+description = "Offline Windows x64 Python bindings for CQ_AI"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+]
+
+[tool.setuptools]
+py-modules = ["ai_engine"]
+packages = ["cq_ai_engine", "cq_ai_engine._native", "cq_ai_engine._licenses"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+cq_ai_engine = ["_native/*.dll", "_licenses/*.txt"]

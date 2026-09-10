@@ -1,0 +1,17 @@
+diff --git a/modules/core/include/opencv2/core/hal/intrin_avx.hpp b/modules/core/include/opencv2/core/hal/intrin_avx.hpp
+index f2525f0..5c88a05 100644
+--- a/modules/core/include/opencv2/core/hal/intrin_avx.hpp
++++ b/modules/core/include/opencv2/core/hal/intrin_avx.hpp
+@@ -126,7 +126,11 @@ inline int _v256_extract_epi32(const __m256i& a)
+ template<int i>
+ inline int64 _v256_extract_epi64(const __m256i& a)
+ {
+-#if defined(CV__SIMD_HAVE_mm256_extract_epi8) || (CV_AVX2 && (!defined(_MSC_VER) || _MSC_VER >= 1910/*MSVS 2017*/))
++#if defined(_MSC_VER) && defined(_M_IX86)
++    const uint64 lo = static_cast<unsigned int>(_v256_extract_epi32<i * 2>(a));
++    const uint64 hi = static_cast<unsigned int>(_v256_extract_epi32<i * 2 + 1>(a));
++    return static_cast<int64>(lo | (hi << 32));
++#elif defined(CV__SIMD_HAVE_mm256_extract_epi8) || (CV_AVX2 && (!defined(_MSC_VER) || _MSC_VER >= 1910/*MSVS 2017*/))
+     return _mm256_extract_epi64(a, i);
+ #else
+     __m128i b = _mm256_extractf128_si256(a, ((i) >> 1));

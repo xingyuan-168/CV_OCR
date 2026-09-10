@@ -1,0 +1,10 @@
+* text=auto
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.bmp binary
+*.dll binary
+*.exe binary
+*.onnx binary
+*.pdiparams binary
+*.whl binary
+*.zip binary

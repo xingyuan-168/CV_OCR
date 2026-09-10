@@ -1,0 +1,41 @@
+# Reproducible local dependencies and build output
+/third_party/
+/build*/
+/cmake-build-*/
+/outpush/
+/dist/
+/tmp*/
+/temp*/
+/Testing/
+/test-results/
+/.cache/
+/.vs/
+/.vscode/
+/.idea/
+
+# Compiled binaries are disposable unless explicitly stored under release/v23.5.
+*.dll
+*.exe
+*.lib
+*.exp
+*.pdb
+*.obj
+*.ilk
+*.idb
+*.nupkg
+*.zip
+*.whl
+!release/
+!release/v23.5/
+!release/v23.5/CQ_AI_e_language_v23.5.zip
+!release/v23.5/cq_ai_engine-0.14.5-py3-none-win_amd64.whl
+
+# Python and generated runtime state
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+/mock_runtime.ini
+/e_api_mock.ini
+/stdout
