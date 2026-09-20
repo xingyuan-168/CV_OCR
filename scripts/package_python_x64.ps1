@@ -22,9 +22,6 @@ if (!$outputPath.StartsWith($outpushRoot, [System.StringComparison]::OrdinalIgno
     throw "OutputDir must be a child of $outpushRoot"
 }
 
-$verifyBaseline = Join-Path $PSScriptRoot "verify_current_release.ps1"
-& $verifyBaseline | Out-Host
-
 $python = (Get-Command $PythonExe -ErrorAction Stop).Source
 $pythonBits = (& $python -c "import struct; print(struct.calcsize('P') * 8)").Trim()
 if ($LASTEXITCODE -ne 0 -or $pythonBits -ne "64") {
@@ -255,7 +252,6 @@ $workerAfter = @(Get-Process -Name "CQ_AI_worker" -ErrorAction SilentlyContinue 
 $newWorkers = @($workerAfter | Where-Object { $_ -notin $workerBefore })
 if ($newWorkers.Count -gt 0) { throw "Python x64 Wheel unexpectedly started worker PIDs: $($newWorkers -join ', ')" }
 
-& $verifyBaseline | Out-Host
 $wheelHash = Get-FileHash -LiteralPath $wheelPath -Algorithm SHA256
 Write-Host "Python x64 offline Wheel ready: $wheelPath"
 Write-Host "SHA256: $($wheelHash.Hash)"

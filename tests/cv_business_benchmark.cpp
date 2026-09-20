@@ -1,5 +1,8 @@
 #include "ai_engine.h"
 #include "compact_result_test_utils.h"
+#if defined(AIENGINE_CV_TEST_HOOKS)
+#include "cv_test_hooks.h"
+#endif
 
 #include <algorithm>
 #include <cassert>
@@ -64,6 +67,15 @@ void print_stats(const char* name, const std::vector<double>& samples) {
               << " p95=" << percentile(samples, 0.95)
               << " min=" << *std::min_element(samples.begin(), samples.end())
               << " max=" << *std::max_element(samples.begin(), samples.end()) << " ms\n";
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    double times[6]{}; CVTest_LastTimes(times);
+    std::cout << "last_stage_ms pre/dft/integral/correlation/normalize/post:";
+    for(double value:times) std::cout << " " << value;
+    std::cout << '\n';
+#if defined(_WIN32)
+    std::cout << "last_processor=" << GetCurrentProcessorNumber() << '\n';
+#endif
+#endif
 }
 
 std::filesystem::path executable_directory() {

@@ -39,7 +39,20 @@ function Get-VerifiedDownload {
     if ($ForceDownload -or !(Test-Path -LiteralPath $safePath -PathType Leaf)) {
         $temporary = "$safePath.download"
         Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
-        Invoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $temporary
+        $bits = Get-Command Start-BitsTransfer -ErrorAction SilentlyContinue
+        if ($bits -and $Uri -match '/Microsoft\.AI\.DirectML/') {
+            Write-Host "Downloading large DirectML package with BITS: $Uri"
+            Start-BitsTransfer -Source $Uri -Destination $temporary -ErrorAction Stop
+        } else {
+            try {
+                Invoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $temporary
+            } catch {
+                Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+                if (!$bits) { throw }
+                Write-Host "Invoke-WebRequest failed; retrying with BITS: $Uri"
+                Start-BitsTransfer -Source $Uri -Destination $temporary -ErrorAction Stop
+            }
+        }
         Move-Item -LiteralPath $temporary -Destination $safePath -Force
     }
     $actual = (Get-FileHash -LiteralPath $safePath -Algorithm SHA256).Hash
@@ -64,8 +77,11 @@ function Invoke-GitWithRetry {
         [int]$Attempts = 3
     )
     for ($attempt = 1; $attempt -le $Attempts; ++$attempt) {
+        $savedErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
         $output = @(& git @Arguments 2>&1)
         $exitCode = $LASTEXITCODE
+        $ErrorActionPreference = $savedErrorAction
         $output | ForEach-Object { Write-Host $_ }
         if ($exitCode -eq 0) { return }
         if ($attempt -eq $Attempts) {
@@ -159,8 +175,12 @@ function Prepare-OpenCVSource {
             "-C", $sourcePath, "remote", "add", "origin", "https://github.com/opencv/opencv.git"
         )
     }
-    $actualCommit = @(& git -C $sourcePath rev-parse HEAD 2>$null) | Select-Object -Last 1
-    if ($LASTEXITCODE -ne 0 -or $actualCommit.Trim() -ne $commit) {
+    $savedErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $actualCommit = @(& git -C $sourcePath rev-parse --verify --quiet HEAD 2>$null) | Select-Object -Last 1
+    $headProbeExit = $LASTEXITCODE
+    $ErrorActionPreference = $savedErrorAction
+    if ($headProbeExit -ne 0 -or $null -eq $actualCommit -or $actualCommit.Trim() -ne $commit) {
         $fetched = $false
         foreach ($remoteUrl in @(
             "https://github.com/opencv/opencv.git",
@@ -190,8 +210,12 @@ function Prepare-OpenCVSource {
 
     $patchPath = Join-Path $PSScriptRoot "patches\opencv-5.0.0-msvc-x86-avx2.patch"
     if (!(Test-Path -LiteralPath $patchPath -PathType Leaf)) { throw "OpenCV x86 patch is missing" }
+    $savedErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     & git -C $sourcePath apply --reverse --check $patchPath 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    $reverseCheckExit = $LASTEXITCODE
+    $ErrorActionPreference = $savedErrorAction
+    if ($reverseCheckExit -ne 0) {
         & git -C $sourcePath apply --check $patchPath
         if ($LASTEXITCODE -ne 0) { throw "OpenCV x86 patch cannot be applied" }
         & git -C $sourcePath apply $patchPath
@@ -202,6 +226,18 @@ function Prepare-OpenCVSource {
 
 function Build-OpenCV {
     param([string]$Architecture, [string]$SourcePath)
+    # OpenCV treats failed IPPICV downloads as optional. Our performance build
+    # requires IPP, so verify the pinned archive before configure and check the
+    # generated feature header afterwards rather than trusting WITH_IPP=ON.
+    $ipp = if ($Architecture -eq "x86") {
+        @("7f55c0c26be418d494615afca15218566775c725", "ippicv_2021.12.0_win_ia32_20240425_general.zip",
+          "8b1d2a23957d57624d0de8f2a5cae5f1", "F8669E6F3FAA75B7E44E2C61B842A0FC572193F5FDC2ACF46B0056C97E91149F")
+    } else {
+        @("406d398c436d0465c8e53dd432d9ecd9301d5f4a", "ippicv_2026.0.0_win_intel64_20260327_general.zip",
+          "73bc67cd5e4c8da706fa88fe84630231", "CF1560B05CC67795852D4EC32CE58CEEE466A8D996404AF27DFAAEA5F1DA2760")
+    }
+    Get-VerifiedDownload -Uri "https://raw.githubusercontent.com/opencv/opencv_3rdparty/$($ipp[0])/ippicv/$($ipp[1])" `
+        -Path (Join-Path $SourcePath ".cache/ippicv/$($ipp[2])-$($ipp[1])") -ExpectedSha256 $ipp[3] | Out-Null
     $platform = if ($Architecture -eq "x86") { "Win32" } else { "x64" }
     $buildPath = Assert-UnderRoot `
         -Path (Join-Path $thirdPartyRoot "build\opencv-5.0.0-$Architecture") `
@@ -224,6 +260,7 @@ function Build-OpenCV {
     )
     & $cmake @configure
     if ($LASTEXITCODE -ne 0) { throw "OpenCV $Architecture configure failed" }
+    & (Join-Path $PSScriptRoot "verify_opencv_ipp.ps1") -ConfigHeader (Join-Path $buildPath "cvconfig.h")
     # OpenCV 5 exports these bundled support targets from OpenCVModules.cmake
     # even when BUILD_LIST is limited to core/imgproc. Build them explicitly so
     # a clean install never contains dangling imported-library references.
@@ -235,11 +272,17 @@ function Build-OpenCV {
     if ($LASTEXITCODE -ne 0) { throw "OpenCV $Architecture support-library build failed" }
     & $cmake --build $buildPath --config Release --target INSTALL --parallel
     if ($LASTEXITCODE -ne 0) { throw "OpenCV $Architecture build failed" }
+    $ippHeaders = Join-Path $buildPath "3rdparty/ippicv/ippicv_win/icv/include"
+    $installedIppHeaders = Join-Path $installPath "include/ipp"
+    New-Item -ItemType Directory -Force -Path $installedIppHeaders | Out-Null
+    Copy-Item -Path (Join-Path $ippHeaders "*.h") -Destination $installedIppHeaders -Force
     $configPath = Join-Path $installPath "OpenCVConfig.cmake"
     if (!(Test-Path -LiteralPath $configPath -PathType Leaf)) {
         throw "OpenCV $Architecture installation is incomplete: $configPath"
     }
     $libraryRoot = Join-Path $installPath "$Architecture\vc17\staticlib"
+    & (Join-Path $PSScriptRoot "verify_opencv_ipp.ps1") `
+        -ConfigHeader (Join-Path $installPath "include/opencv2/cvconfig.h") -LibraryRoot $libraryRoot
     foreach ($library in @("libtiff.lib", "libwebp.lib", "libpng.lib", "libprotobuf.lib")) {
         if (!(Test-Path -LiteralPath (Join-Path $libraryRoot $library) -PathType Leaf)) {
             throw "OpenCV $Architecture installation has a dangling export: $library"

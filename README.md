@@ -65,20 +65,26 @@ Copy-Item build-release-worker-x64/Release/CQ_AI_worker.exe build-release-x86/Re
 ctest --test-dir build-release-x86 -C Release --output-on-failure
 ```
 
-生成可再生输出到被忽略的 `outpush/`：
+生成可再生输出到被忽略的 `outpush/`，验收后晋升为唯一正式交付：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/promote_release.ps1
 ```
+
+晋升脚本根据成品重新计算大小与 SHA-256，经临时目录验证后替换
+`release/v23.5/`。普通构建不会直接覆盖正式交付。
 
 ## 文档
 
 - [项目与构建说明](docs/PROJECT_GUIDE_CN.md)
 - [v23.5 运行和故障排查](docs/MINIMAL_RUNTIME_README_CN.md)
-- [v23.5 交付说明](docs/V23_5_COMPACT_MULTI_RESULT_REPORT_CN.md)
+- [v23.5 交付基线](docs/V23_5_DELIVERY_BASELINE_CN.md)
 - [易语言 DLL API](docs/易语言_DLL_API_说明.html)
 - [Python 使用说明](python/README.md)
 
-公开 ABI 的事实源是 `include/ai_engine.h`。第三方许可可通过
+公开 ABI 以 `include/ai_engine.h` 为准，Worker 协议以
+`src/worker_protocol.h` 为准，正式成品大小和哈希以
+`release/v23.5/manifest.json` 为准。第三方许可可通过
 `CQ_AI_worker.exe --third-party-notices` 查看，也包含在 Python Wheel 中。

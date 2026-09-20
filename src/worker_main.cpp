@@ -1565,7 +1565,7 @@ double calibrate_ocr_pool(
         L"欢迎您的到来",
         L"Session Pool",
         L"文字检测识别",
-        L"V22.1 Benchmark",
+        L"CQ_AI Benchmark",
         L"退出游戏 End"};
     for (int row = 0; row < 8; ++row) {
         for (int column = 0; column < 2; ++column) {

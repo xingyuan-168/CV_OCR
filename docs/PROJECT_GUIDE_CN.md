@@ -2,14 +2,14 @@
 
 ## 1. 当前基线
 
-| 项目版本 | 交付版本 | Worker 协议 | 日期 |
+| 项目版本 | 交付版本 | Worker 协议 | 公开导出 |
 | --- | --- | --- | --- |
-| `0.14.5` | `v23.5` | `25` | `2026-08-28` |
+| `0.14.5` | `v23.5` | `25` | `60` |
 
-v23.5 保持 60 个公开导出。`CV_FindMultiText`、
+v23.5 提供 60 个公开导出。`CV_FindMultiText`、
 `CV_FindTransparentMultiText` 返回 `ID,x,y|...`，`OCR_FindMultiText` 返回
-`ID,cx,cy|...`。九个兼容易语言接口支持 `origin_x/origin_y`，模板可从内存
-ZIP 原子加载；OCR 保留滤色、阅读顺序和异常碎片联合识别。
+`ID,cx,cy|...`。九个易语言业务接口支持 `origin_x/origin_y`，模板可从内存
+ZIP 原子加载；OCR 提供单次滤色、阅读顺序和异常碎片联合识别。
 
 ## 2. 架构
 
@@ -69,4 +69,8 @@ release/v23.5/    唯一正式交付物及 manifest
 
 `release/v23.5/manifest.json` 是交付事实源，记录项目版本、交付版本、协议、
 两个包的大小和 SHA-256，以及易语言 ZIP 成员哈希。普通构建只写 `outpush/`；
-只有正式发版才替换 `release/`，同时删除此前版本并更新清单、文档和测试。
+`scripts/promote_release.ps1` 在临时目录完成内容与清单验证后替换唯一正式目录。
+
+公开 ABI 以 `include/ai_engine.h` 为准；设备选择、缓存和进程生命周期以
+`src/` 为准；依赖版本与构建路径以 `scripts/prepare_dependencies.ps1` 和打包
+脚本为准。文档生成一致性由仓库卫生检查在本地和 CI 中强制验证。

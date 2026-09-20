@@ -1964,9 +1964,9 @@ public:
             const int rec_model_width = rec_model_shape.size() >= 4 && rec_model_shape[3] > 0
                 ? static_cast<int>(rec_model_shape[3]) : 0;
 
-            // 正式路径保持逐框识别。V20 三张大图的 A/B 结果显示该
-            // PP-OCRv6 模型使用动态 batch 会产生显著长尾；批处理实现仅在
-            // 内部配置显式设置 ocr.rec_batch_size > 1 时用于后续实验。
+            // 正式路径使用逐框识别。该 PP-OCRv6 模型使用动态 batch 会产生
+            // 显著长尾；批处理实现仅在内部配置显式设置
+            // ocr.rec_batch_size > 1 时启用。
             if (rec_batch_size_ == 1) {
                 int32_t merged_hypothesis_result_count = -1;
                 for (size_t recognition_box_index = 0;

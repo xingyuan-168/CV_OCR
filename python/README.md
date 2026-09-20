@@ -18,7 +18,7 @@ NumPy。
 
 ## 使用
 
-历史导入名保持不变：
+可直接从顶层模块导入：
 
 ```python
 from pathlib import Path
@@ -32,28 +32,30 @@ with Engine() as engine:
     print(engine.ocr_recognize(image, min_confidence=0.5))
 ```
 
-也可以使用新分发包名导入：
+也可以从分发包命名空间导入：
 
 ```python
 from cq_ai_engine import Engine
 ```
 
 `Engine()` 默认从 Wheel 内的 `cq_ai_engine/_native` 加载 `CQ_AI_x64.dll` 和
-同目录运行库，不读取当前工作目录中的 x86 DLL。需要调试其他兼容 DLL 时，
-仍可显式传入 `Engine(dll_path=...)`。
+同目录运行库，不读取当前工作目录中的 x86 DLL。需要调试指定 DLL 时，可显式
+传入 `Engine(dll_path=...)`。
 
 ## 模型与设备
 
 - 内置 PP-OCRv6 检测、识别模型和字符集。
-- YOLO 模型不内置，继续使用路径或内存加载方法。
-- 设备值保持 `0=AUTO`、`1=DirectML`、`2=CPU`。
-- CPU、DirectML 和 AUTO 语义及 60 个 C ABI 导出与 v23.5 一致。
-- `shutdown_worker()` 为兼容方法；x64 直连模式中不创建 worker，因此调用成功但
+- YOLO 模型不内置，使用路径或内存加载方法。
+- 设备值为 `0=AUTO`、`1=DirectML`、`2=CPU`。
+- x64 直连 AUTO 先配置 DirectML；初始化或 Session 创建失败时重试 CPU。它不
+  执行易语言 Worker 的 2 次预热、7 次采样和 10% 性能门槛。
+- 公开 C ABI 包含 60 个导出，具体签名以 `include/ai_engine.h` 为准。
+- `shutdown_worker()` 是统一生命周期方法；x64 直连模式不创建 worker，因此调用成功但
   不执行进程操作。
 
-DirectML OCR 不再具有 v23.5 worker 的进程级透明轮换。超长任务应监控当前
-Python 进程内存，并在业务边界释放、重建 `Engine`；需要完全回收 DirectML
-进程资源时应重启宿主 Python 进程。
+Python x64 的 DirectML 生命周期由宿主进程管理。超长任务应监控当前 Python
+进程内存，并在业务边界释放、重建 `Engine`；需要完全回收 DirectML 进程资源
+时应重启宿主 Python 进程。
 
 ## Wheel 内容
 
@@ -73,5 +75,5 @@ Wheel 不含 EXE、`CQ_X86.dll`、外部配置文件或 YOLO 模型。
 powershell -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
 ```
 
-脚本会先校验冻结的 v23.5 易语言成品，再构建 `/MT` x64 OpenCV、直连 DLL、
+脚本会先校验当前 v23.5 正式交付，再构建 `/MT` x64 OpenCV、直连 DLL、
 离线 Wheel，并验证 PE 位数、导出、依赖和 Wheel 内容。

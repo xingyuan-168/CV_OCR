@@ -3,6 +3,7 @@
 /build*/
 /cmake-build-*/
 /outpush/
+/output/
 /dist/
 /tmp*/
 /temp*/
@@ -29,6 +30,8 @@
 !release/v23.5/
 !release/v23.5/CQ_AI_e_language_v23.5.zip
 !release/v23.5/cq_ai_engine-0.14.5-py3-none-win_amd64.whl
+/release/.v23.5-stage-*/
+/release/.v23.5-backup-*/
 
 # Python and generated runtime state
 __pycache__/

@@ -187,13 +187,17 @@ SourceEntry parse_source(const std::string& value, uint32_t flags) {
     return entry;
 }
 
-std::string make_manifest(const std::vector<SourceEntry>& entries) {
+std::string make_manifest(
+    const std::vector<SourceEntry>& entries,
+    const std::string& project_version,
+    const std::string& delivery_version,
+    uint32_t worker_protocol) {
     std::ostringstream out;
     out << "{\n"
         << "  \"package_type\": \"embedded-core\",\n"
-        << "  \"project_version\": \"0.13.0\",\n"
-        << "  \"delivery_version\": \"v22\",\n"
-        << "  \"worker_protocol\": 22,\n"
+        << "  \"project_version\": \"" << json_escape(project_version) << "\",\n"
+        << "  \"delivery_version\": \"" << json_escape(delivery_version) << "\",\n"
+        << "  \"worker_protocol\": " << worker_protocol << ",\n"
         << "  \"ort_version\": \"1.24.4\",\n"
         << "  \"directml_version\": \"1.15.4\",\n"
         << "  \"compression\": \"XPRESS Huffman\",\n"
@@ -221,17 +225,36 @@ int wmain(int argc, wchar_t** argv) {
         if (argc < 4 || argv == nullptr) {
             std::cerr
                 << "usage: cq_runtime_packer output.bin "
+                   "--project-version X --delivery-version X --worker-protocol N "
                    "(--runtime|--directml|--notice) name=path ...\n";
             return 2;
         }
 
         const std::filesystem::path output_path(argv[1]);
         std::vector<SourceEntry> entries;
+        std::string project_version;
+        std::string delivery_version;
+        uint32_t worker_protocol = 0;
         for (int i = 2; i + 1 < argc; i += 2) {
             const std::wstring kind(argv[i]);
             const std::string value = std::filesystem::path(argv[i + 1]).u8string();
             uint32_t flags = 0;
-            if (kind == L"--runtime") {
+            if (kind == L"--project-version") {
+                project_version = value;
+                continue;
+            } else if (kind == L"--delivery-version") {
+                delivery_version = value;
+                continue;
+            } else if (kind == L"--worker-protocol") {
+                size_t parsed = 0;
+                const unsigned long number = std::stoul(value, &parsed, 10);
+                if (parsed != value.size() || number == 0 ||
+                    number > std::numeric_limits<uint32_t>::max()) {
+                    throw std::runtime_error("Invalid worker protocol: " + value);
+                }
+                worker_protocol = static_cast<uint32_t>(number);
+                continue;
+            } else if (kind == L"--runtime") {
                 flags = ai_runtime::kEntryRuntime;
             } else if (kind == L"--directml") {
                 flags = ai_runtime::kEntryRuntime | ai_runtime::kEntryDirectML;
@@ -249,6 +272,9 @@ int wmain(int argc, wchar_t** argv) {
         if (entries.empty()) {
             throw std::runtime_error("Runtime bundle cannot be empty");
         }
+        if (project_version.empty() || delivery_version.empty() || worker_protocol == 0) {
+            throw std::runtime_error("Runtime bundle metadata is incomplete");
+        }
         std::sort(entries.begin(), entries.end(), [](const SourceEntry& a, const SourceEntry& b) {
             return a.name < b.name;
         });
@@ -263,7 +289,8 @@ int wmain(int argc, wchar_t** argv) {
         SourceEntry manifest;
         manifest.name = "runtime-manifest.json";
         manifest.flags = ai_runtime::kEntryMetadata;
-        const std::string manifest_text = make_manifest(entries);
+        const std::string manifest_text = make_manifest(
+            entries, project_version, delivery_version, worker_protocol);
         manifest.raw.assign(manifest_text.begin(), manifest_text.end());
         manifest.sha256 = sha256(manifest.raw.data(), manifest.raw.size());
         entries.push_back(std::move(manifest));

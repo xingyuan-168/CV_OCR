@@ -11,9 +11,12 @@ $ErrorActionPreference = "Stop"
 $project = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $outpushRoot = [System.IO.Path]::GetFullPath((Join-Path $project "outpush"))
 $outputPath = [System.IO.Path]::GetFullPath((Join-Path $project $OutputDir))
-if (!$outputPath.StartsWith($outpushRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "OutputDir must remain under $outpushRoot"
+$finalOutput = Join-Path $project "output"
+$isFinalOutput = $outputPath.Equals($finalOutput, [System.StringComparison]::OrdinalIgnoreCase)
+if (!$isFinalOutput -and !$outputPath.StartsWith($outpushRoot + [IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "OutputDir must be $finalOutput or a directory below $outpushRoot"
 }
+if ($isFinalOutput -and !$NoZip) { throw "The final output directory requires -NoZip" }
 $x86Path = [System.IO.Path]::GetFullPath((Join-Path $project $X86Dll))
 $workerPath = [System.IO.Path]::GetFullPath((Join-Path $project $WorkerExe))
 $smokePath = [System.IO.Path]::GetFullPath((Join-Path $project $SmokeExe))
@@ -27,11 +30,21 @@ $htmlPath = if ($ApiHtml) {
 foreach ($required in @($x86Path, $workerPath, $smokePath, $htmlPath)) {
     if (!(Test-Path -LiteralPath $required -PathType Leaf)) { throw "Required artifact is missing: $required" }
 }
+$python = (Get-Command python -ErrorAction Stop).Source
+& $python (Join-Path $project "scripts\generate_e_language_api_doc.py") `
+    --header (Join-Path $project "include\ai_engine.h") `
+    --protocol (Join-Path $project "src\worker_protocol.h") `
+    --manifest (Join-Path $project "release\v23.5\manifest.json") `
+    --output $htmlPath `
+    --check
+if ($LASTEXITCODE -ne 0) {
+    throw "API HTML differs from the public header, Worker protocol or release metadata"
+}
 $htmlText = Get-Content -LiteralPath $htmlPath -Raw -Encoding UTF8
 if ($htmlText -notmatch '0\.14\.5' -or $htmlText -notmatch 'v23\.5' -or
     $htmlText -notmatch 'ID,x,y\|ID,x,y' -or $htmlText -notmatch 'ID,cx,cy\|ID,cx,cy' -or
     $htmlText -notmatch 'origin_x' -or $htmlText -notmatch 'CV_LoadTemplateZipFromMemory') {
-    throw "API HTML is not the v23.5 document or is missing compact/origin/ZIP declarations"
+    throw "API HTML is not the current v23.5 document or is missing compact/origin/ZIP declarations"
 }
 
 $dumpbin = Get-ChildItem -LiteralPath (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC") -Filter dumpbin.exe -Recurse |
@@ -76,7 +89,8 @@ if ($x86Dependencies.Count -ne 1 -or $x86Dependencies[0] -ne "KERNEL32.dll") {
     throw "CQ_X86.dll must depend only on KERNEL32.dll; found: $($x86Dependencies -join ', ')"
 }
 
-$cache = Join-Path $project "build-release-x86\CMakeCache.txt"
+# Inspect the build that produced the supplied DLL, including isolated candidates.
+$cache = Join-Path (Split-Path -Parent (Split-Path -Parent $x86Path)) "CMakeCache.txt"
 $cacheText = Get-Content -LiteralPath $cache -Raw -Encoding UTF8
 if ($cacheText -notmatch 'AIENGINE_WITH_OPENCV:BOOL=ON' -or $cacheText -notmatch 'opencv-5\.0\.0-static-mt[/\\]x86') {
     throw "CQ_X86.dll was not configured against the required x86 /MT static OpenCV build"
@@ -136,7 +150,14 @@ if ($LASTEXITCODE -ne 0) {
 $verifyOutput = & $workerPath --verify-embedded-runtime
 if ($LASTEXITCODE -ne 0) { throw "Worker embedded runtime verification failed" }
 $verify = $verifyOutput | ConvertFrom-Json
-if (!$verify.valid -or $verify.file_count -lt 13) { throw "Embedded runtime metadata is invalid" }
+if (!$verify.valid -or $verify.file_count -lt 13 -or
+    $verify.manifest.project_version -ne "0.14.5" -or
+    $verify.manifest.delivery_version -ne "v23.5" -or
+    $verify.manifest.worker_protocol -ne 25 -or
+    $verify.manifest.ort_version -ne "1.24.4" -or
+    $verify.manifest.directml_version -ne "1.15.4") {
+    throw "Embedded runtime metadata is invalid or differs from the current baseline"
+}
 $probeOutput = & $workerPath --runtime-probe
 if ($LASTEXITCODE -ne 0) { throw "Worker runtime probe failed" }
 $probe = $probeOutput | ConvertFrom-Json
@@ -153,7 +174,15 @@ $temporary = "$outputPath.tmp"
 foreach ($path in @($temporary, $outputPath)) {
     if (Test-Path -LiteralPath $path) {
         $resolved = [System.IO.Path]::GetFullPath($path)
-        if (!$resolved.StartsWith($outpushRoot, [System.StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe cleanup path: $resolved" }
+        if ($isFinalOutput) {
+            if ($resolved -notin @($finalOutput, "$finalOutput.tmp")) { throw "Unsafe cleanup path: $resolved" }
+            # Never recursively delete unrelated files in the user's output.
+            $existing = @(Get-ChildItem -LiteralPath $resolved)
+            $allowed = @('CQ_X86.dll', 'CQ_AI_worker.exe', (Split-Path -Leaf $htmlPath))
+            if (@($existing | Where-Object { $_.PSIsContainer -or $_.Name -notin $allowed }).Count) {
+                throw "Output contains unrelated files; preserve them and choose a clean delivery directory: $resolved"
+            }
+        } elseif (!$resolved.StartsWith($outpushRoot + [IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe cleanup path: $resolved" }
         Remove-Item -LiteralPath $resolved -Recurse -Force
     }
 }

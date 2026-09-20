@@ -7,6 +7,9 @@
 #include "embedded_assets.h"
 #include "engine.h"
 #include "error.h"
+#if defined(AIENGINE_CV_TEST_HOOKS)
+#include "cv_test_hooks.h"
+#endif
 #include "image_view.h"
 #include "runtime_status.h"
 #include "timer.h"
@@ -15,6 +18,7 @@
 
 #if defined(AIENGINE_WITH_OPENCV)
 #include "memory_zip.h"
+#include "cv_correlation.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #endif
@@ -24,12 +28,13 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#if defined(AIENGINE_WITH_OPENCV) && defined(_MSC_VER)
-#include <ppl.h>
-#endif
 #endif
 
 #include <algorithm>
+#include <array>
+#include <exception>
+#include <new>
+#include <stdexcept>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -150,13 +155,47 @@ struct TemplateCcoeffStats {
     double energy = 0.0;
 };
 
+#if defined(AIENGINE_CV_TEST_HOOKS)
+std::atomic<uint64_t> g_cv_live_templates{0};
+thread_local int g_cv_fault_stage = 0;
+thread_local int g_cv_fault_kind = 0;
+thread_local double g_cv_times[6]{};
+thread_local bool g_cv_reference = false;
+std::atomic<bool> g_cv_pause{false};
+std::atomic<bool> g_cv_paused{false};
+#endif
+void cv_test_fault(int stage) {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    if (stage == 1 && g_cv_pause.load()) {
+        g_cv_paused = true;
+        while (g_cv_pause.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    if (g_cv_fault_stage != stage) return;
+    g_cv_fault_stage = 0;
+    if (g_cv_fault_kind == 1) throw std::bad_alloc();
+#if defined(AIENGINE_WITH_OPENCV)
+    if (g_cv_fault_kind == 2) CV_Error(cv::Error::StsError, "injected OpenCV exception");
+#endif
+    if (g_cv_fault_kind == 3) throw std::runtime_error("injected standard exception");
+    throw 7;
+#else
+    (void)stage;
+#endif
+}
+
 struct TemplateEntry {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    TemplateEntry() { ++g_cv_live_templates; }
+    ~TemplateEntry() { --g_cv_live_templates; }
+#endif
     std::string key;
     OwnedImage color;
     OwnedImage gray;
     TemplateCcoeffStats color_stats;
 #if defined(AIENGINE_WITH_OPENCV)
     mutable std::mutex mask_mutex;
+    mutable std::mutex spectrum_mutex;
+    mutable std::shared_ptr<const ai::cv_detail::TemplateSpectrum> spectrum;
     mutable std::unordered_map<uint64_t, std::shared_ptr<const cv::Mat>> transparent_masks;
     mutable std::unordered_map<uint32_t, std::shared_ptr<const cv::Mat>> transparent_candidate_templates;
     mutable std::unordered_map<uint32_t, bool> transparent_color_presence;
@@ -374,6 +413,8 @@ std::filesystem::path resolve_compat_api_path(const char* path) {
             if (first.empty()) first = value;
             std::error_code error;
             if (std::filesystem::exists(value, error) && !error) return value;
+        } catch (const std::bad_alloc&) {
+            throw;
         } catch (...) {
         }
     }
@@ -778,6 +819,27 @@ int32_t finish_status(int32_t status, const char* operation) {
             break;
     }
     return status;
+}
+
+// Every CV export catches C++ exceptions before they cross the C ABI.
+int32_t cv_exception_status(const char* operation) noexcept {
+    try { throw; }
+    catch (const std::bad_alloc&) { ai::set_last_error_fallback(operation, "out of memory"); }
+#if defined(AIENGINE_WITH_OPENCV)
+    catch (const cv::Exception& error) { ai::set_last_error_fallback(operation, error.what()); }
+#endif
+    catch (const std::exception& error) { ai::set_last_error_fallback(operation, error.what()); }
+    catch (...) { ai::set_last_error_fallback(operation, "unknown C++ exception"); }
+    return AI_ERR_RUNTIME;
+}
+
+const char* cv_find_argument_error(const std::shared_ptr<CVContext>& context,
+                                  int32_t mode, float min_score) noexcept {
+    if (!context) return "invalid handle (missing or released)";
+    if (mode != 0 && mode != 1) return "invalid match_mode: expected 0 or 1";
+    if (!std::isfinite(min_score) || min_score < 0.0f || min_score > 1.0f)
+        return "invalid min_score: expected a finite value in [0,1]";
+    return nullptr;
 }
 
 // 与 finish_status() 类似，但在可用时保留后端提供的详细错误。
@@ -1199,7 +1261,7 @@ bool parse_bmp_view(const uint8_t* data, int32_t size, BmpImageView* out, bool f
 
     const uint32_t pixel_offset = read_u32_le(data + 10);
     const uint32_t dib_size = read_u32_le(data + 14);
-    if (dib_size < 40 || pixel_offset >= static_cast<uint32_t>(size)) {
+    if (dib_size < 40 || static_cast<uint64_t>(14) + dib_size > pixel_offset || pixel_offset >= static_cast<uint32_t>(size)) {
         return false;
     }
 
@@ -1208,15 +1270,16 @@ bool parse_bmp_view(const uint8_t* data, int32_t size, BmpImageView* out, bool f
     const uint16_t planes = read_u16_le(data + 26);
     const uint16_t bpp = read_u16_le(data + 28);
     const uint32_t compression = read_u32_le(data + 30);
-    if (width <= 0 || raw_height == 0 || planes != 1 || compression != 0 || (bpp != 24 && bpp != 32)) {
+    if (width <= 0 || raw_height == 0 || raw_height == std::numeric_limits<int32_t>::min() || planes != 1 || compression != 0 || (bpp != 24 && bpp != 32)) {
         return false;
     }
 
-    const int32_t height = raw_height < 0 ? -raw_height : raw_height;
+    const int64_t height64 = raw_height < 0 ? -static_cast<int64_t>(raw_height) : raw_height;
+    const int32_t height = static_cast<int32_t>(height64);
     const int32_t channels = bpp == 24 ? 3 : 4;
     const int64_t row_stride = ((static_cast<int64_t>(width) * channels + 3) / 4) * 4;
-    const int64_t required = static_cast<int64_t>(pixel_offset) + row_stride * height;
-    if (required > size || row_stride > std::numeric_limits<int32_t>::max()) {
+    if (row_stride > std::numeric_limits<int32_t>::max() ||
+        height64 > (static_cast<int64_t>(size) - pixel_offset) / row_stride) {
         return false;
     }
 
@@ -1250,9 +1313,18 @@ bool read_file_bytes(const std::filesystem::path& path, std::vector<uint8_t>* by
     return input.good();
 }
 
+size_t checked_image_bytes(int32_t width, int32_t height, size_t channels) {
+    if (width <= 0 || height <= 0 || channels == 0 ||
+        static_cast<size_t>(width) > static_cast<size_t>(INT32_MAX) / channels ||
+        static_cast<size_t>(height) > SIZE_MAX / channels / static_cast<size_t>(width)) {
+        throw std::length_error("image dimensions exceed addressable storage");
+    }
+    return static_cast<size_t>(width) * static_cast<size_t>(height) * channels;
+}
+
 OwnedImage copy_image_as_bgr(const AIImage& src) {
     OwnedImage out;
-    out.pixels.resize(static_cast<size_t>(src.width) * src.height * 3);
+    out.pixels.resize(checked_image_bytes(src.width, src.height, 3));
     out.view = AIImage{out.pixels.data(), src.width, src.height, src.width * 3, AI_IMAGE_BGR24};
     const int src_channels = ai::channels_for_format(src.format);
     for (int32_t y = 0; y < src.height; ++y) {
@@ -1272,7 +1344,7 @@ OwnedImage copy_image_as_bgr(const AIImage& src) {
 
 OwnedImage make_gray_image(const AIImage& src) {
     OwnedImage out;
-    out.pixels.resize(static_cast<size_t>(src.width) * src.height);
+    out.pixels.resize(checked_image_bytes(src.width, src.height, 1));
     out.view = AIImage{out.pixels.data(), src.width, src.height, src.width, AI_IMAGE_GRAY8};
     const int src_channels = ai::channels_for_format(src.format);
     for (int32_t y = 0; y < src.height; ++y) {
@@ -1358,7 +1430,9 @@ bool decode_zip_template_key(const ai::MemoryZipEntry& entry, std::string* key) 
     std::replace(decoded.begin(), decoded.end(), '\\', '/');
     try {
         *key = std::filesystem::u8path(decoded).filename().u8string();
-    } catch (...) {
+    } catch (const std::bad_alloc&) {
+            throw;
+        } catch (...) {
         return false;
     }
     return !key->empty();
@@ -1441,6 +1515,8 @@ std::shared_ptr<const TemplateEntry> find_template_candidates(
                 if (resolved_name != nullptr) *resolved_name = it->second->key;
                 return it->second;
             }
+        } catch (const std::bad_alloc&) {
+            throw;
         } catch (...) {
         }
     }
@@ -1492,6 +1568,7 @@ bool parse_rgb_hex(const char* text, uint32_t* rgb) {
 constexpr float kCvInternalNmsIou = 0.30f;
 
 bool valid_compat_color_bias(const char* color_bias, int32_t match_mode) {
+    if (match_mode != 0 && match_mode != 1) return false;
     if (color_bias == nullptr || color_bias[0] == '\0') return true;
     const size_t len = std::strlen(color_bias);
     if ((match_mode == 1 && len != 2) || (match_mode == 0 && len != 6)) return false;
@@ -1603,23 +1680,87 @@ struct CVTemplateThreadScratch {
     std::vector<CVMatchResult> selected;
 };
 
-struct CVThreadScratch {
+struct CVWorkspace {
     OwnedImage color;
     OwnedImage gray;
-    std::unordered_map<uint64_t, CVTemplateThreadScratch> templates;
-    bool result_cache_valid = false;
-    std::vector<std::shared_ptr<const TemplateEntry>> result_cache_entries;
-    int32_t result_cache_match_mode = 0;
-    bool result_cache_transparent = false;
-    uint32_t result_cache_transparent_rgb = 0;
-    CVColorBias result_cache_color_bias{};
-    float result_cache_min_score = 0.0f;
-    float result_cache_nms_iou = 0.0f;
-    bool result_cache_best_only = false;
-    std::vector<CVMatchResult> result_cache_matches;
+    CVTemplateThreadScratch scratch;
+    ai::cv_detail::CorrelationWorkspace correlation;
+    bool correlation_image_valid = false;
+    bool correlation_sums_valid = false;
+
+    size_t retained_bytes() const noexcept {
+        const auto mat_bytes = [](const cv::Mat& mat) -> size_t {
+            return mat.data ? static_cast<size_t>(mat.datalimit - mat.datastart) : 0;
+        };
+        return correlation.retained_bytes() + color.pixels.capacity() + gray.pixels.capacity() +
+            mat_bytes(scratch.score) + mat_bytes(scratch.local_max) + mat_bytes(scratch.peak_kernel) +
+            scratch.peak_points.capacity() * sizeof(cv::Point) +
+            (scratch.candidates.capacity() + scratch.selected.capacity()) * sizeof(CVMatchResult);
+    }
+    void discard() noexcept {
+        correlation_image_valid = correlation_sums_valid = false;
+        correlation.discard();
+        std::vector<uint8_t>().swap(color.pixels);
+        std::vector<uint8_t>().swap(gray.pixels);
+        color.view = {}; gray.view = {};
+        scratch.score.release(); scratch.local_max.release(); scratch.peak_kernel.release();
+        std::vector<cv::Point>().swap(scratch.peak_points);
+        std::vector<CVMatchResult>().swap(scratch.candidates);
+        std::vector<CVMatchResult>().swap(scratch.selected);
+    }
 };
 
-thread_local CVThreadScratch g_cv_scratch;
+constexpr size_t kCvWorkspaceCount = sizeof(void*) == 4 ? 2 : 4;
+constexpr size_t kCvIdleBudget = (sizeof(void*) == 4 ? 64u : 256u) * 1024u * 1024u;
+struct CVWorkspacePool {
+    std::mutex mutex;
+    std::condition_variable available;
+    std::array<CVWorkspace, kCvWorkspaceCount> workspaces;
+    std::array<bool, kCvWorkspaceCount> busy{};
+    size_t idle_bytes = 0;
+    size_t active = 0;
+    size_t peak_active = 0;
+    size_t discarded = 0;
+};
+CVWorkspacePool g_cv_pool;
+
+class CVWorkspaceLease {
+public:
+    CVWorkspaceLease() {
+        std::unique_lock<std::mutex> lock(g_cv_pool.mutex);
+        g_cv_pool.available.wait(lock, [] {
+            return g_cv_pool.active < kCvWorkspaceCount;
+        });
+        for (size_t i = 0; i < kCvWorkspaceCount; ++i) {
+            if (!g_cv_pool.busy[i]) { index_ = i; break; }
+        }
+        g_cv_pool.busy[index_] = true;
+        g_cv_pool.idle_bytes -= get().retained_bytes();
+        ++g_cv_pool.active;
+        g_cv_pool.peak_active = std::max(g_cv_pool.peak_active, g_cv_pool.active);
+    }
+    CVWorkspaceLease(const CVWorkspaceLease&) = delete;
+    CVWorkspaceLease& operator=(const CVWorkspaceLease&) = delete;
+    ~CVWorkspaceLease() noexcept {
+        {
+            std::lock_guard<std::mutex> lock(g_cv_pool.mutex);
+            if (std::uncaught_exceptions() > exceptions_ ||
+                get().retained_bytes() > kCvIdleBudget - g_cv_pool.idle_bytes) {
+                get().discard();
+                ++g_cv_pool.discarded;
+            }
+            g_cv_pool.idle_bytes += get().retained_bytes();
+            g_cv_pool.busy[index_] = false;
+            --g_cv_pool.active;
+        }
+        g_cv_pool.available.notify_one();
+    }
+    CVWorkspace& get() noexcept { return g_cv_pool.workspaces[index_]; }
+private:
+    size_t index_ = 0;
+    int exceptions_ = std::uncaught_exceptions();
+};
+
 std::once_flag g_cv_runtime_init_once;
 
 void ensure_cv_runtime_initialized() {
@@ -1632,7 +1773,7 @@ void ensure_cv_runtime_initialized() {
 }
 
 bool refresh_bgr_cache(const AIImage& source, OwnedImage* output) {
-    const size_t bytes = static_cast<size_t>(source.width) * source.height * 3;
+    const size_t bytes = checked_image_bytes(source.width, source.height, 3);
     const bool reusable_bgr = source.format == AI_IMAGE_BGR24 &&
         output->view.width == source.width && output->view.height == source.height &&
         output->view.format == AI_IMAGE_BGR24 && output->pixels.size() == bytes;
@@ -1670,7 +1811,7 @@ bool refresh_bgr_cache(const AIImage& source, OwnedImage* output) {
 }
 
 void make_gray_reuse(const OwnedImage& source, OwnedImage* output) {
-    const size_t pixels = static_cast<size_t>(source.view.width) * source.view.height;
+    const size_t pixels = checked_image_bytes(source.view.width, source.view.height, 1);
     output->pixels.resize(pixels);
     output->view = AIImage{output->pixels.data(), source.view.width, source.view.height, source.view.width, AI_IMAGE_GRAY8};
     cv::Mat color(source.view.height, source.view.width, CV_8UC3,
@@ -1931,6 +2072,36 @@ void collect_local_peaks(
     const int32_t radius_y = std::max<int32_t>(1,
         static_cast<int32_t>(std::floor(template_height * nms_iou)));
     const cv::Size kernel_size{radius_x * 2 + 1, radius_y * 2 + 1};
+    // Sparse threshold crossings do not need a full-frame morphological pass.
+    // This is the same rectangular maximum predicate (including its tolerance),
+    // with an early rejection, not a cap on the number of candidates.
+    for (int y=0;y<score.rows;++y) {
+        const auto* row=score.ptr<float>(y);
+        for (int x=0;x<score.cols;++x)
+            if (row[x]>=candidate_floor && std::isfinite(row[x])) points->push_back({x,y});
+    }
+    if (points->size()<=score.total()/32
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        && !g_cv_reference
+#endif
+    ) {
+        size_t kept=0;
+        for(const auto point:*points) {
+            const float value=score.at<float>(point);
+            if(point.x>0 && std::abs(value-score.at<float>(point.y,point.x-1))<=1e-7f) continue;
+            if(point.y>0 && std::abs(value-score.at<float>(point.y-1,point.x))<=1e-7f) continue;
+            bool peak=true;
+            for(int y=std::max(0,point.y-radius_y);y<=std::min(score.rows-1,point.y+radius_y)&&peak;++y) {
+                const auto* row=score.ptr<float>(y);
+                for(int x=std::max(0,point.x-radius_x);x<=std::min(score.cols-1,point.x+radius_x);++x)
+                    if(value+1e-6f<row[x]) { peak=false; break; }
+            }
+            if(peak) (*points)[kept++]=point;
+        }
+        points->resize(kept);
+        return;
+    }
+    points->clear();
     if (peak_kernel->size() != kernel_size) {
         *peak_kernel = cv::getStructuringElement(cv::MORPH_RECT, kernel_size);
     }
@@ -1967,30 +2138,30 @@ int32_t find_cv_matches_opencv(
     }
     ensure_cv_runtime_initialized();
     output->clear();
-    const bool image_changed = refresh_bgr_cache(big_image, &g_cv_scratch.color);
-    if (image_changed) {
-        g_cv_scratch.result_cache_valid = false;
-        make_gray_reuse(g_cv_scratch.color, &g_cv_scratch.gray);
+    CVWorkspaceLease lease;
+    auto& workspace = lease.get();
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    std::fill(std::begin(g_cv_times), std::end(g_cv_times), 0);
+    auto prof_start = std::chrono::steady_clock::now();
+#endif
+    cv_test_fault(1);
+    if (refresh_bgr_cache(big_image, &workspace.color)) {
+        workspace.correlation_image_valid = workspace.correlation_sums_valid = false;
     }
-    const CVColorBias& cached_bias = g_cv_scratch.result_cache_color_bias;
-    const bool same_bias = cached_bias.enabled == color_bias.enabled &&
-        cached_bias.b == color_bias.b && cached_bias.g == color_bias.g &&
-        cached_bias.r == color_bias.r && cached_bias.gray == color_bias.gray;
-    const bool same_entries = g_cv_scratch.result_cache_entries.size() == entries.size() &&
-        std::equal(entries.begin(), entries.end(), g_cv_scratch.result_cache_entries.begin());
-    if (!image_changed && g_cv_scratch.result_cache_valid && same_entries && same_bias &&
-        g_cv_scratch.result_cache_match_mode == match_mode &&
-        g_cv_scratch.result_cache_transparent == transparent &&
-        g_cv_scratch.result_cache_transparent_rgb == transparent_rgb &&
-        g_cv_scratch.result_cache_min_score == min_score &&
-        g_cv_scratch.result_cache_nms_iou == nms_iou &&
-        g_cv_scratch.result_cache_best_only == best_only) {
-        *output = g_cv_scratch.result_cache_matches;
-        return static_cast<int32_t>(output->size());
-    }
-    const cv::Mat image = owned_image_mat(match_mode == 1 ? g_cv_scratch.gray : g_cv_scratch.color);
-    const cv::Mat candidate_image = owned_image_mat(g_cv_scratch.gray);
-    std::vector<std::vector<CVMatchResult>> per_template(entries.size());
+    bool gray_ready=false;
+    const auto prepare_gray=[&] {
+        if (!gray_ready) { make_gray_reuse(workspace.color,&workspace.gray); gray_ready=true; }
+    };
+    if (match_mode==1) prepare_gray();
+    const cv::Mat image = owned_image_mat(match_mode == 1 ? workspace.gray : workspace.color);
+    cv::Mat candidate_image;
+    bool correlation_ready = false;
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    bool correlation_prepared_now = false;
+#endif
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    g_cv_times[0] = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-prof_start).count();
+#endif
     std::atomic<int32_t> match_error{AI_OK};
     const auto match_entry = [&](size_t template_index) {
         if (match_error.load(std::memory_order_relaxed) < 0) return;
@@ -1998,10 +2169,7 @@ int32_t find_cv_matches_opencv(
         const cv::Mat templ = owned_image_mat(match_mode == 1 ? entry->gray : entry->color);
         cv::Mat candidate_templ = templ;
         if (templ.cols > image.cols || templ.rows > image.rows) return;
-        const uint64_t scratch_key = (static_cast<uint64_t>(static_cast<uint32_t>(templ.rows)) << 32) |
-            (static_cast<uint64_t>(static_cast<uint32_t>(templ.cols)) << 8) |
-            static_cast<uint64_t>(templ.channels());
-        CVTemplateThreadScratch& scratch = g_cv_scratch.templates[scratch_key];
+        CVTemplateThreadScratch& scratch = workspace.scratch;
 
         std::shared_ptr<const cv::Mat> mask_owner;
         std::shared_ptr<const cv::Mat> candidate_template_owner;
@@ -2010,6 +2178,7 @@ int32_t find_cv_matches_opencv(
         bool use_transparent_mask = transparent && template_contains_transparent_color(entry, transparent_rgb);
         int method = best_only ? cv::TM_CCORR_NORMED : cv::TM_CCOEFF_NORMED;
         if (use_transparent_mask) {
+            prepare_gray(); candidate_image=owned_image_mat(workspace.gray);
             mask_owner = get_transparent_mask(entry, match_mode, transparent_rgb);
             if (!mask_owner) {
                 match_error.store(AI_ERR_INVALID_ARGUMENT, std::memory_order_relaxed);
@@ -2027,12 +2196,59 @@ int32_t find_cv_matches_opencv(
         std::vector<CVMatchResult>& candidates = scratch.candidates;
         candidates.clear();
         const cv::Mat& candidate_source = use_transparent_mask ? candidate_image : image;
-        if (candidate_mask == nullptr) {
+        cv_test_fault(2);
+        if (!use_transparent_mask && match_mode == 0 && image.total() <= 512u * 1024u
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            && !g_cv_reference
+#endif
+        ) {
+            if (!correlation_ready) {
+                // Exact byte equality of the owned frame permits reuse of its
+                // transform/statistics. Correlation, peaks and results are still
+                // recomputed for every request; no template owner is retained.
+                if (!workspace.correlation_image_valid || (!best_only && !workspace.correlation_sums_valid)) {
+                    workspace.correlation.prepare(image,!best_only);
+                    workspace.correlation_image_valid = true;
+                    workspace.correlation_sums_valid = !best_only;
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                    correlation_prepared_now = true;
+#endif
+                }
+                correlation_ready = true;
+            }
+            const auto geometry = ai::cv_detail::spectrum_geometry(image.size());
+            std::shared_ptr<const ai::cv_detail::TemplateSpectrum> spectrum;
+            {
+                std::lock_guard<std::mutex> lock(entry->spectrum_mutex);
+                if (!entry->spectrum || entry->spectrum->geometry != geometry) {
+                    entry->spectrum = std::make_shared<const ai::cv_detail::TemplateSpectrum>(
+                        ai::cv_detail::make_spectrum(templ, geometry));
+                }
+                spectrum = entry->spectrum;
+            }
+            workspace.correlation.match(templ, *spectrum, entry->color_stats.sums,
+                entry->color_stats.energy, !best_only, scratch.score,
+                best_only ? -1.0f : std::max(0.0f,min_score-2e-6f));
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            g_cv_times[1]=correlation_prepared_now ? workspace.correlation.timings[0] : 0;
+            g_cv_times[2]=correlation_prepared_now ? workspace.correlation.timings[1] : 0;
+            g_cv_times[3]+=workspace.correlation.timings[2];
+            g_cv_times[4]+=workspace.correlation.timings[3];
+#endif
+        } else if (candidate_mask == nullptr) {
             cv::matchTemplate(candidate_source, candidate_templ, scratch.score, method);
         } else {
             cv::matchTemplate(candidate_source, candidate_templ, scratch.score, method, *candidate_mask);
         }
         cv::patchNaNs(scratch.score, -1.0);
+        const auto exact_color_score = [&](int x,int y) {
+            return correlation_ready && !best_only
+                ? workspace.correlation.exact_at(image,templ,entry->color_stats.sums,entry->color_stats.energy,x,y)
+                : exact_ccoeff_score_at(image,templ,entry->color_stats,x,y);
+        };
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        auto prof_post = std::chrono::steady_clock::now();
+#endif
         bool best_match_complete = false;
         cv::Point best_point;
         if (best_only) {
@@ -2042,7 +2258,7 @@ int32_t find_cv_matches_opencv(
             if (use_transparent_mask && std::isfinite(best_score)) {
                 final_score = exact_masked_ccoeff_score_at(image, templ, *mask, best_point.x, best_point.y);
             } else if (match_mode == 0 && std::isfinite(best_score)) {
-                final_score = exact_ccoeff_score_at(image, templ, entry->color_stats, best_point.x, best_point.y);
+                final_score = exact_color_score(best_point.x, best_point.y);
             } else if (best_score > 1.0 - 1e-6) {
                 final_score = 1.0f;
             }
@@ -2066,7 +2282,7 @@ int32_t find_cv_matches_opencv(
                 if (use_transparent_mask) {
                     score = exact_masked_ccoeff_score_at(image, templ, *mask, point.x, point.y);
                 } else if (match_mode == 0) {
-                    score = exact_ccoeff_score_at(image, templ, entry->color_stats, point.x, point.y);
+                    score = exact_color_score(point.x, point.y);
                 } else if (score > 1.0f - 1e-6f) {
                     score = 1.0f;
                 }
@@ -2122,35 +2338,17 @@ int32_t find_cv_matches_opencv(
             if (!suppressed) selected.push_back(candidate);
             if (best_only && !selected.empty()) break;
         }
-        per_template[template_index].assign(selected.begin(), selected.end());
+        output->insert(output->end(), selected.begin(), selected.end());
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        g_cv_times[5]+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-prof_post).count();
+#endif
     };
-#if defined(_MSC_VER)
-    if (entries.size() > 1) {
-        Concurrency::parallel_for<size_t>(0, entries.size(), match_entry);
-    } else {
-        match_entry(0);
-    }
-#else
     for (size_t template_index = 0; template_index < entries.size(); ++template_index) {
         match_entry(template_index);
     }
-#endif
     const int32_t error = match_error.load(std::memory_order_relaxed);
     if (error < 0) return error;
-    for (const auto& matches : per_template) {
-        output->insert(output->end(), matches.begin(), matches.end());
-    }
     std::sort(output->begin(), output->end(), cv_result_screen_order);
-    g_cv_scratch.result_cache_entries = entries;
-    g_cv_scratch.result_cache_match_mode = match_mode;
-    g_cv_scratch.result_cache_transparent = transparent;
-    g_cv_scratch.result_cache_transparent_rgb = transparent_rgb;
-    g_cv_scratch.result_cache_color_bias = color_bias;
-    g_cv_scratch.result_cache_min_score = min_score;
-    g_cv_scratch.result_cache_nms_iou = nms_iou;
-    g_cv_scratch.result_cache_best_only = best_only;
-    g_cv_scratch.result_cache_matches = *output;
-    g_cv_scratch.result_cache_valid = true;
     return static_cast<int32_t>(output->size());
 }
 
@@ -2241,7 +2439,7 @@ bool corners_match_rgb(const AIImage& image, uint32_t rgb) {
 
 OwnedImage make_transparent_template(const AIImage& src, uint32_t transparent_rgb) {
     OwnedImage out;
-    out.pixels.resize(static_cast<size_t>(src.width) * src.height * 4);
+    out.pixels.resize(checked_image_bytes(src.width, src.height, 4));
     out.view = AIImage{out.pixels.data(), src.width, src.height, src.width * 4, AI_IMAGE_BGRA32};
     const int src_channels = ai::channels_for_format(src.format);
     for (int32_t y = 0; y < src.height; ++y) {
@@ -2863,8 +3061,8 @@ void proxy_rewrite_runtime_status(
     int32_t requested_device,
     int32_t active_device,
     const std::string& fallback_reason) {
-    // v22 AUTO routing is resolved inside the single Worker. Its returned
-    // status already contains the real active Provider and fallback reason.
+    // AUTO routing is resolved inside the single Worker. Its returned status
+    // already contains the real active Provider and selection reason.
     if (active_device == AI_DEVICE_AUTO) return;
     proxy_replace_json_string(json, "requested", runtime_device_name(requested_device));
     proxy_replace_json_string(json, "active", runtime_device_name(active_device));
@@ -3119,7 +3317,7 @@ AIENGINE_EXPORT const char* AIENGINE_CALL AI_GetVersion(void) {
 #endif
 }
 
-// 保留给历史调用方的初始化入口，默认按 AUTO 选择 GPU/CPU。
+// 默认初始化入口，按 AUTO 策略选择 GPU/CPU。
 AIENGINE_EXPORT int32_t AIENGINE_CALL AI_Init(const char* config_path) {
     return AI_InitEx(config_path, AI_DEVICE_AUTO);
 }
@@ -3206,7 +3404,7 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL AI_ShutdownWorker(void) {
 
 // 返回当前线程持有的错误文本。调用方不分配、不释放，也不传缓冲区长度。
 AIENGINE_EXPORT const char* AIENGINE_CALL AI_GetLastError(void) {
-    return ai::last_error().c_str();
+    return ai::last_error_c_str();
 }
 
 // 从全局引擎读取模块最近一次耗时。
@@ -3922,7 +4120,36 @@ AIENGINE_EXPORT const char* AIENGINE_CALL AI_CvFindTransparentImages(
     return g_ai_cv_json_result.c_str();
 }
 
-AIENGINE_EXPORT int32_t AIENGINE_CALL CV_Create(int32_t* out_handle) {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+CV_TEST_EXPORT void CVTest_LastTimes(double* values) { std::copy(std::begin(g_cv_times),std::end(g_cv_times),values); }
+CV_TEST_EXPORT void CVTest_Reference(int enabled) { g_cv_reference=enabled!=0; }
+CV_TEST_EXPORT void CVTest_Fault(int stage, int kind) {
+    g_cv_fault_stage = stage; g_cv_fault_kind = kind;
+}
+CV_TEST_EXPORT void CVTest_Pause(int enabled) {
+    if (enabled) g_cv_paused = false;
+    g_cv_pause = enabled != 0;
+}
+CV_TEST_EXPORT int CVTest_Paused() { return g_cv_paused.load() ? 1 : 0; }
+CV_TEST_EXPORT CVTestStats CVTest_Stats() {
+#if defined(AIENGINE_WITH_OPENCV)
+    std::lock_guard<std::mutex> lock(g_cv_pool.mutex);
+    return {kCvWorkspaceCount, kCvIdleBudget, g_cv_pool.active, g_cv_pool.peak_active,
+            g_cv_pool.idle_bytes, g_cv_pool.discarded, g_cv_live_templates.load()};
+#else
+    return {0, 0, 0, 0, 0, 0, g_cv_live_templates.load()};
+#endif
+}
+CV_TEST_EXPORT void CVTest_OverBudget() {
+#if defined(AIENGINE_WITH_OPENCV)
+    CVWorkspaceLease lease;
+    lease.get().color.pixels.resize(kCvIdleBudget + 1);
+#endif
+}
+#endif
+
+AIENGINE_EXPORT int32_t AIENGINE_CALL CV_Create(int32_t* out_handle) try {
+    if (out_handle != nullptr) *out_handle = 0;
     if (out_handle == nullptr) return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_Create");
     std::lock_guard<std::mutex> lock(g_cv_context_mutex);
     if (g_next_cv_handle <= 0 || g_next_cv_handle == std::numeric_limits<int32_t>::max()) {
@@ -3933,8 +4160,12 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_Create(int32_t* out_handle) {
     *out_handle = handle;
     return finish_status(AI_OK, "CV_Create");
 }
+catch (...) {
+    if (out_handle != nullptr) *out_handle = 0;
+    return cv_exception_status("CV_Create");
+}
 
-AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateDir(int32_t handle, const char* dir_path, int32_t recursive) {
+AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateDir(int32_t handle, const char* dir_path, int32_t recursive) try {
     const auto context = get_cv_context(handle);
     if (!context || dir_path == nullptr || dir_path[0] == '\0') {
         return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_LoadTemplateDir");
@@ -3973,7 +4204,7 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateDir(int32_t handle, const c
             }
         }
     } catch (...) {
-        return finish_status(AI_ERR_RUNTIME, "CV_LoadTemplateDir");
+        throw;
     }
 
     const int32_t count = static_cast<int32_t>(next.size());
@@ -3983,11 +4214,14 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateDir(int32_t handle, const c
     }
     return finish_status(count, "CV_LoadTemplateDir");
 }
+catch (...) {
+    return cv_exception_status("CV_LoadTemplateDir");
+}
 
 AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateZipFromMemory(
     int32_t handle,
     const uint8_t* zip_data,
-    int32_t zip_size) {
+    int32_t zip_size) try {
     const auto context = get_cv_context(handle);
     if (!context || zip_data == nullptr || zip_size <= 0) {
         return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_LoadTemplateZipFromMemory");
@@ -4018,6 +4252,8 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateZipFromMemory(
         std::string extension;
         try {
             extension = ascii_lower(std::filesystem::u8path(key).extension().u8string());
+        } catch (const std::bad_alloc&) {
+            throw;
         } catch (...) {
             return finish_status_with_detail(
                 AI_ERR_INVALID_ARGUMENT,
@@ -4068,21 +4304,30 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_LoadTemplateZipFromMemory(
     return finish_status(count, "CV_LoadTemplateZipFromMemory");
 #endif
 }
+catch (...) {
+    return cv_exception_status("CV_LoadTemplateZipFromMemory");
+}
 
-AIENGINE_EXPORT int32_t AIENGINE_CALL CV_ClearTemplateCache(int32_t handle) {
+AIENGINE_EXPORT int32_t AIENGINE_CALL CV_ClearTemplateCache(int32_t handle) try {
     const auto context = get_cv_context(handle);
     if (!context) return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_ClearTemplateCache");
     std::unique_lock<std::shared_mutex> lock(context->template_mutex);
     context->templates.clear();
     return finish_status(AI_OK, "CV_ClearTemplateCache");
 }
+catch (...) {
+    return cv_exception_status("CV_ClearTemplateCache");
+}
 
-AIENGINE_EXPORT int32_t AIENGINE_CALL CV_Release(int32_t handle) {
+AIENGINE_EXPORT int32_t AIENGINE_CALL CV_Release(int32_t handle) try {
     std::lock_guard<std::mutex> lock(g_cv_context_mutex);
     const auto it = g_cv_contexts.find(handle);
     if (it == g_cv_contexts.end()) return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_Release");
     g_cv_contexts.erase(it);
     return finish_status(AI_OK, "CV_Release");
+}
+catch (...) {
+    return cv_exception_status("CV_Release");
 }
 
 AIENGINE_EXPORT int32_t AIENGINE_CALL CV_FindOne(
@@ -4094,10 +4339,13 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_FindOne(
     int32_t match_mode,
     CVMatchResult* output,
     int32_t origin_x,
-    int32_t origin_y) {
+    int32_t origin_y) try {
     if (output != nullptr) *output = CVMatchResult{};
     const auto context = get_cv_context(handle);
-    if (!context || template_name == nullptr || output == nullptr) {
+    if (const char* reason = cv_find_argument_error(context, match_mode, min_score)) {
+        return finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindOne", reason);
+    }
+    if (template_name == nullptr || template_name[0] == '\0' || output == nullptr) {
         return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_FindOne");
     }
     BmpImageView big;
@@ -4130,6 +4378,10 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_FindOne(
     }
     return finish_status(status, "CV_FindOne");
 }
+catch (...) {
+    if (output != nullptr) *output = CVMatchResult{};
+    return cv_exception_status("CV_FindOne");
+}
 
 AIENGINE_EXPORT int32_t AIENGINE_CALL CV_FindTransparentOne(
     int32_t handle,
@@ -4141,11 +4393,14 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_FindTransparentOne(
     const char* transparent_rgb,
     CVMatchResult* output,
     int32_t origin_x,
-    int32_t origin_y) {
+    int32_t origin_y) try {
     if (output != nullptr) *output = CVMatchResult{};
     const auto context = get_cv_context(handle);
+    if (const char* reason = cv_find_argument_error(context, match_mode, min_score)) {
+        return finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentOne", reason);
+    }
     uint32_t rgb = 0;
-    if (!context || template_name == nullptr || output == nullptr || !parse_rgb_hex(transparent_rgb, &rgb)) {
+    if (template_name == nullptr || template_name[0] == '\0' || output == nullptr || !parse_rgb_hex(transparent_rgb, &rgb)) {
         return finish_status(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentOne");
     }
     BmpImageView big;
@@ -4180,6 +4435,10 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL CV_FindTransparentOne(
     }
     return finish_status(status, "CV_FindTransparentOne");
 }
+catch (...) {
+    if (output != nullptr) *output = CVMatchResult{};
+    return cv_exception_status("CV_FindTransparentOne");
+}
 
 AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindMultiText(
     int32_t handle,
@@ -4190,13 +4449,21 @@ AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindMultiText(
     float min_score,
     int32_t match_mode,
     int32_t origin_x,
-    int32_t origin_y) {
+    int32_t origin_y) try {
     g_compat_cv_json_result.clear();
     const auto context = get_cv_context(handle);
-    const std::vector<std::vector<std::string>> name_candidates = compat_pipe_text_candidates(template_names);
+    if (const char* reason = cv_find_argument_error(context, match_mode, min_score)) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindMultiText", reason);
+        return g_compat_cv_json_result.c_str();
+    }
     CVColorBias bias{};
-    if (!context || name_candidates.empty() || !parse_cv_color_bias(color_bias, match_mode, &bias)) {
-        finish_status(AI_ERR_INVALID_ARGUMENT, "CV_FindMultiText");
+    if (!parse_cv_color_bias(color_bias, match_mode, &bias)) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindMultiText", "invalid color_bias: expected hexadecimal text (color=6 digits, gray=2 digits), or empty");
+        return g_compat_cv_json_result.c_str();
+    }
+    const auto name_candidates = compat_pipe_text_candidates(template_names);
+    if (name_candidates.empty()) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindMultiText", "invalid template_names: empty or malformed pipe-separated list");
         return g_compat_cv_json_result.c_str();
     }
     BmpImageView big;
@@ -4237,6 +4504,7 @@ AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindMultiText(
             return g_compat_cv_json_result.c_str();
         }
     }
+    cv_test_fault(3);
     const std::string compact_text = format_cv_multi_text(matches);
     if (!utf8_to_windows_acp(compact_text, &g_compat_cv_json_result)) {
         g_compat_cv_json_result.clear();
@@ -4245,6 +4513,11 @@ AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindMultiText(
     }
     finish_status(status, "CV_FindMultiText");
     return g_compat_cv_json_result.c_str();
+}
+catch (...) {
+    g_compat_cv_json_result.clear();
+    cv_exception_status("CV_FindMultiText");
+    return "";
 }
 
 AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindTransparentMultiText(
@@ -4256,15 +4529,26 @@ AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindTransparentMultiText(
     float min_score,
     const char* transparent_rgb,
     int32_t origin_x,
-    int32_t origin_y) {
+    int32_t origin_y) try {
     g_compat_cv_json_result.clear();
     const auto context = get_cv_context(handle);
-    const std::vector<std::vector<std::string>> name_candidates = compat_pipe_text_candidates(template_names);
-    uint32_t rgb = 0;
+    if (const char* reason = cv_find_argument_error(context, 0, min_score)) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentMultiText", reason);
+        return g_compat_cv_json_result.c_str();
+    }
     CVColorBias bias{};
-    if (!context || name_candidates.empty() || !parse_rgb_hex(transparent_rgb, &rgb) ||
-        !parse_cv_color_bias(color_bias, 0, &bias)) {
-        finish_status(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentMultiText");
+    if (!parse_cv_color_bias(color_bias, 0, &bias)) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentMultiText", "invalid color_bias: expected hexadecimal text (color=6 digits, gray=2 digits), or empty");
+        return g_compat_cv_json_result.c_str();
+    }
+    uint32_t rgb = 0;
+    if (!parse_rgb_hex(transparent_rgb, &rgb)) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentMultiText", "invalid transparent_rgb: expected 6 hexadecimal digits");
+        return g_compat_cv_json_result.c_str();
+    }
+    const auto name_candidates = compat_pipe_text_candidates(template_names);
+    if (name_candidates.empty()) {
+        finish_status_with_detail(AI_ERR_INVALID_ARGUMENT, "CV_FindTransparentMultiText", "invalid template_names: empty or malformed pipe-separated list");
         return g_compat_cv_json_result.c_str();
     }
     BmpImageView big;
@@ -4305,6 +4589,7 @@ AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindTransparentMultiText(
             return g_compat_cv_json_result.c_str();
         }
     }
+    cv_test_fault(3);
     const std::string compact_text = format_cv_multi_text(matches);
     if (!utf8_to_windows_acp(compact_text, &g_compat_cv_json_result)) {
         g_compat_cv_json_result.clear();
@@ -4313,6 +4598,11 @@ AIENGINE_EXPORT const char* AIENGINE_CALL CV_FindTransparentMultiText(
     }
     finish_status(status, "CV_FindTransparentMultiText");
     return g_compat_cv_json_result.c_str();
+}
+catch (...) {
+    g_compat_cv_json_result.clear();
+    cv_exception_status("CV_FindTransparentMultiText");
+    return "";
 }
 
 AIENGINE_EXPORT int32_t AIENGINE_CALL OCR_LoadModelFromPath(

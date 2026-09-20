@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -34,6 +35,40 @@ def parse_exports(header: Path):
         params = [] if args == "void" or not args else [p.strip() for p in args.split(",")]
         exports.append((" ".join(match.group("return").split()), match.group("name"), params))
     return exports
+
+
+def source_metadata(header: Path, protocol: Path, manifest: Path):
+    header_text = header.read_text(encoding="utf-8")
+    values = []
+    for name in ("MAJOR", "MINOR", "PATCH"):
+        match = re.search(
+            rf"^#define\s+AIENGINE_VERSION_{name}\s+(\d+)\s*$",
+            header_text,
+            re.M,
+        )
+        if match is None:
+            raise SystemExit(f"missing AIENGINE_VERSION_{name} in {header}")
+        values.append(int(match.group(1)))
+    project_version = ".".join(str(value) for value in values)
+
+    protocol_text = protocol.read_text(encoding="utf-8")
+    protocol_match = re.search(r"\bkVersion\s*=\s*(\d+)\s*;", protocol_text)
+    if protocol_match is None:
+        raise SystemExit(f"missing worker protocol version in {protocol}")
+    worker_protocol = int(protocol_match.group(1))
+
+    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+    delivery_version = manifest_data.get("delivery_version")
+    if (
+        manifest_data.get("project_version") != project_version
+        or manifest_data.get("worker_protocol") != worker_protocol
+        or not isinstance(delivery_version, str)
+        or not delivery_version
+    ):
+        raise SystemExit(
+            "header, worker protocol and release manifest metadata are inconsistent"
+        )
+    return project_version, delivery_version, worker_protocol
 
 
 def group(name: str) -> str:
@@ -68,7 +103,7 @@ def function_summary(name: str) -> str:
     if name == "CV_ClearTemplateCache":
         return "清空指定 CV 实例的模板集但保留句柄；其他实例不受影响。"
     if name == "CV_LoadTemplateZipFromMemory":
-        return "从内存标准 ZIP 加载 Stored/Deflate BMP 模板；全部校验成功后原子替换指定句柄的模板集，调用方式仍使用包内 BMP 文件名。"
+        return "从内存标准 ZIP 加载 Stored/Deflate BMP 模板；全部校验成功后原子替换指定句柄的模板集，调用时使用包内 BMP 文件名。"
     if name in {"YOLO_Release", "AI_YoloRelease"}:
         return "释放指定 YOLO 模型句柄；新调用立即失败，已经开始或正在等待 Session 的调用安全完成。无效或已释放句柄返回 AI_ERR_INVALID_HANDLE。"
     if name in {"AI_Release", "AI_ShutdownWorker", "OCR_Release", "AI_OcrRelease"}:
@@ -80,11 +115,11 @@ def function_summary(name: str) -> str:
     if name == "YOLO_InferJson":
         return "执行 YOLO 推理并由 DLL 生成 JSON，再转换为当前 Windows ANSI 代码页文本供易语言直接接收。"
     if name == "OCR_LoadEmbeddedModel":
-        return "从 v23.5 单一 Worker 内置的官方 PP-OCRv6 tiny 检测模型、识别模型和字符表创建可配置容量的 OCR Session池。"
+        return "从单一 Worker 内置的官方 PP-OCRv6 tiny 检测模型、识别模型和字符表创建可配置容量的 OCR Session池。"
     if name == "OCR_LoadEmbeddedModelEx":
-        return "从 v23.5 单一 Worker 内置的官方 PP-OCRv6 tiny 模型创建 OCR Session池，并应用检测输入尺寸、ORT线程数和 DB后处理参数。"
+        return "从单一 Worker 内置的官方 PP-OCRv6 tiny 模型创建 OCR Session池，并应用检测输入尺寸、ORT线程数和 DB后处理参数。"
     if name == "AI_OcrLoadEmbeddedModels":
-        return "从 v23.5 单一 Worker 内置的官方 PP-OCRv6 tiny 检测模型、识别模型和字符表创建默认容量为1的 OCR Session池。"
+        return "从单一 Worker 内置的官方 PP-OCRv6 tiny 检测模型、识别模型和字符表创建默认容量为1的 OCR Session池。"
     if name.startswith(("YOLO_Load", "AI_YoloLoad")):
         return "向空 YOLO 句柄加载一次 ONNX 模型并创建独立 Session 池；成功后禁止在同一句柄重复加载。"
     if "Load" in name or name.endswith("Init"):
@@ -115,12 +150,12 @@ PARAM_TEXT = {
     "output_format": "OCR 文本输出格式：AI_OCR_OUTPUT_TEXT=1 为文本，AI_OCR_OUTPUT_JSON=2 为 JSON。标准 AI_* 接口使用 UTF-8；易语言 OCR_* 兼容接口由 DLL 转为当前 Windows ANSI 代码页。",
     "min_confidence": "OCR CTC 非 blank 字符平均置信度下限，必须为 0.0-1.0。0.0 表示不过滤；低于该值的行不会进入文本、JSON、结构体和坐标查找结果。",
     "color_filter": "可空的单次 OCR 滤色规则。空文本或 NULL 为自动模式；格式为 RRGGBB-RRGGBB，多条规则使用 | 分隔，目标颜色和 RGB 三通道容差均为 6 位十六进制；最多 16 条、总长度 512 字节。非法规则返回 AI_ERR_INVALID_ARGUMENT。",
-    "runtime_device": "运行设备：0=AUTO，1=DirectML，2=CPU。AUTO先创建完整DirectML池，失败后销毁未完成池并重建完整CPU池；显式DirectML失败时不整体降级。",
+    "runtime_device": "运行设备：0=AUTO，1=DirectML，2=CPU。易语言 x86 Worker 的 AUTO 对 CPU 与 DirectML 各执行2次预热和7次采样，按中位耗时及10%门槛选择单一Provider完整池；显式DirectML失败时不整体降级。",
     "device": "运行设备：0=AUTO，1=DirectML，2=CPU。OCR与YOLO含义完全一致；非法值直接返回参数错误。",
     "session_count": "Session 池容量，必须大于 0。YOLO 中它表示同一模型可同时执行的推理数量，不是业务线程总数，也不是 ONNX Runtime 算子内线程数；并发超过容量时等待空闲 Session。GPU 多 Session 会按数量增加显存占用。",
     "options": "仅用于 OCR_LoadEmbeddedModelEx 的 AIOcrRuntimeOptions 指针；允许 NULL 表示全部采用 OCR 自动策略。YOLO 加载接口没有 options 或结构体参数。",
-    "input_width": "OCR 检测输入宽度；0 表示使用模型原生尺寸。YOLO 不再分别传输入宽高。",
-    "input_height": "OCR 检测输入高度；0 表示使用模型原生尺寸。YOLO 不再分别传输入宽高。",
+    "input_width": "OCR 检测输入宽度；0 表示使用模型原生尺寸。YOLO 接口使用单一 input_size 参数。",
+    "input_height": "OCR 检测输入高度；0 表示使用模型原生尺寸。YOLO 接口使用单一 input_size 参数。",
     "device_id": "DirectML显卡适配器的零基编号，必须大于等于0。DirectML和AUTO严格使用该编号；CPU模式忽略该值但仍应传0。",
     "intra_op_threads": "OCR 高级选项中的单 Session 算子内线程数；0 表示自动。YOLO 不暴露此参数，由程序按逻辑 CPU 数和 Session 数自动计算。",
     "big_data": "完整、未压缩 24 位 BGR BMP 的首地址。不是像素首地址；BMP 文件头和像素数据都必须存在。",
@@ -151,7 +186,7 @@ PARAM_TEXT = {
     "origin_x": "窗口识别区域左上角 X。仅对成功结果的 x 类坐标做安全加法；可为负数；不需要偏移时传 0。",
     "origin_y": "窗口识别区域左上角 Y。仅对成功结果的 y 类坐标做安全加法；可为负数；不需要偏移时传 0。",
     "min_score": "CV 全分辨率最终精确匹配分数下限，必须为 0.0-1.0。该值只与函数返回的 sim/score 比较，不参与候选粗筛。",
-    "match_mode": "CV 颜色匹配模式整数。当前用于保持易语言调用兼容；业务侧应统一配置并实测匹配效果。",
+    "match_mode": "CV 颜色匹配模式整数。易语言业务应统一配置并实测匹配效果。",
     "transparent_rgb": "RGB 十六进制透明色文本；接受 RRGGBB、#RRGGBB 或 0xRRGGBB，大小写均可。必须恰好表示 24 位颜色；对应模板像素不参与评分。",
     "color_bias": "模板匹配偏色容差文本：两位十六进制为灰度容差，六位十六进制为各通道容差，例如 20 或 101010。",
     "model_path": "YOLO ONNX 模型文件路径，不能为空。绝对路径直接使用；相对路径统一以调用程序 EXE 所在目录为基准，不以 DLL、worker 或当前工作目录为基准。",
@@ -279,10 +314,10 @@ def resource_text(name: str) -> str:
         return "返回紧凑文本由当前调用线程的 DLL TLS 持有，不同线程互不覆盖；调用方不得释放，应在同一线程下一次同类多目标调用前解析或复制。"
     if name == "YOLO_InferJson":
         return "返回文本由当前调用线程的 DLL TLS 持有，调用方不得释放，应在同一线程下一次 YOLO_InferJson 前使用或复制。不同线程的返回文本互不覆盖。UTF-8 到 Windows ACP 的转换完全在 DLL 内完成。"
-    return "调用方不得在函数执行期间释放输入或输出内存。每个 YOLO 句柄拥有独立 Session 池；同一模型并发超过 session_count 时等待空闲 Session，不同模型的锁和队列互不阻塞。CV 句柄隔离模板集，OCR 保持独立共享池。释放句柄后新调用失败，已开始的调用通过共享所有权安全完成。"
+    return "调用方不得在函数执行期间释放输入或输出内存。每个 YOLO 句柄拥有独立 Session 池；同一模型并发超过 session_count 时等待空闲 Session，不同模型的锁和队列互不阻塞。CV 句柄隔离模板集，OCR 使用独立共享池。释放句柄后新调用失败，已开始的调用通过共享所有权安全完成。"
 
 
-def html_page(exports):
+def html_page(exports, project_version: str, delivery_version: str, worker_protocol: int):
     groups = {}
     for item in exports:
         groups.setdefault(group(item[1]), []).append(item)
@@ -290,14 +325,18 @@ def html_page(exports):
     for title, items in groups.items():
         nav.append(f"<h3>{html.escape(title)}</h3>")
         nav.extend(f"<a class='nav-item' onclick=\"show('{name}')\">{html.escape(name)}</a>" for _, name, _ in items)
-    sections = ["""<section id='intro' class='doc-section active'><h1 class='func-title'>CQ_AI 0.14.5（v23.5）公开 DLL 接口说明</h1>
+    sections = [f"""<section id='intro' class='doc-section active'><h1 class='func-title'>CQ_AI {project_version}（{delivery_version}）公开 DLL 接口说明</h1>
 <p>本页由 include/ai_engine.h 生成，并与 CQ_X86.dll 未修饰导出表校验。32位易语言只加载同目录的 CQ_X86.dll；OCR/YOLO统一由 CQ_AI_worker.exe执行。运行目录包含两个运行文件和本 HTML。</p>
-<p><b>v23.5 ABI：</b>公开导出保持60个，函数名、参数、返回类型和stdcall参数字节数不变；标准AI_*接口保持不变。Worker协议升级为25。运行设备为0=AUTO、1=DirectML、2=CPU。</p>
+<p><b>{delivery_version} ABI：</b>公开导出为{len(exports)}个；函数名、参数、返回类型和stdcall参数字节数以本页原型为准。Worker协议为{worker_protocol}。运行设备为0=AUTO、1=DirectML、2=CPU。</p>
 <p><b>多目标紧凑文本：</b>CV_FindMultiText和CV_FindTransparentMultiText返回ID,x,y|ID,x,y；OCR_FindMultiText返回ID,cx,cy|ID,cx,cy。ID是输入列表零基序号，不因前项未命中而重排；未命中和错误都返回空文本，错误通过AI_GetLastError区分。</p>
-<p><b>当前坐标原点规则：</b>仅命中结果增加坐标起点；三个紧凑多目标接口未命中返回空文本，其他JSON接口未命中返回[]；单结果未命中返回0且输出结构体清零；宽高、分数、文本和序号不变。</p>
+<p><b>坐标原点规则：</b>仅命中结果增加坐标起点；三个紧凑多目标接口未命中返回空文本，其他JSON接口未命中返回[]；单结果未命中返回0且输出结构体清零；宽高、分数、文本和序号不变。</p>
 <p><b>内存模板包：</b>CV_LoadTemplateZipFromMemory直接读取易语言资源中的标准ZIP，支持Stored/Deflate和BMP；成功后按BMP文件名使用现有找图命令，失败时保留旧缓存。</p>
-<p><b>ZIP静态依赖许可：</b>Deflate和CRC使用zlib静态库，不增加运行时DLL。zlib Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler，按zlib License使用；源码许可文本位于 third_party/opencv-5.0.0-build-mt-x86/etc/licenses/zlib-LICENSE。</p>
-<p><b>当前 OCR 鲁棒性：</b>显式滤色增加通用抗锯齿恢复候选，候选选择同时评估前景覆盖、尾部漏检、框碎片和置信度；小尺寸单行异常可采用联合行框识别，避免重叠裁剪重复字符。自动模式补充亮字候选。TEXT、JSON和找字接口使用同一最终候选；联合回退时返回原图范围内的联合行框。</p>
+<p><b>ZIP静态依赖许可：</b>Deflate和CRC使用zlib静态库，不增加运行时DLL。zlib Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler，按zlib License使用；许可声明随本 HTML 提供。</p>
+<p><b>AUTO设备选择：</b>易语言x86 Worker对CPU和DirectML候选分别执行2次预热与7次采样并比较中位耗时；DirectML至少快10%才被选中。校准结果按模型、硬件、驱动、Session配置和内嵌运行库哈希缓存。显式DirectML失败时不整体改用CPU。</p>
+<p><b>OCR 鲁棒性：</b>显式滤色提供通用抗锯齿恢复候选，候选选择同时评估前景覆盖、尾部漏检、框碎片和置信度；小尺寸单行异常可采用联合行框识别，避免重叠裁剪重复字符。自动模式提供亮字候选。TEXT、JSON和找字接口使用同一最终候选；联合回退时返回原图范围内的联合行框。</p>
+<h2>CV 并发与内存</h2>
+<p>OpenCV 匹配复用 DLL 内有界工作区池：x86 最多2个、x64最多4个，超额调用等待；单次调用内模板顺序计算。空闲工作区缓存总预算分别为64 MiB与256 MiB，包含复用的图像、积分统计及变换工作缓冲；不包含正在执行的匹配、返回文本、模板资源及OpenCV临时内存，不是进程峰值保证。工作区不持有模板强引用，不缓存上一帧匹配结果。逐字节确认图像相同时可复用图像的变换和统计量，图像变化即重算；每次请求重新执行模板相关、候选筛选及精确校验。模板自身最多保留一套当前尺寸的频域预处理，随模板清理或释放而销毁，已取得快照的调用除外。</p>
+<p>输入BMP与文本缓冲必须在整个调用期间有效且不被其他线程修改。CV_ClearTemplateCache/CV_Release不取消已取得模板快照的调用；禁止释放调用方正在使用的输入内存。参数错误明确指出handle、match_mode、min_score、color_bias或template_names。C++异常转为运行错误；内存不足通过固定后备错误缓冲返回out of memory。错误后在同一线程立即读取并复制AI_GetLastError；正常成功调用清除错误。</p>
 <h2>文本与路径编码</h2>
 <table class='error-table'><tr><th>入口</th><th>文本和路径输入</th><th>文本返回</th><th>模型附属内容</th></tr>
 <tr><td>易语言 CV_* / OCR_* / YOLO_*</td><td>Windows 当前 ACP。DLL 始终先按 ACP 解码；路径不存在或 OCR 目标未命中时，才兼容尝试合法 UTF-8 候选。相对路径以业务 EXE 目录为基准。</td><td>直接文本、紧凑结果和 JSON 为 Windows ACP。</td><td>ONNX 是二进制；内存或文件中的标签、OCR 字符表内容始终为 UTF-8。</td></tr>
@@ -309,7 +348,7 @@ def html_page(exports):
 <table class='error-table'><tr><th>参数</th><th>必须填写的规则</th></tr>
 <tr><td>模型路径 / 标签路径</td><td>模型路径不能为空；标签路径可传空。绝对路径直接使用，相对路径以调用程序 EXE 所在目录为基准。DLL 和 worker 不固定模型目录。</td></tr>
 <tr><td>模型尺寸</td><td>填写 0 时由 DLL 自动读取静态 ONNX 的方形输入尺寸；动态模型必须填写 320 或 640。显式尺寸必须与模型输入一致。best.onnx 和 smc.onnx 都可填写 0，加载后通过 YOLO_GetRuntimeStatusJson 查询实际宽高。</td></tr>
-<tr><td>运行设备</td><td>0=AUTO，1=DirectML，2=CPU。AUTO先创建完整DirectML Session池，失败后销毁未完成池并重建完整CPU池；显式DirectML失败时不整体降级。</td></tr>
+<tr><td>运行设备</td><td>0=AUTO，1=DirectML，2=CPU。x86 Worker的AUTO以短基准和10%门槛选择单一Provider完整Session池；显式DirectML失败时不整体降级。</td></tr>
 <tr><td>GPU 设备序号</td><td>从0开始且不能为负数。DirectML和AUTO使用该DXGI适配器序号；CPU模式忽略但仍填写0。软件适配器、越界或不支持DX12会返回具体错误。</td></tr>
 <tr><td>并发线程数</td><td>必须大于 0，实际表示该模型 Session 池容量，不是 ORT 内部线程数。GPU 多 Session 会增加显存占用。每 Session 内部线程由程序计算：min(4, max(1, 逻辑 CPU 数 / Session 数))。</td></tr></table>
 <p>路径加载示例：YOLO_LoadModelFromPath(句柄, best路径, 空标签, 0, AI_DEVICE_AUTO, 0, 并发数)；另一个句柄加载 smc.onnx 时也可填写 0 自动识别。内存加载使用相同四项运行参数。NMS 由 worker 内部统一处理，调用方不传。加载失败后立即调用 AI_GetLastError 获取具体原因，成功后调用 YOLO_GetRuntimeStatusJson 核对实际尺寸、provider、设备序号、Session 数和内部线程数。</p>
@@ -319,7 +358,7 @@ def html_page(exports):
         rows = "<tr><td>无</td><td>无参数。</td></tr>" if not params else "".join(
             f"<tr><td class='param-name'>{html.escape(param_name(p))}</td><td><code>{html.escape(p)}</code><br>{html.escape(param_text(p, name))}</td></tr>" for p in params)
         sections.append(
-            f"<section id='{name}' class='doc-section'><h1 class='func-title'>{name}</h1><h2>函数简介</h2><p>{html.escape(function_summary(name))}</p><h2>适用范围</h2><p>{'CQ_X86.dll 公开易语言 ABI；文本型参数按 Windows ACP 输入，OCR/YOLO 由同目录的 v23.5 单一 Worker 执行。' if name.startswith(('CV_', 'OCR_', 'YOLO_')) else '标准 C ABI；文本与路径参数严格使用 UTF-8；v23.5 正式包不包含 x64 业务 DLL。'}</p><h2>函数原型</h2><pre>{html.escape(proto)}</pre><h2>参数定义</h2><table class='param-list'>{rows}</table><h2>返回值</h2><table class='error-table'><tr><th>返回值</th><th>说明</th></tr><tr><td>{html.escape(ret)}</td><td>{html.escape(return_text(name, ret))}</td></tr></table><h2>资源与并发</h2><p>{html.escape(resource_text(name))}</p></section>"
+            f"<section id='{name}' class='doc-section'><h1 class='func-title'>{name}</h1><h2>函数简介</h2><p>{html.escape(function_summary(name))}</p><h2>适用范围</h2><p>{f'CQ_X86.dll 公开易语言 ABI；文本型参数按 Windows ACP 输入，OCR/YOLO 由同目录的 {delivery_version} 单一 Worker 执行。' if name.startswith(('CV_', 'OCR_', 'YOLO_')) else f'标准 C ABI；文本与路径参数严格使用 UTF-8；{delivery_version} 易语言正式包不包含 x64 业务 DLL。'}</p><h2>函数原型</h2><pre>{html.escape(proto)}</pre><h2>参数定义</h2><table class='param-list'>{rows}</table><h2>返回值</h2><table class='error-table'><tr><th>返回值</th><th>说明</th></tr><tr><td>{html.escape(ret)}</td><td>{html.escape(return_text(name, ret))}</td></tr></table><h2>资源与并发</h2><p>{html.escape(resource_text(name))}</p></section>"
         )
     head = """<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CQ_AI 易语言 DLL 接口说明</title><style>body{font-family:SimSun,'Microsoft YaHei',sans-serif;margin:0;display:flex;height:100vh;font-size:14px}#sidebar{width:280px;overflow:auto;background:#f0f0f0;border-right:1px solid #ccc;padding:10px 0;flex-shrink:0}#sidebar h3{margin:12px 10px 5px;font-size:14px}.nav-item{display:block;padding:4px 10px 4px 25px;color:#000;text-decoration:none;cursor:pointer;font-size:13px}.nav-item:hover{background:#ddeeff;color:#06c}.nav-item.active{background:#3399ff;color:#fff}#content{padding:20px 30px;overflow:auto;flex:1}.doc-section{display:none;max-width:900px}.doc-section.active{display:block}h1.func-title{font-size:20px;border-bottom:1px solid #ddd;padding-bottom:5px}h2{font-size:16px;color:#03c;margin:15px 0 8px}p{margin:5px 0 5px 20px;line-height:1.6}pre{background:#f9f9f9;border:1px solid #eee;padding:10px;margin-left:20px;white-space:pre-wrap}.param-list,.error-table{border-collapse:collapse;margin-left:20px;width:92%}.param-list td,.error-table td,.error-table th{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}.error-table th{background:#f5f5f5}.param-name{font-weight:bold;color:#a52a2a;white-space:nowrap}code{font-family:Consolas,monospace}</style></head><body><div id='sidebar'>"""
     foot = """</div><script>function show(id){document.querySelectorAll('.doc-section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');location.hash=id}addEventListener('load',()=>{const id=location.hash.slice(1);if(id&&document.getElementById(id))show(id)})</script></body></html>"""
@@ -358,20 +397,40 @@ def module_declarations(module: Path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--header", type=Path, default=Path("include/ai_engine.h"))
+    parser.add_argument("--protocol", type=Path, default=Path("src/worker_protocol.h"))
+    parser.add_argument("--manifest", type=Path, default=Path("release/v23.5/manifest.json"))
     parser.add_argument("--output", type=Path, default=Path("docs/易语言_DLL_API_说明.html"))
     parser.add_argument("--dumpbin", type=Path)
     parser.add_argument("--dll", type=Path)
     parser.add_argument("--module", type=Path)
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
+    if (args.dumpbin is None) != (args.dll is None):
+        raise SystemExit("--dumpbin and --dll must be provided together")
     exports = parse_exports(args.header)
     if not exports or any("#define" in ret or "AIENGINE_EXPORT" in ret for ret, _, _ in exports):
         raise SystemExit("header parser produced an invalid export declaration")
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(html_page(exports), encoding="utf-8")
-    doc = args.output.read_text(encoding="utf-8")
-    missing_sections = [name for _, name, _ in exports if f"id='{name}'" not in doc]
+    if len(exports) != 60:
+        raise SystemExit(f"public header must contain 60 exports; found {len(exports)}")
+    project_version, delivery_version, worker_protocol = source_metadata(
+        args.header, args.protocol, args.manifest
+    )
+    generated = html_page(
+        exports, project_version, delivery_version, worker_protocol
+    )
+    missing_sections = [name for _, name, _ in exports if f"id='{name}'" not in generated]
     if missing_sections:
         raise SystemExit("missing documentation sections: " + ", ".join(missing_sections))
+    if args.check:
+        if not args.output.is_file():
+            raise SystemExit(f"generated API document is missing: {args.output}")
+        if args.output.read_text(encoding="utf-8") != generated:
+            raise SystemExit(
+                f"generated API document is stale: run {Path(__file__).name}"
+            )
+    else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(generated, encoding="utf-8")
     if args.dumpbin and args.dll:
         actual = exported_names(args.dumpbin, args.dll)
         expected = {name for _, name, _ in exports}
@@ -394,7 +453,11 @@ def main():
                     (name, declarations[name], expected_counts[name]) for name in mismatched
                 ]))
             raise SystemExit("\n".join(details))
-    print(f"generated {args.output} for {len(exports)} public exports")
+    action = "checked" if args.check else "generated"
+    print(
+        f"{action} {args.output} for {len(exports)} public exports "
+        f"({project_version}, {delivery_version}, protocol {worker_protocol})"
+    )
 
 
 if __name__ == "__main__":

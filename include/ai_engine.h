@@ -61,7 +61,8 @@ enum AIOcrLatencyStage {
 };
 
 // ONNX Runtime YOLO/OCR 会话使用的运行设备选择。
-// AUTO 先创建完整 DirectML Session 池，失败后重新创建完整 CPU Session 池。
+// AUTO 始终发布单一 Provider 的完整 Session 池：x86 Worker 按短基准选择，
+// x64 直连运行时在 DirectML 初始化或 Session 创建失败时改用 CPU。
 enum AIRuntimeDevice {
     AI_DEVICE_AUTO = 0,
     AI_DEVICE_DIRECTML = 1,
@@ -188,7 +189,7 @@ typedef struct OCRCoordResult {
 // 返回 DLL 内部持有的静态 UTF-8 版本字符串。
 AIENGINE_EXPORT const char* AIENGINE_CALL AI_GetVersion(void);
 
-// 初始化全局引擎，默认自动选择 DirectML，失败时回退 CPU。
+// 初始化全局引擎，默认使用 AUTO 设备策略；实际 Provider 可通过状态 JSON 查询。
 AIENGINE_EXPORT int32_t AIENGINE_CALL AI_Init(const char* config_path);
 
 // 初始化全局引擎，并用 runtime_device 覆盖 runtime.device。

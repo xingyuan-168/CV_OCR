@@ -712,12 +712,21 @@ bool verify_embedded_runtime(
     BundleView bundle;
     if (!get_resource_bundle(&bundle, error)) return false;
     uint64_t raw_total = 0;
+    std::string manifest_json;
     for (uint32_t i = 0; i < bundle.header->file_count; ++i) {
         std::vector<uint8_t> bytes;
         if (!decompress_entry(bundle, bundle.entries[i], &bytes, error)) {
             return false;
         }
         raw_total += bytes.size();
+        if (std::string(bundle.entries[i].name) == "runtime-manifest.json") {
+            manifest_json.assign(
+                reinterpret_cast<const char*>(bytes.data()), bytes.size());
+        }
+    }
+    if (manifest_json.empty() || manifest_json.front() != '{') {
+        if (error != nullptr) *error = "Embedded runtime manifest is missing or invalid";
+        return false;
     }
     std::array<uint8_t, 32> digest{};
     if (!sha256_bytes(bundle.bytes, bundle.size, &digest)) {
@@ -733,7 +742,7 @@ bool verify_embedded_runtime(
             << ",\"uncompressed_size\":" << raw_total
             << ",\"bundle_sha256\":\""
             << hex_digest(digest.data(), digest.size())
-            << "\"}";
+            << "\",\"manifest\":" << manifest_json << '}';
         *report = out.str();
     }
     return true;

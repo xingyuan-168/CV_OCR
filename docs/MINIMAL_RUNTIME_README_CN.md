@@ -1,10 +1,11 @@
 # CQ_AI 0.14.5 / v23.5 运行包说明
 
-`AI_Release()`不会终止Worker；易语言程序结束前必须调用 `AI_ShutdownWorker()`。宿主异常退出时 Worker 会监视宿主句柄并自动回收。v23.5 的多目标紧凑返回见 [交付说明](V23_5_COMPACT_MULTI_RESULT_REPORT_CN.md)；坐标原点、内存 ZIP 和 OCR 鲁棒性行为均属于当前基线。
+本文描述 `v23.5` 正式成品的部署、设备选择、缓存、构建和故障排查。多目标
+返回、坐标和交付边界见 [v23.5 单一交付基线](V23_5_DELIVERY_BASELINE_CN.md)。
 
-## 1. 成品
+## 1. 易语言运行目录
 
-最终目录包含两个运行文件和一份随包接口 HTML：
+易语言 ZIP 根目录恰好包含：
 
 ```text
 CQ_X86.dll
@@ -12,26 +13,24 @@ CQ_AI_worker.exe
 易语言_DLL_API_说明.html
 ```
 
-当前 Release构建实测：
+32 位易语言只加载 `CQ_X86.dll`。CV 在该 DLL 内执行；OCR 和 YOLO 通过协议
+`25` 的命名管道交给同目录 x64 Worker。运行不需要管理员权限，不写注册表或
+系统目录，不安装 CUDA/cuDNN，也不依赖系统 PATH 中的 ONNX Runtime。
 
-| 文件 | 位数 | 大小 |
-| --- | --- | ---: |
-| `CQ_X86.dll` | x86 | 9,059,840字节（约8.64 MiB） |
-| `CQ_AI_worker.exe` | x64 | 24,429,568字节（约23.30 MiB） |
-| `易语言_DLL_API_说明.html` | 文档 | 137,776字节（约135 KiB） |
-| 合计 |  | 33,627,184字节（约32.07 MiB） |
+文件大小、ZIP 成员和 SHA-256 只以
+[`release/v23.5/manifest.json`](../release/v23.5/manifest.json) 为准。
+该清单描述历史 ZIP；本次 CV 修复直接交付 `output/` 三文件，独立验证记录与哈希保留在内部验证目录，详见本文末尾。
 
-不需要管理员权限，不安装 CUDA/cuDNN，不写注册表和系统目录，不依赖系统 PATH中的 ONNX Runtime。
+## 2. API 与结果语义
 
-## 2. 易语言接口与设备值
-
-公开导出保持60个。三个多目标业务接口改用紧凑文本，函数名、参数和返回类型不变；九个坐标原点接口和 `CV_LoadTemplateZipFromMemory` 继续保留，标准 `AI_*` 接口、结构体和调用约定保持不变。错误文本接口仍是：
+公开头文件定义 60 个导出，项目版本为 `0.14.5`。错误文本接口无参数，返回
+DLL 当前线程持有的只读文本：
 
 ```text
 .DLL命令 AI_GetLastError, 文本型, "CQ_X86.dll", "AI_GetLastError", 公开
 ```
 
-三个设备常量统一用于 OCR和YOLO：
+OCR 和 YOLO 使用相同的设备常量：
 
 ```text
 AI_DEVICE_AUTO      ＝ 0
@@ -39,170 +38,124 @@ AI_DEVICE_DIRECTML  ＝ 1
 AI_DEVICE_CPU       ＝ 2
 ```
 
-旧代码传 `0`在 v21表示强制 CPU；v22中表示 AUTO。需要强制 CPU时必须传 `2`。设备值 `3`和其他值直接返回参数错误：
+其他设备值直接返回参数错误。需要固定使用 CPU 时传 `2`。
 
-```text
-Invalid runtime device 3; valid values are 0=AUTO, 1=DirectML, 2=CPU
-```
+### OCR 单次滤色与鲁棒性
 
-## 2.1 OCR 单次调用滤色
+`OCR_Recognize`、`OCR_FindOneText`、`OCR_FindMultiText` 和
+`OCR_FindOneCoord` 的最后一个参数是可空 `color_filter`。空指针、空文本或
+全空白文本启用自动预处理。显式规则格式为 `RRGGBB-RRGGBB`，多条规则以 `|`
+分隔；最多 16 条、总长度最多 512 字节，非法规则返回
+`AI_ERR_INVALID_ARGUMENT`。
 
-模型加载接口保持原签名。v23 仅为 `OCR_Recognize`、`OCR_FindOneText`、`OCR_FindMultiText`、`OCR_FindOneCoord` 增加最后一个可空 `color_filter` 参数。传 `NULL`、空文本或全空白文本使用自动预处理；显式规则格式为 `RRGGBB-RRGGBB`，多条规则用 `|` 连接，目标颜色和 RGB 三通道容差均为 6 位十六进制。规则最多 16 条、总长度最多 512 字节，非法规则返回 `AI_ERR_INVALID_ARGUMENT`，详情通过 `AI_GetLastError()` 读取。滤色仅影响当前调用，不写入模型池，因此同一模型可连续使用不同颜色规则。
+- 显式滤色生成精确软掩膜、二值掩膜和通用抗锯齿恢复候选。恢复容差为
+  `min(96, max(Δ+16, 2×Δ))`，只参与当前调用的候选竞争。
+- 自动模式先走原图快速路径；检测为空、低置信、分框异常或首尾前景未覆盖时，
+  再尝试灰度、Otsu 和自适应阈值候选。单次调用最多执行一个快速预处理候选和
+  四个回退候选。
+- 完整结果覆盖至少 92% 的有效前景列。异常小尺寸单行图可增加联合行框候选；
+  多行、分栏和大间距标签按阅读顺序分框。
+- TEXT、JSON 和 Find 接口使用同一最终候选。生产选择只依据图像统计、框几何
+  和置信度，不依赖测试文件名、期望文本、专用颜色或固定坐标。
 
-### 显式滤色
+### 坐标原点
 
-- 原有精确软掩膜和二值掩膜仍作为候选，规则含义及解析方式不变。
-- 当前实现额外生成通用抗锯齿恢复候选。每个通道的基础容差为调用方传入的 `Δ`，恢复容差为 `min(96, max(Δ+16, 2×Δ))`；恢复范围只用于候选竞争，不回写调用参数。
-- 软权重和二值结果都参与评估。恢复候选必须满足通用前景占比限制，不会因为某个文件名、文字、颜色值或坐标被强制选中。
+`CV_FindOne`、`CV_FindTransparentOne`、`CV_FindMultiText`、
+`CV_FindTransparentMultiText`、`OCR_Recognize`、`OCR_FindOneText`、
+`OCR_FindMultiText`、`OCR_FindOneCoord`、`YOLO_InferJson` 的末尾参数为
+`origin_x/origin_y`。易语言业务封装可省略并传 `0,0`；直接 DLL 调用必须显式
+传值。
 
-### 自动预处理
+偏移只作用于成功结果。CV 偏移 x/y，OCR 偏移 x/y/cx/cy，YOLO 偏移
+x1/x2/cx 与 y1/y2/cy；宽高、分数、文本和序号不变。负起点合法，超出
+`int32_t` 范围返回 `AI_ERR_INVALID_ARGUMENT`。
 
-- 原图仍是快速路径。结果空间完整且置信度正常时直接返回，不支付回退候选的推理成本。
-- 检测为空、低置信、分框异常或首尾前景未覆盖时，才尝试灰度、正反极性 Otsu、正反极性自适应阈值等候选。
-- 每次调用最多执行一个快速预处理候选和四个回退预处理候选，避免异常图导致无界推理。
-
-### 完整性、联合框和输出语义
-
-- 评分分别计算识别置信度和空间完整性。完整结果必须覆盖至少 92% 的有效前景列，并且首尾不能存在连续未覆盖文本区域；高置信但漏尾的候选不能提前结束。
-- 只有检测框碎裂或扩边重叠的异常小尺寸单行图才增加整行联合识别候选。正常图、多行图、分栏和大间距独立标签继续使用原有分框。
-- 原分框识别仍作为内部候选与联合框使用同一评分规则比较，不会因为生成联合框就直接丢弃。
-- 联合候选对成员框的并集只扩边一次，不进行字符串前后缀删除，也不按重复汉字去重，因此不会把合法的 `人人`、`宫宫` 等文本改写掉。
-- 联合候选获胜时，TEXT、JSON和 Find系列接口都使用同一最终识别结果；JSON及 Find返回成员框裁剪后的联合框。正常快速路径的分框和坐标语义不变。
-
-上述逻辑全部依据图像统计、前景覆盖、检测框几何和置信度工作；生产代码不包含测试图片名、期望文本、专用颜色或固定坐标。
-
-## 2.2 坐标原点与内存模板包
-
-`CV_FindOne`、`CV_FindTransparentOne`、`CV_FindMultiText`、`CV_FindTransparentMultiText`、`OCR_Recognize`、`OCR_FindOneText`、`OCR_FindMultiText`、`OCR_FindOneCoord`、`YOLO_InferJson` 的末尾均有 `origin_x/origin_y`。易语言业务封装把两项声明为可空并默认传0；直接 DLL 调用必须显式传0。偏移只在最终结果生成阶段执行：CV偏移 `x/y`，OCR偏移 `x/y/cx/cy`，YOLO偏移 `x1/x2/cx` 与 `y1/y2/cy`，宽高和置信度不变。负起点合法；内部使用64位中间值，越界返回 `AI_ERR_INVALID_ARGUMENT`。
-
-未命中时不会把起点作为伪坐标返回：三个多目标紧凑文本接口返回空文本，其他 JSON接口精确返回 `[]`；`CV_FindOne`、`CV_FindTransparentOne`、`OCR_FindOneText`、`OCR_FindOneCoord` 返回0且输出结构体全零。TEXT格式的 `OCR_Recognize` 文本不受起点影响。
-
-### v23.5 多目标紧凑文本
+### 多目标紧凑文本
 
 - `CV_FindMultiText`、`CV_FindTransparentMultiText`：`ID,x,y|ID,x,y`。
 - `OCR_FindMultiText`：`ID,cx,cy|ID,cx,cy`。
-- ID是输入列表的零基序号，不因前项未命中而重排；相同目标的多次命中重复相同ID。
-- 不添加空格、JSON符号、首尾竖线；未命中与错误均为空文本，调用后用 `AI_GetLastError()` 是否为空进行区分。
 
-`CV_LoadTemplateZipFromMemory(handle, zip_data, zip_size)` 直接从易语言资源字节集读取标准 ZIP。支持 Stored/Deflate；目录和非BMP忽略；UTF-8标志文件名按UTF-8，否则按 Windows 当前 ACP；模板键仍为BMP基础文件名。整包通过中央目录、边界、CRC、方法、路径、BMP及解压限制检查后才原子替换句柄缓存，任何失败都会保留旧缓存。拒绝加密、ZIP64、多卷、路径穿越、重复BMP基础名和异常压缩比；默认上限为4096项、单BMP 64 MiB、总BMP 512 MiB、压缩比200:1。
+ID 是输入列表零基序号。结果不含空格、JSON 字符或尾竖线。正常未命中和错误
+均返回空文本；调用后通过 `AI_GetLastError()` 是否为空进行区分。
 
-## 2.3 运行设备选择
+### 内存 ZIP 模板
 
-### AUTO
+`CV_LoadTemplateZipFromMemory(handle, zip_data, zip_size)` 读取完整标准 ZIP。
+支持 Stored/Deflate；目录和非 BMP 项被忽略；UTF-8 标志文件名按 UTF-8 解释，
+其他名称按 Windows 当前 ACP 解释。模板键为 BMP 基础文件名。
 
-AUTO不允许一个池内混用不同 Provider，并从 v23开始按模型和本机硬件实测选择：
+中央目录、边界、CRC、方法、路径、BMP 和解压限制全部通过后才替换句柄缓存。
+限制为最多 4096 项、单 BMP 64 MiB、总 BMP 512 MiB、压缩比 200:1；加密、
+ZIP64、多卷、路径穿越和重复 BMP 基础名会被拒绝。
 
-```text
-创建完整 CPU候选池并短基准
-  -> 创建完整 DirectML候选池并短基准
-  -> DirectML中位耗时至少快10%：发布 DirectML池
-  -> 否则发布 CPU池
-  -> DirectML创建失败：发布 CPU池并保留失败原因
-```
+## 3. 设备选择
 
-校准结果按模型内容、输入尺寸、Session数、CPU、显卡、驱动、ORT和内嵌资源包哈希缓存；
-任一条件变化都会自动失效。显式 DirectML和显式 CPU不经过自动选择。
+### 易语言 x86 Worker
 
-### DirectML
+AUTO 为 CPU 与 DirectML 分别创建单 Session 候选池，每种候选执行 2 次预热和
+7 次采样并比较中位耗时。DirectML 必须至少快 10% 才被选中；否则发布 CPU
+池。选定后按请求的 `session_count` 建立完整单 Provider 池，不会在一个池内
+混用 CPU 与 DirectML。
 
-- 必须找到 `DmlExecutionProvider`、有效硬件适配器和 DirectX 12。
-- 使用 `ORT_SEQUENTIAL`，关闭内存模式，同一 Session的 `Run`由池租约串行化。
-- ORT可把 DML不支持的少量图节点交给 CPU EP；状态中的 `mixed_cpu_fallback=true`表示允许这种图级回退，不表示整个 Session退化为 CPU。
-- 显式 DirectML失败时不整体回退 CPU。
-- OCR长循环中若当前Worker相对首次DML请求的私有提交量增长384 MiB（内存计数不可用时最多900个请求），且没有存活的YOLO句柄，Worker会在当前响应完成后透明轮换；x86代理自动重放最近一次成功的OCR加载并重试请求。存在YOLO句柄时延后轮换，避免句柄失效。
+校准键包含模块、模型内容、输入尺寸、Session 数、CPU 标识、显卡、驱动和
+内嵌运行库哈希。命中缓存时直接重建已选 Provider 的完整池。显式 DirectML
+失败时返回错误；显式 CPU 不加载 DirectML。
 
-### CPU
+### Python x64 直连 DLL
 
-- 只使用 CPU Execution Provider。
-- 不释放也不加载 `DirectML.dll`。
-- 没有 DX12显卡也能运行。
+Python Wheel 在宿主进程中直接加载 `CQ_AI_x64.dll`。AUTO 配置 DirectML，
+DirectML 初始化或 Session 创建失败时重试 CPU；不会执行 Worker 的短基准，
+也不会创建 `CQ_AI_worker.exe`。实际 Provider 和原因通过运行状态 JSON 查询。
 
-## 3. Worker内嵌内容
+### DirectML 生命周期
 
-Worker资源包使用 Windows Compression API的 XPRESS Huffman逐文件压缩，当前包含13项：
+DirectML 使用顺序执行模式；同一 Session 的 `Run` 由池租约串行化。ORT 可以
+把 DirectML 不支持的少量图节点交给 CPU EP，状态字段
+`mixed_cpu_fallback=true` 表示允许图级回退，不表示整个 Session 是 CPU。
 
-- `onnxruntime.dll`：Microsoft.ML.OnnxRuntime.DirectML 1.24.4。
-- `DirectML.dll`：Microsoft.AI.DirectML 1.15.4，按需释放。
-- `msvcp140.dll`、`msvcp140_1.dll`、`vcruntime140.dll`、`vcruntime140_1.dll`。
-- ORT、DirectML和 Visual C++再发行许可/通知。
-- 自动生成的 `runtime-manifest.json`，包含版本、Provider、每项大小和 SHA-256。
+Worker 的 OCR 长循环中，若相对首次 DML 请求的私有提交量增长 384 MiB（内存
+计数不可用时最多 900 个请求），且没有存活 YOLO 句柄，Worker 会在当前响应
+结束后轮换。x86 代理重放最近一次成功的 OCR 加载并重试请求；存在 YOLO 句柄
+时延后轮换。Python x64 直连模式由宿主进程管理生命周期。
 
-PP-OCRv6检测模型、识别模型和字符集继续作为 Worker的只读资源直接从内存加载，不释放为模型文件。YOLO模型由调用方继续通过路径或内存传入。
+## 4. 内嵌运行库与私有缓存
 
-`onnxruntime_providers_shared.dll`未纳入：PE依赖检查、CPU/DirectML Provider探测、OCR V6、`best.onnx`、`smc.onnx`、路径/内存加载及 DML Profiling验证均未加载该文件。若未来升级 ORT后生产路径实际需要它，打包清单必须据实重新加入。
+Worker 的 XPRESS Huffman 资源包包含 13 项：
 
-DirectML官方未提供受支持的静态链接 DLL方案，因此本项目采用“压缩资源嵌入 + 私有缓存 + 绝对路径手动加载”，不使用内存 PE加载或自编译静态 ORT。
+- ONNX Runtime DirectML `1.24.4` 与 DirectML `1.15.4`。
+- x64 Visual C++ Runtime DLL。
+- ONNX Runtime、DirectML、VC Runtime 的许可和第三方声明。
+- 记录版本、Provider、大小与 SHA-256 的 `runtime-manifest.json`。
 
-## 4. 私有缓存
+PP-OCRv6 tiny 检测模型、识别模型和字符表直接从 Worker 只读资源加载，不释放
+为模型文件。YOLO 模型由调用方通过路径或内存提供。
 
-缓存位置：
+缓存路径为：
 
 ```text
 %LOCALAPPDATA%\CQ_AI\runtime\v23.5\
   ort-dml-1.24.4-<嵌入包SHA-256>\
 ```
 
-首次 CPU启动只释放：
+CPU 基础缓存包含 `onnxruntime.dll` 和四个 VC Runtime DLL；首次 AUTO 或
+DirectML 请求时按需增加 `DirectML.dll`。每次使用均核对大小和 SHA-256；损坏
+时在同级临时目录重建，全部验证后替换。按运行库哈希命名的互斥锁协调多个
+进程。删除该缓存不会影响正式包，下次运行会重新建立。
 
-```text
-onnxruntime.dll
-msvcp140.dll
-msvcp140_1.dll
-vcruntime140.dll
-vcruntime140_1.dll
-```
+Worker 使用 `ORT_API_MANUAL_INIT`：先创建
+`\\.\pipe\cq_ai_worker_v23_core_0145`，再验证缓存、限制 DLL 搜索目录、通过绝对
+路径加载 `onnxruntime.dll` 并解析 `OrtGetApiBase`。请求 DirectML 时再验证并
+加载 `DirectML.dll`。
 
-首次请求 AUTO或 DirectML时才补充：
+## 5. 状态与诊断
 
-```text
-DirectML.dll
-```
+状态 JSON 可报告：`requested`、`active`、`degraded`、
+`mixed_cpu_fallback`、`device_id`、`adapter_name`、`selection_basis`、
+`calibration_key`、`cpu_calibration_ms`、`directml_calibration_ms` 和 `reason`。
+Worker 首次校准使用 `short_benchmark_10_percent_gate`，缓存命中使用
+`cached_short_benchmark_10_percent_gate`。
 
-每次使用前按嵌入索引核对大小和 SHA-256。损坏时在同级随机临时目录重建，全部验证后原子替换。版本级命名互斥锁保证多个进程同时首次启动时不会互相覆盖。缓存被删除不影响程序，下次运行会自动重建。
-
-旧版本缓存不由 Worker自动清理。
-
-## 5. ORT手动加载
-
-Worker编译时定义 `ORT_API_MANUAL_INIT`，普通 PE导入表不包含 ORT：
-
-1. 先创建 v23.5 命名管道 `\\.\pipe\cq_ai_worker_v23_core_0145`。
-2. 验证并建立 CPU基础缓存。
-3. 限制 DLL搜索目录。
-4. 绝对路径 `LoadLibraryExW(<缓存>\onnxruntime.dll)`。
-5. 动态解析 `OrtGetApiBase`并调用 `Ort::InitApi()`。
-6. 请求 DirectML时再验证/释放 `DirectML.dll`并解析 `OrtSessionOptionsAppendExecutionProvider_DML`。
-
-因此运行库释放失败、哈希失败或 DLL加载错误都能通过管道传给 `CQ_X86.dll`，再由无参数 `AI_GetLastError()`直接读取。
-
-## 6. 状态 JSON
-
-OCR、YOLO句柄和全局状态字段含义一致：
-
-```json
-{
-  "runtime_flavor": "core",
-  "ort_version": "1.24.4",
-  "ort_path": "C:\\Users\\...\\onnxruntime.dll",
-  "available_providers": ["DmlExecutionProvider", "CPUExecutionProvider"],
-  "requested": "auto",
-  "active": "directml",
-  "degraded": false,
-  "mixed_cpu_fallback": true,
-  "device_id": 0,
-  "adapter_name": "Intel(R) UHD Graphics",
-  "selection_basis": "calibrated",
-  "calibration_key": "v23-cal7-...",
-  "cpu_calibration_ms": 72.53,
-  "directml_calibration_ms": 155.19,
-  "reason": ""
-}
-```
-
-AUTO因 DirectML失败改用 CPU时 `degraded=true`，`reason`保留完整失败原因；因实测
-DirectML未快10%而选择 CPU属于正常性能决策，`selection_basis`和两种校准耗时会说明依据。
-
-## 7. Worker诊断命令
+诊断命令：
 
 ```cmd
 CQ_AI_worker.exe --verify-embedded-runtime
@@ -210,122 +163,76 @@ CQ_AI_worker.exe --runtime-probe
 CQ_AI_worker.exe --third-party-notices
 ```
 
-- `--verify-embedded-runtime`：在内存中逐项解压并核对 SHA-256。
-- `--runtime-probe`：建立缓存、手动加载 ORT并输出 Provider、路径、协议和资源包哈希。
-- `--third-party-notices`：从资源中输出许可文本，不产生旁文件。
+- `--verify-embedded-runtime`：逐项解压并核对 SHA-256。
+- `--runtime-probe`：建立缓存、加载 ORT，输出 Provider、路径、协议和包哈希。
+- `--third-party-notices`：直接输出资源中的许可文本。
 
-常见错误包括：
+常见错误包括缓存空间不足、缓存目录不可写、内嵌包哈希不匹配、Windows 错误
+126、DmlExecutionProvider 不可用、适配器越界或不支持 DirectX 12。失败后应
+在同一线程立即读取 `AI_GetLastError()`。
 
-```text
-Embedded runtime package is corrupt
-Runtime cache has insufficient free space
-Cannot create runtime cache directory
-Failed to extract DirectML.dll
-SHA-256 mismatch for onnxruntime.dll
-Failed to load embedded onnxruntime.dll: Windows error 126
-DmlExecutionProvider is unavailable
-DirectX 12 is unavailable on adapter 0
-DirectML adapter index 1 is out of range
-DirectML session creation failed
-```
+## 6. 从源码构建
 
-## 8. 构建
-
-准备固定版本官方 SDK：
+要求 Windows 10/11、Visual Studio 2022 Build Tools 和 64 位 Python 3.9+。
+依赖脚本下载、校验并构建固定版本的 x86/x64 OpenCV 和运行库：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare_dependencies.ps1
 ```
 
-脚本从 NuGet官方下载并校验固定包哈希：
-
-- `Microsoft.ML.OnnxRuntime.DirectML 1.24.4`
-- `Microsoft.AI.DirectML 1.15.4`
-
 构建 x64 Worker：
 
 ```powershell
-cmake -S . -B build-codex-worker-v23 -G "Visual Studio 17 2022" -A x64 `
+cmake -S . -B build-release-worker-x64 -G "Visual Studio 17 2022" -A x64 `
   -DAIENGINE_WITH_ONNXRUNTIME=ON `
   -DAIENGINE_ONNXRUNTIME_DIR="third_party/runtime/ort-directml-1.24.4" `
   -DAIENGINE_EMBED_OCR_ASSETS=ON `
   -DAIENGINE_BUILD_TESTS=OFF
-cmake --build build-codex-worker-v23 --config Release --parallel
+cmake --build build-release-worker-x64 --config Release --parallel
 ```
 
-x86 DLL必须链接 `/MT`构建的静态 OpenCV。仓库旧的 `third_party/opencv-5.0.0-static/x86`是 `/MD`，不能用于 v23成品。当前验证配置使用：
+构建 x86 DLL 与测试：
 
 ```powershell
-cmake -S third_party/opencv-5.0.0 `
-  -B third_party/opencv-5.0.0-build-mt-x86 `
-  -G "Visual Studio 17 2022" -A Win32 `
-  -DCMAKE_INSTALL_PREFIX="third_party/opencv-5.0.0-static-mt/x86" `
-  -DBUILD_SHARED_LIBS=OFF `
-  -DBUILD_WITH_STATIC_CRT=ON `
-  -DBUILD_LIST="core,imgproc" `
-  -DBUILD_TESTS=OFF `
-  -DBUILD_PERF_TESTS=OFF `
-  -DBUILD_EXAMPLES=OFF `
-  -DBUILD_opencv_apps=OFF `
-  -DWITH_OPENCL=OFF
-cmake --build third_party/opencv-5.0.0-build-mt-x86 `
-  --config Release --target INSTALL --parallel
-```
-
-构建 x86 DLL：
-
-```powershell
-cmake -S . -B build-codex-x86-v23 -G "Visual Studio 17 2022" -A Win32 `
+cmake -S . -B build-release-x86 -G "Visual Studio 17 2022" -A Win32 `
   -DAIENGINE_BUILD_TESTS=ON `
   -DAIENGINE_WITH_OPENCV=ON `
-  -DAIENGINE_OPENCV_DIR="third_party/opencv-5.0.0-build-mt-x86" `
+  -DAIENGINE_OPENCV_DIR="third_party/opencv-5.0.0-static-mt/x86" `
   -DAIENGINE_WITH_ONNXRUNTIME=OFF
-cmake --build build-codex-x86-v23 --config Release --parallel
+cmake --build build-release-x86 --config Release --parallel
+Copy-Item build-release-worker-x64/Release/CQ_AI_worker.exe build-release-x86/Release/
+ctest --test-dir build-release-x86 -C Release --output-on-failure
 ```
 
-## 9. 打包与自动拒绝条件
+## 7. 打包、晋升与验证
 
 ```powershell
+python scripts/generate_e_language_api_doc.py
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/promote_release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check_repository_hygiene.ps1 -CheckWorkingTree
 ```
 
-脚本会拒绝：
+打包脚本验证 PE 位数、公开导出、stdcall 参数字节数、普通依赖、Worker 协议、
+Provider、内嵌运行库、许可和 Wheel 隔离安装。晋升脚本只接受 `outpush/` 下的
+指定两个成品，生成 manifest 后在临时目录验证，再替换 `release/v23.5/`。
 
-- 公开导出不是 60/60。
-- 九个坐标接口的 x86 修饰名参数字节数不匹配，或缺少 `_CV_LoadTemplateZipFromMemory@12`。
-- 缺少 `_AI_GetLastError@0`或出现旧 `_AI_GetLastError@8`。
-- x86 DLL不是只依赖 Windows系统 DLL。
-- Worker普通导入表出现 ORT、DirectML或 VC运行库。
-- Worker协议、ORT版本或 Provider探测不匹配。
-- 内嵌资源或许可验证失败。
-- 输出目录不是恰好包含两个运行文件和一份接口HTML。
+性能只代表对应硬件、模型和输入。部署机应使用正式成品执行业务验收，并以
+运行状态 JSON 确认实际 Provider。
 
-成品输出：
 
-```text
-outpush\CQ_AI_e_language_v23.5\
-outpush\CQ_AI_e_language_v23.5.zip
-```
+## CV 多线程稳定性修复
 
-ZIP根目录包含 `CQ_X86.dll`、`CQ_AI_worker.exe` 与 `易语言_DLL_API_说明.html`；运行时只依赖前两个文件。
+OpenCV CV 匹配采用进程内有界工作区池：x86 同时计算上限为 2，x64 为 4；超额请求等待。空闲工作区缓存总预算分别为 64 MiB / 256 MiB，归还时超预算即释放该工作区缓冲。模板逐个处理，不再按历史模板尺寸或参与线程数无限保留评分矩阵，也不缓存跨调用结果及模板强引用。预算不覆盖正在计算的工作区、模板、返回文本或 OpenCV 临时分配，不代表进程内存峰值上限。
 
-## 10. v23.5 发布验收
+输入缓冲必须在调用完成前保持有效且不可被其他线程修改。共享句柄允许并发查询；清理/释放不会取消已取得模板快照的查询。不得从业务线程释放 DLL 返回文本。
 
-v23.5 正式发包前必须同时满足：
+`CV_FindMultiText` 参数错误分别说明 `handle`、`match_mode`、`min_score`、`color_bias`、`template_names`；缺失模板、BMP 格式、坐标溢出仍单独报告。`CV_*` 的 C++ 异常在 DLL 内转换为运行错误，文本接口返回空字符串；内存不足使用无需动态分配的后备错误文本。失败后在同一线程立即复制 `AI_GetLastError()`；下一次成功调用会清除错误。此机制不处理无效指针导致的访问违规。
 
-- 现有 CTest、OCR鲁棒性及坐标/ZIP回归全部通过。
-- 三个多目标接口精确覆盖单项、多项、缺号ID、重复ID、负坐标、正负原点、空文本和无尾分隔符。
-- 九个接口覆盖零、正、负起点和溢出；三个紧凑接口空结果为空文本，其他JSON空结果为 `[]`，单结果为 `0 + 全零结构体`。
-- Stored/Deflate、中英文名、嵌套目录、透明模板、异常ZIP及失败后缓存回滚通过；不同句柄缓存隔离。
-- OCR V6：CPU、DirectML、AUTO加载成功且相同输入结果一致。
-- 显式滤色和自动模式均覆盖抗锯齿小单行回归；TEXT、JSON、Find结果一致，0、0.45、0.5、0.8四档最低置信度及重复运行稳定。
-- 大图、多行、小尺寸样例、合法重复字符、空图和纯色图无非预期回归。
-- 正常快速路径的P50/P95性能门禁通过。
-- YOLO `best.onnx`和 `smc.onnx`：CPU和AUTO加载、推理、多句柄、多 Session及路径/内存加载通过。
-- DirectML Profiling文件中存在 `DmlExecutionProvider`计算事件。
-- CPU首次缓存无 `DirectML.dll`；DirectML请求后按需补充。
-- 缓存缺失、单文件损坏和两个进程同时首次启动可自动恢复。
-- Worker普通导入仅有 Windows系统库 `Cabinet.dll`、`bcrypt.dll`、`d3d12.dll`、`dxgi.dll`、`GDI32.dll`、`KERNEL32.dll`、`USER32.dll`。
-- x86 DLL普通导入仅有 `KERNEL32.dll`。
+同一帧的彩色通道变换和积分统计在本次调用内共享。仅在逐字节确认输入图像完全相同时复用图像预处理，变化立即失效；模板相关与结果仍每次重新计算。模板预处理随模板生命周期保存，最多保留一种图像尺寸的频域数据。工作区不持有模板强引用；模板资源不计入空闲工作区预算。候选峰值的稀疏检查与密集矩形最大值检查采用同一判定，不限制结果数量。支持 AVX2 时自动启用 SIMD，不支持时使用兼容路径。
 
-性能数据只代表对应硬件、模型和输入。新的部署环境应使用最终 v23.5 成品执行业务验收，未执行的硬件环境不得写作已通过。
+依赖准备必须校验 IPPICV 下载哈希、生成配置中的 `HAVE_IPP` 和安装的静态库。仅设置 `WITH_IPP=ON` 不再视为依赖准备成功。
+
+最终交付目录为 `output/`，仅包含 `CQ_X86.dll`、`CQ_AI_worker.exe` 和 `易语言_DLL_API_说明.html`；测试日志、哈希和内部候选保留在验证目录，不复制进 `output/`。本次不覆盖历史 `release/v23.5/` 包。验证与门禁误判分类见 [CV 稳定性验证](CV_STABILITY_VALIDATION_CN.md)。

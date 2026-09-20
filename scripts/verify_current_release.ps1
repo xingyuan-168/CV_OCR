@@ -23,6 +23,16 @@ if ($manifest.schema -ne 1 -or $manifest.project_version -ne "0.14.5" -or
     throw "Release manifest version metadata is not the v23.5 baseline"
 }
 
+$releaseFiles = @(Get-ChildItem -LiteralPath $releasePath -File | Select-Object -ExpandProperty Name | Sort-Object)
+$expectedReleaseFiles = @(
+    "CQ_AI_e_language_v23.5.zip",
+    "cq_ai_engine-0.14.5-py3-none-win_amd64.whl",
+    "manifest.json"
+) | Sort-Object
+if (($releaseFiles -join "|") -cne ($expectedReleaseFiles -join "|")) {
+    throw "release/v23.5 must contain exactly the two current artifacts and manifest.json"
+}
+
 function Get-StreamSha256 {
     param([System.IO.Stream]$Stream)
     $sha = [System.Security.Cryptography.SHA256]::Create()
@@ -40,6 +50,13 @@ if ($artifacts.Count -ne 2) {
 $expectedKinds = @("easy-language-x86", "python-x64")
 if ((@($artifacts.kind | Sort-Object) -join "|") -ne (($expectedKinds | Sort-Object) -join "|")) {
     throw "Unexpected artifact kinds: $($artifacts.kind -join ', ')"
+}
+$easyMetadata = $artifacts | Where-Object kind -eq "easy-language-x86"
+$pythonMetadata = $artifacts | Where-Object kind -eq "python-x64"
+if ($easyMetadata.file -cne "CQ_AI_e_language_v23.5.zip" -or
+    $pythonMetadata.file -cne "cq_ai_engine-0.14.5-py3-none-win_amd64.whl" -or
+    $pythonMetadata.platform_tag -cne "py3-none-win_amd64") {
+    throw "Release artifact names or platform tag do not match the current baseline"
 }
 
 foreach ($artifact in $artifacts) {
@@ -88,6 +105,13 @@ try {
         if ($actualHash -ne $member.sha256) {
             throw "ZIP member SHA-256 mismatch: $($member.file)"
         }
+        if ($member.file -ceq "易语言_DLL_API_说明.html") {
+            $sourceHtml = Join-Path $project "docs\易语言_DLL_API_说明.html"
+            if (!(Test-Path -LiteralPath $sourceHtml -PathType Leaf) -or
+                (Get-FileHash -LiteralPath $sourceHtml -Algorithm SHA256).Hash -ne $actualHash) {
+                throw "Packaged API HTML differs from the source-generated document"
+            }
+        }
     }
 } finally {
     $easyArchive.Dispose()
@@ -109,8 +133,10 @@ try {
             throw "Wheel member is missing: $requiredPattern"
         }
     }
-    if (@($wheelNames | Where-Object { $_ -like "*.exe" }).Count -gt 0) {
-        throw "Python Wheel must not contain an executable"
+    if (@($wheelNames | Where-Object {
+            $_ -match '(?i)\.exe$|CQ_X86\.dll$|\.(onnx|ini)$'
+        }).Count -gt 0) {
+        throw "Python Wheel contains a forbidden executable, x86 DLL, model or configuration"
     }
     $wheelMetadataEntry = $wheel.Entries | Where-Object FullName -like "*.dist-info/WHEEL" |
         Select-Object -First 1
@@ -130,12 +156,19 @@ $header = Get-Content -LiteralPath (Join-Path $project "include\ai_engine.h") -R
 $protocol = Get-Content -LiteralPath (Join-Path $project "src\worker_protocol.h") -Raw -Encoding UTF8
 $pythonProject = Get-Content -LiteralPath (Join-Path $project "python\pyproject.toml") -Raw -Encoding UTF8
 $pythonInit = Get-Content -LiteralPath (Join-Path $project "python\cq_ai_engine\__init__.py") -Raw -Encoding UTF8
+$headerExports = @([regex]::Matches(
+        $header,
+        'AIENGINE_EXPORT[\s\S]*?AIENGINE_CALL\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(') |
+    ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 if ($cmake -notmatch "project\(ai_engine_dll VERSION 0\.14\.5" -or
+    $cmake -notmatch 'set\(AIENGINE_DELIVERY_VERSION\s+"v23\.5"\)' -or
+    $cmake -notmatch 'set\(AIENGINE_WORKER_PROTOCOL_VERSION\s+"25"\)' -or
     $header -notmatch "AIENGINE_VERSION_MINOR\s+14" -or
     $header -notmatch "AIENGINE_VERSION_PATCH\s+5" -or
     $protocol -notmatch "kVersion\s*=\s*25" -or
     $pythonProject -notmatch 'version\s*=\s*"0\.14\.5"' -or
-    $pythonInit -notmatch '__version__\s*=\s*"0\.14\.5"') {
+    $pythonInit -notmatch '__version__\s*=\s*"0\.14\.5"' -or
+    $headerExports.Count -ne 60) {
     throw "Source, protocol, Python package and release versions are inconsistent"
 }
 
