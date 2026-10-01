@@ -19,6 +19,9 @@
 #if defined(AIENGINE_WITH_OPENCV)
 #include "memory_zip.h"
 #include "cv_correlation.h"
+#if defined(AIENGINE_CV_AVX2)
+#include "cv_masked_score_avx2.h"
+#endif
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #endif
@@ -49,6 +52,7 @@
 #include <mutex>
 #include <limits>
 #include <locale>
+#include <optional>
 #include <shared_mutex>
 #include <sstream>
 #include <string>
@@ -160,7 +164,9 @@ std::atomic<uint64_t> g_cv_live_templates{0};
 thread_local int g_cv_fault_stage = 0;
 thread_local int g_cv_fault_kind = 0;
 thread_local double g_cv_times[6]{};
+thread_local CVTestTransparentProfile g_cv_transparent_profile{};
 thread_local bool g_cv_reference = false;
+thread_local bool g_cv_force_scalar_masked = false;
 std::atomic<bool> g_cv_pause{false};
 std::atomic<bool> g_cv_paused{false};
 #endif
@@ -1671,6 +1677,16 @@ bool cv_result_screen_order(const CVMatchResult& lhs, const CVMatchResult& rhs) 
 
 #if defined(AIENGINE_WITH_OPENCV)
 
+struct CVTilePeak {
+    float score = -std::numeric_limits<float>::infinity();
+    uint32_t index = UINT32_MAX;
+};
+
+struct CVVisiblePixel {
+    uint32_t offset;
+    uint8_t value[3];
+};
+
 struct CVTemplateThreadScratch {
     cv::Mat score;
     cv::Mat local_max;
@@ -1678,6 +1694,178 @@ struct CVTemplateThreadScratch {
     std::vector<cv::Point> peak_points;
     std::vector<CVMatchResult> candidates;
     std::vector<CVMatchResult> selected;
+    std::vector<CVTilePeak> tile_peaks;
+    std::vector<CVTilePeak> tile_subpeaks;
+    std::vector<uint32_t> tile_heap;
+    std::vector<uint8_t> tile_suppressed;
+    std::vector<CVVisiblePixel> visible_pixels;
+    std::vector<uint32_t> visible_offsets;
+    std::vector<uint32_t> visible_bgr;
+};
+
+// One heap node represents each 32x16 tile. Four 16x8 subpeaks let a stale
+// node repair only the suppressed local regions when it reaches the root.
+// A stale score is an upper bound, so the first valid root is the exact next
+// global maximum; equal scores retain the original row-major order.
+class CVTileMaxHeap {
+public:
+    static constexpr int kWidth = 32;
+    static constexpr int kHeight = 16;
+
+    CVTileMaxHeap(const cv::Mat& score, CVTemplateThreadScratch& scratch)
+        : score_(score), scratch_(scratch),
+          tile_columns_((score.cols + kWidth - 1) / kWidth) {
+#if defined(AIENGINE_CV_AVX2)
+        use_avx2_ = cv::checkHardwareSupport(CV_CPU_AVX2)
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            && !g_cv_force_scalar_masked
+#endif
+            ;
+#endif
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        const auto started = std::chrono::steady_clock::now();
+#endif
+        if (score.total() > UINT32_MAX) {
+            throw std::length_error("CV score matrix exceeds tile index range");
+        }
+        const size_t tile_count = static_cast<size_t>(tile_columns_) *
+            static_cast<size_t>((score.rows + kHeight - 1) / kHeight);
+        scratch_.tile_peaks.resize(tile_count);
+        scratch_.tile_subpeaks.resize(tile_count * 4);
+        scratch_.tile_heap.resize(tile_count);
+        scratch_.tile_suppressed.resize(score.total());
+        std::fill(scratch_.tile_suppressed.begin(), scratch_.tile_suppressed.end(), 0);
+        for (uint32_t tile = 0; tile < tile_count; ++tile) {
+            for (uint32_t sub = 0; sub < 4; ++sub) refresh_subtile(tile, sub);
+            refresh_parent(tile);
+            scratch_.tile_heap[tile] = tile;
+        }
+        for (size_t position = tile_count / 2; position > 0; --position) {
+            sift_down(position - 1);
+        }
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        g_cv_transparent_profile.heap_ms += std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - started).count();
+#endif
+    }
+
+    std::pair<float, cv::Point> top() {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        const auto started = std::chrono::steady_clock::now();
+#endif
+        while (true) {
+            const CVTilePeak& root = scratch_.tile_peaks[scratch_.tile_heap.front()];
+            if (root.score < 0.0f || !scratch_.tile_suppressed[root.index]) break;
+            const uint32_t tile = scratch_.tile_heap.front();
+            for (uint32_t sub = 0; sub < 4; ++sub) {
+                const CVTilePeak& subpeak = scratch_.tile_subpeaks[tile * 4 + sub];
+                if (subpeak.score >= 0.0f && scratch_.tile_suppressed[subpeak.index]) {
+                    refresh_subtile(tile, sub);
+                }
+            }
+            refresh_parent(tile);
+            sift_down(0);
+        }
+        const CVTilePeak& peak = scratch_.tile_peaks[scratch_.tile_heap.front()];
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        g_cv_transparent_profile.heap_ms += std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - started).count();
+#endif
+        if (peak.index == UINT32_MAX) return {peak.score, cv::Point{0, 0}};
+        return {peak.score, cv::Point{
+            static_cast<int>(peak.index % static_cast<uint32_t>(score_.cols)),
+            static_cast<int>(peak.index / static_cast<uint32_t>(score_.cols))}};
+    }
+
+    void suppressed(const cv::Rect& rectangle) {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        const auto started = std::chrono::steady_clock::now();
+#endif
+        for (int y = rectangle.y; y < rectangle.y + rectangle.height; ++y) {
+            const size_t row = static_cast<size_t>(y) * score_.cols;
+            std::fill(scratch_.tile_suppressed.begin() + row + rectangle.x,
+                scratch_.tile_suppressed.begin() + row + rectangle.x + rectangle.width, 1);
+        }
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        g_cv_transparent_profile.heap_ms += std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - started).count();
+#endif
+    }
+
+private:
+    bool better(uint32_t left, uint32_t right) const {
+        const CVTilePeak& lhs = scratch_.tile_peaks[left];
+        const CVTilePeak& rhs = scratch_.tile_peaks[right];
+        return lhs.score != rhs.score ? lhs.score > rhs.score : lhs.index < rhs.index;
+    }
+
+    void sift_down(size_t position) {
+        const size_t count = scratch_.tile_heap.size();
+        const uint32_t moving = scratch_.tile_heap[position];
+        while (position < count / 2) {
+            const size_t child = position * 2 + 1;
+            size_t best = child;
+            if (child + 1 < count &&
+                better(scratch_.tile_heap[child + 1], scratch_.tile_heap[child])) {
+                best = child + 1;
+            }
+            if (!better(scratch_.tile_heap[best], moving)) break;
+            scratch_.tile_heap[position] = scratch_.tile_heap[best];
+            position = best;
+        }
+        scratch_.tile_heap[position] = moving;
+    }
+
+    void refresh_parent(uint32_t tile) {
+        CVTilePeak best;
+        for (uint32_t sub = 0; sub < 4; ++sub) {
+            const CVTilePeak& candidate = scratch_.tile_subpeaks[tile * 4 + sub];
+            if (candidate.score > best.score ||
+                (candidate.score == best.score && candidate.index < best.index)) best = candidate;
+        }
+        scratch_.tile_peaks[tile] = best;
+    }
+
+    void refresh_subtile(uint32_t tile, uint32_t sub) {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        ++g_cv_transparent_profile.tile_refreshes;
+#endif
+        const int start_x = static_cast<int>(tile % tile_columns_) * kWidth +
+            static_cast<int>(sub % 2) * (kWidth / 2);
+        const int start_y = static_cast<int>(tile / tile_columns_) * kHeight +
+            static_cast<int>(sub / 2) * (kHeight / 2);
+        const int end_x = std::min(start_x + kWidth / 2, score_.cols);
+        const int end_y = std::min(start_y + kHeight / 2, score_.rows);
+#if defined(AIENGINE_CV_AVX2)
+        if (use_avx2_) {
+            const auto peak = ai::cv_detail::tile_peak_avx2(
+                score_.ptr<float>(), score_.step1(),
+                scratch_.tile_suppressed.data(), score_.cols,
+                start_x, start_y, end_x, end_y);
+            scratch_.tile_subpeaks[tile * 4 + sub] = {peak.score, peak.index};
+            return;
+        }
+#endif
+        CVTilePeak best{-1.0f, static_cast<uint32_t>(
+            static_cast<size_t>(start_y) * score_.cols + start_x)};
+        for (int y = start_y; y < end_y; ++y) {
+            const float* row = score_.ptr<float>(y);
+            for (int x = start_x; x < end_x; ++x) {
+                const uint32_t index = static_cast<uint32_t>(
+                    static_cast<size_t>(y) * score_.cols + x);
+                const float value = row[x];
+                if (!scratch_.tile_suppressed[index] && value > best.score) best = {value, index};
+            }
+        }
+        scratch_.tile_subpeaks[tile * 4 + sub] = best;
+    }
+
+    const cv::Mat& score_;
+    CVTemplateThreadScratch& scratch_;
+    int tile_columns_;
+#if defined(AIENGINE_CV_AVX2)
+    bool use_avx2_ = false;
+#endif
 };
 
 struct CVWorkspace {
@@ -1695,7 +1883,13 @@ struct CVWorkspace {
         return correlation.retained_bytes() + color.pixels.capacity() + gray.pixels.capacity() +
             mat_bytes(scratch.score) + mat_bytes(scratch.local_max) + mat_bytes(scratch.peak_kernel) +
             scratch.peak_points.capacity() * sizeof(cv::Point) +
-            (scratch.candidates.capacity() + scratch.selected.capacity()) * sizeof(CVMatchResult);
+            (scratch.candidates.capacity() + scratch.selected.capacity()) * sizeof(CVMatchResult) +
+            scratch.tile_peaks.capacity() * sizeof(CVTilePeak) +
+            scratch.tile_subpeaks.capacity() * sizeof(CVTilePeak) +
+            scratch.tile_heap.capacity() * sizeof(uint32_t) +
+            scratch.tile_suppressed.capacity() * sizeof(uint8_t) +
+            scratch.visible_pixels.capacity() * sizeof(CVVisiblePixel) +
+            (scratch.visible_offsets.capacity() + scratch.visible_bgr.capacity()) * sizeof(uint32_t);
     }
     void discard() noexcept {
         correlation_image_valid = correlation_sums_valid = false;
@@ -1707,6 +1901,13 @@ struct CVWorkspace {
         std::vector<cv::Point>().swap(scratch.peak_points);
         std::vector<CVMatchResult>().swap(scratch.candidates);
         std::vector<CVMatchResult>().swap(scratch.selected);
+        std::vector<CVTilePeak>().swap(scratch.tile_peaks);
+        std::vector<CVTilePeak>().swap(scratch.tile_subpeaks);
+        std::vector<uint32_t>().swap(scratch.tile_heap);
+        std::vector<uint8_t>().swap(scratch.tile_suppressed);
+        std::vector<CVVisiblePixel>().swap(scratch.visible_pixels);
+        std::vector<uint32_t>().swap(scratch.visible_offsets);
+        std::vector<uint32_t>().swap(scratch.visible_bgr);
     }
 };
 
@@ -2057,6 +2258,131 @@ float exact_masked_ccoeff_score_at(
     return static_cast<float>(std::max(-1.0, std::min(1.0, score)));
 }
 
+struct CVMaskedTemplateStats {
+    uint64_t sums[3]{};
+    uint64_t square_sums[3]{};
+    double energy = 0.0;
+};
+
+CVMaskedTemplateStats prepare_masked_score(
+    const cv::Mat& templ,
+    const cv::Mat& mask,
+    size_t image_stride,
+    std::vector<CVVisiblePixel>* visible) {
+    visible->clear();
+    CVMaskedTemplateStats stats;
+    const int channels = templ.channels();
+    for (int y = 0; y < templ.rows; ++y) {
+        const uint8_t* templ_row = templ.ptr<uint8_t>(y);
+        const uint8_t* mask_row = mask.ptr<uint8_t>(y);
+        for (int x = 0; x < templ.cols; ++x) {
+            if (mask_row[x * channels] == 0) continue;
+            const size_t offset = static_cast<size_t>(y) * image_stride +
+                static_cast<size_t>(x) * channels;
+            if (offset > UINT32_MAX) throw std::length_error("CV image exceeds visible pixel offset range");
+            CVVisiblePixel pixel{static_cast<uint32_t>(offset), {0, 0, 0}};
+            for (int c = 0; c < channels; ++c) {
+                const uint32_t value = templ_row[x * channels + c];
+                pixel.value[c] = static_cast<uint8_t>(value);
+                stats.sums[c] += value;
+                stats.square_sums[c] += value * value;
+            }
+            visible->push_back(pixel);
+        }
+    }
+    const double count = static_cast<double>(visible->size());
+    if (count > 0.0) {
+        for (int c = 0; c < channels; ++c) {
+            stats.energy += static_cast<double>(stats.square_sums[c]) -
+                static_cast<double>(stats.sums[c]) * stats.sums[c] / count;
+        }
+    }
+    return stats;
+}
+
+float exact_masked_ccoeff_score_at_prepared(
+    const cv::Mat& image,
+    const std::vector<CVVisiblePixel>& visible,
+    const CVMaskedTemplateStats& stats,
+    int32_t origin_x,
+    int32_t origin_y,
+    bool use_avx2,
+    const std::vector<uint32_t>& offsets,
+    const std::vector<uint32_t>& template_bgr) {
+    if (visible.empty()) return -1.0f;
+    const int channels = image.channels();
+    uint64_t image_sums[3]{};
+    uint64_t image_square_sums[3]{};
+    uint64_t dot_products[3]{};
+    bool identical = true;
+    const uint8_t* image_origin = image.ptr<uint8_t>(origin_y) +
+        static_cast<size_t>(origin_x) * channels;
+#if defined(AIENGINE_CV_AVX2)
+    if (use_avx2) {
+        const auto sums = ai::cv_detail::masked_accumulate_avx2(
+            image_origin, offsets.data(), template_bgr.data(), visible.size());
+        for (int c = 0; c < 3; ++c) {
+            image_sums[c] = sums.sums[c];
+            image_square_sums[c] = sums.squares[c];
+            dot_products[c] = sums.dots[c];
+        }
+        identical = sums.identical;
+    } else
+#else
+    (void)use_avx2; (void)offsets; (void)template_bgr;
+#endif
+    if (channels == 3 && visible.size() <= 65535) {
+        uint32_t sum_b = 0, sum_g = 0, sum_r = 0;
+        uint32_t square_b = 0, square_g = 0, square_r = 0;
+        uint32_t dot_b = 0, dot_g = 0, dot_r = 0;
+        uint32_t difference = 0;
+        for (const CVVisiblePixel& pixel : visible) {
+            const uint8_t* value = image_origin + pixel.offset;
+            const uint32_t b = value[0], g = value[1], r = value[2];
+            difference |= (b ^ pixel.value[0]) | (g ^ pixel.value[1]) |
+                (r ^ pixel.value[2]);
+            sum_b += b; sum_g += g; sum_r += r;
+            square_b += b * b; square_g += g * g; square_r += r * r;
+            dot_b += b * pixel.value[0];
+            dot_g += g * pixel.value[1];
+            dot_r += r * pixel.value[2];
+        }
+        identical = difference == 0;
+        image_sums[0] = sum_b; image_sums[1] = sum_g; image_sums[2] = sum_r;
+        image_square_sums[0] = square_b;
+        image_square_sums[1] = square_g;
+        image_square_sums[2] = square_r;
+        dot_products[0] = dot_b; dot_products[1] = dot_g; dot_products[2] = dot_r;
+    } else {
+        for (const CVVisiblePixel& pixel : visible) {
+            const uint8_t* image_pixel = image_origin + pixel.offset;
+            for (int c = 0; c < channels; ++c) {
+                const uint32_t value = image_pixel[c];
+                const uint32_t template_value = pixel.value[c];
+                identical &= value == template_value;
+                image_sums[c] += value;
+                image_square_sums[c] += value * value;
+                dot_products[c] += value * template_value;
+            }
+        }
+    }
+    if (identical) return 1.0f;
+    const double count = static_cast<double>(visible.size());
+    double numerator = 0.0;
+    double image_energy = 0.0;
+    for (int c = 0; c < channels; ++c) {
+        numerator += static_cast<double>(dot_products[c]) -
+            static_cast<double>(image_sums[c]) * stats.sums[c] / count;
+        image_energy += static_cast<double>(image_square_sums[c]) -
+            static_cast<double>(image_sums[c]) * image_sums[c] / count;
+    }
+    if (image_energy <= 1e-12 || stats.energy <= 1e-12) return -1.0f;
+    const double score = numerator / std::sqrt(image_energy * stats.energy);
+    if (!std::isfinite(score)) return -1.0f;
+    if (score > 1.0 - 1e-6) return 1.0f;
+    return static_cast<float>(std::max(-1.0, std::min(1.0, score)));
+}
+
 void collect_local_peaks(
     const cv::Mat& score,
     int32_t template_width,
@@ -2142,6 +2468,7 @@ int32_t find_cv_matches_opencv(
     auto& workspace = lease.get();
 #if defined(AIENGINE_CV_TEST_HOOKS)
     std::fill(std::begin(g_cv_times), std::end(g_cv_times), 0);
+    g_cv_transparent_profile = {};
     auto prof_start = std::chrono::steady_clock::now();
 #endif
     cv_test_fault(1);
@@ -2176,6 +2503,11 @@ int32_t find_cv_matches_opencv(
         const cv::Mat* mask = nullptr;
         const cv::Mat* candidate_mask = nullptr;
         bool use_transparent_mask = transparent && template_contains_transparent_color(entry, transparent_rgb);
+        const bool optimized_transparent_one = use_transparent_mask && best_only
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            && !g_cv_reference
+#endif
+            ;
         int method = best_only ? cv::TM_CCORR_NORMED : cv::TM_CCOEFF_NORMED;
         if (use_transparent_mask) {
             prepare_gray(); candidate_image=owned_image_mat(workspace.gray);
@@ -2236,11 +2568,22 @@ int32_t find_cv_matches_opencv(
             g_cv_times[4]+=workspace.correlation.timings[3];
 #endif
         } else if (candidate_mask == nullptr) {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            const auto rough_started = std::chrono::steady_clock::now();
+#endif
             cv::matchTemplate(candidate_source, candidate_templ, scratch.score, method);
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            if (optimized_transparent_one) {
+                g_cv_transparent_profile.rough_ms += std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - rough_started).count();
+            }
+#endif
         } else {
             cv::matchTemplate(candidate_source, candidate_templ, scratch.score, method, *candidate_mask);
         }
-        cv::patchNaNs(scratch.score, -1.0);
+        // The tile scan treats NaNs as -1. Other matching paths still need a
+        // materialized finite matrix for OpenCV peak operations.
+        if (!optimized_transparent_one) cv::patchNaNs(scratch.score, -1.0);
         const auto exact_color_score = [&](int x,int y) {
             return correlation_ready && !best_only
                 ? workspace.correlation.exact_at(image,templ,entry->color_stats.sums,entry->color_stats.energy,x,y)
@@ -2249,14 +2592,72 @@ int32_t find_cv_matches_opencv(
 #if defined(AIENGINE_CV_TEST_HOOKS)
         auto prof_post = std::chrono::steady_clock::now();
 #endif
+        CVMaskedTemplateStats masked_stats;
+        bool masked_avx2 = false;
+        if (optimized_transparent_one) {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            const auto started = std::chrono::steady_clock::now();
+#endif
+            masked_stats = prepare_masked_score(templ, *mask, image.step,
+                &scratch.visible_pixels);
+#if defined(AIENGINE_CV_AVX2)
+            masked_avx2 = match_mode == 0 && scratch.visible_pixels.size() <= 65535 &&
+                image.total() <= static_cast<size_t>(INT32_MAX / 3) &&
+                cv::checkHardwareSupport(CV_CPU_AVX2)
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                && !g_cv_force_scalar_masked
+#endif
+                ;
+            if (masked_avx2) {
+                scratch.visible_offsets.resize(scratch.visible_pixels.size());
+                scratch.visible_bgr.resize(scratch.visible_pixels.size());
+                for (size_t i = 0; i < scratch.visible_pixels.size(); ++i) {
+                    const CVVisiblePixel& pixel = scratch.visible_pixels[i];
+                    scratch.visible_offsets[i] = pixel.offset;
+                    scratch.visible_bgr[i] = static_cast<uint32_t>(pixel.value[0]) |
+                        (static_cast<uint32_t>(pixel.value[1]) << 8) |
+                        (static_cast<uint32_t>(pixel.value[2]) << 16);
+                }
+            }
+#endif
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            g_cv_transparent_profile.prepare_ms += std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - started).count();
+#endif
+        }
+        std::optional<CVTileMaxHeap> tile_selector;
+        if (optimized_transparent_one) tile_selector.emplace(scratch.score, scratch);
+        const auto masked_score_at = [&](int x, int y) {
+            if (!optimized_transparent_one) {
+                return exact_masked_ccoeff_score_at(image, templ, *mask, x, y);
+            }
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            const auto started = std::chrono::steady_clock::now();
+            ++g_cv_transparent_profile.candidates;
+#endif
+            const float result = exact_masked_ccoeff_score_at_prepared(
+                image, scratch.visible_pixels, masked_stats, x, y, masked_avx2,
+                scratch.visible_offsets, scratch.visible_bgr);
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            g_cv_transparent_profile.exact_ms += std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - started).count();
+#endif
+            return result;
+        };
         bool best_match_complete = false;
         cv::Point best_point;
         if (best_only) {
             double best_score = -1.0;
-            cv::minMaxLoc(scratch.score, nullptr, &best_score, nullptr, &best_point);
+            if (tile_selector) {
+                const auto peak = tile_selector->top();
+                best_score = peak.first;
+                best_point = peak.second;
+            } else {
+                cv::minMaxLoc(scratch.score, nullptr, &best_score, nullptr, &best_point);
+            }
             float final_score = static_cast<float>(best_score);
             if (use_transparent_mask && std::isfinite(best_score)) {
-                final_score = exact_masked_ccoeff_score_at(image, templ, *mask, best_point.x, best_point.y);
+                final_score = masked_score_at(best_point.x, best_point.y);
             } else if (match_mode == 0 && std::isfinite(best_score)) {
                 final_score = exact_color_score(best_point.x, best_point.y);
             } else if (best_score > 1.0 - 1e-6) {
@@ -2280,7 +2681,7 @@ int32_t find_cv_matches_opencv(
             const auto evaluate_point = [&](const cv::Point& point, float rough_score) {
                 float score = rough_score;
                 if (use_transparent_mask) {
-                    score = exact_masked_ccoeff_score_at(image, templ, *mask, point.x, point.y);
+                    score = masked_score_at(point.x, point.y);
                 } else if (match_mode == 0) {
                     score = exact_color_score(point.x, point.y);
                 } else if (score > 1.0f - 1e-6f) {
@@ -2301,14 +2702,25 @@ int32_t find_cv_matches_opencv(
                 const int32_t top = std::max(0, point.y - radius_y);
                 const int32_t right = std::min(scratch.score.cols, point.x + radius_x + 1);
                 const int32_t bottom = std::min(scratch.score.rows, point.y + radius_y + 1);
-                scratch.score(cv::Rect(left, top, right - left, bottom - top)).setTo(-1.0f);
+                const cv::Rect rectangle(left, top, right - left, bottom - top);
+                if (tile_selector) {
+                    tile_selector->suppressed(rectangle);
+                } else {
+                    scratch.score(rectangle).setTo(-1.0f);
+                }
             };
             if (best_only) {
                 suppress_peak(best_point);
                 while (candidates.empty()) {
                     double rough_score = -1.0;
                     cv::Point point;
-                    cv::minMaxLoc(scratch.score, nullptr, &rough_score, nullptr, &point);
+                    if (tile_selector) {
+                        const auto peak = tile_selector->top();
+                        rough_score = peak.first;
+                        point = peak.second;
+                    } else {
+                        cv::minMaxLoc(scratch.score, nullptr, &rough_score, nullptr, &point);
+                    }
                     if (!std::isfinite(rough_score) || rough_score < candidate_floor) break;
                     const bool accepted = evaluate_point(point, static_cast<float>(rough_score));
                     suppress_peak(point);
@@ -4122,7 +4534,11 @@ AIENGINE_EXPORT const char* AIENGINE_CALL AI_CvFindTransparentImages(
 
 #if defined(AIENGINE_CV_TEST_HOOKS)
 CV_TEST_EXPORT void CVTest_LastTimes(double* values) { std::copy(std::begin(g_cv_times),std::end(g_cv_times),values); }
+CV_TEST_EXPORT void CVTest_TransparentProfile(CVTestTransparentProfile* output) {
+    if (output != nullptr) *output = g_cv_transparent_profile;
+}
 CV_TEST_EXPORT void CVTest_Reference(int enabled) { g_cv_reference=enabled!=0; }
+CV_TEST_EXPORT void CVTest_ForceScalarMasked(int enabled) { g_cv_force_scalar_masked=enabled!=0; }
 CV_TEST_EXPORT void CVTest_Fault(int stage, int kind) {
     g_cv_fault_stage = stage; g_cv_fault_kind = kind;
 }
