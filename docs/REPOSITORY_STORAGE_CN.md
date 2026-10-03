@@ -40,6 +40,8 @@ powershell -File scripts/build_delivery.ps1 -PythonExe python -Nvidia
 配置、架构和全部安装文件SHA一致时直接复用，不下载、不重新构建。
 缓存缺失或损坏才恢复。OpenCV固定源提交、x86补丁、/MT和IPP；使用
 `-ForceRebuild`可显式重建。安装后记录本机实际产物SHA，因此不同机器编译时间戳不会造成永远重建。
+Windows依赖准备通过vswhere发现VS2022的实际安装目录，兼容BuildTools、
+Community、Professional和Enterprise；VC143运行库从该安装目录提取。
 
 NVIDIA头文件以SDK10.13.3.9实际文件SHA为准。公开源码标签头文件与SDK不完全相同，
 不能互换作为“同一构建”。缺失时下载固定SHA的官方SDK到系统临时目录，仅留下所需头文件和许可证。

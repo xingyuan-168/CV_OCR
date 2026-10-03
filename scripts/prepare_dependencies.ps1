@@ -79,10 +79,18 @@ function Get-VerifiedDownload {
     return $safePath
 }
 
+function Find-VisualStudio2022 {
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+    if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) { throw 'Visual Studio Installer / vswhere is required' }
+    $installation = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if ($LASTEXITCODE -ne 0 -or !$installation) { throw 'Visual Studio 2022 C++ tools were not found' }
+    return [IO.Path]::GetFullPath($installation.Trim())
+}
+
 function Find-CMake {
     $command = Get-Command cmake -ErrorAction SilentlyContinue
     if ($command) { return $command.Source }
-    $candidate = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+    $candidate = Join-Path (Find-VisualStudio2022) 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     throw "CMake from Visual Studio 2022 Build Tools was not found"
 }
@@ -145,7 +153,7 @@ function Prepare-Runtime {
     Copy-Item -LiteralPath (Join-Path $ortExtract "runtimes\win-x64\native\onnxruntime.lib") -Destination $libDir
     Copy-Item -LiteralPath (Join-Path $dmlExtract "bin\x64-win\DirectML.dll") -Destination $binDir
 
-    $redistRoot = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC"
+    $redistRoot = Join-Path (Find-VisualStudio2022) 'VC/Redist/MSVC'
     $crtDir = Get-ChildItem -LiteralPath $redistRoot -Directory |
         Where-Object Name -match '^\d+\.\d+\.\d+$' |
         Sort-Object { [version]$_.Name } -Descending |
