@@ -40,7 +40,11 @@
     },
     {
       "name": "ci-x64", "inherits": "release-x64", "binaryDir": "${sourceDir}/build/ci-x64",
-      "cacheVariables": {"AIENGINE_WITH_OPENCV": "OFF", "AIENGINE_WITH_ONNXRUNTIME": "OFF", "AIENGINE_EMBED_OCR_ASSETS": "OFF", "AIENGINE_ONNXRUNTIME_DIR": "", "AIENGINE_OPENCV_DIR": ""}
+      "cacheVariables": {"AIENGINE_WITH_OPENCV": "OFF", "AIENGINE_EMBED_OCR_ASSETS": "OFF", "AIENGINE_OPENCV_DIR": ""}
+    },
+    {
+      "name": "ci-worker", "inherits": "release-worker", "binaryDir": "${sourceDir}/build/ci-worker",
+      "cacheVariables": {"AIENGINE_EMBED_OCR_ASSETS": "OFF"}
     }
   ],
   "buildPresets": [
@@ -49,6 +53,7 @@
     {"name": "release-x64", "configurePreset": "release-x64", "configuration": "Release", "jobs": 4},
     {"name": "nvidia-x64", "configurePreset": "nvidia-x64", "configuration": "Release", "jobs": 4},
     {"name": "ci-x86", "configurePreset": "ci-x86", "configuration": "Release", "jobs": 4},
-    {"name": "ci-x64", "configurePreset": "ci-x64", "configuration": "Release", "jobs": 4}
+    {"name": "ci-x64", "configurePreset": "ci-x64", "configuration": "Release", "jobs": 4},
+    {"name": "ci-worker", "configurePreset": "ci-worker", "configuration": "Release", "jobs": 4}
   ]
 }

@@ -50,6 +50,14 @@ jobs:
         profile: [ci-x86, ci-x64]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore verified ONNX Runtime and DirectML SDK
+        shell: pwsh
+        run: |
+          ./scripts/prepare_dependencies.ps1 -OpenCVArchitecture None -PythonExe python
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build native API and tests
         shell: pwsh
         run: |
@@ -57,5 +65,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build --preset ${{ matrix.profile }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and pair the x64 Worker for the x86 proxy
+        if: matrix.profile == 'ci-x86'
+        shell: pwsh
+        run: |
+          cmake --preset ci-worker
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset ci-worker
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath build/ci-worker/Release/CQ_AI_worker.exe -Destination build/ci-x86/Release/CQ_AI_worker.exe
+      - name: Test real CPU YOLO transport and OCR logic
+        shell: pwsh
+        run: |
           ctest --test-dir build/${{ matrix.profile }} -C Release --output-on-failure -R 'ai_engine_(yolo_transport|ocr_color_filter|ocr_reading_order)_test'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

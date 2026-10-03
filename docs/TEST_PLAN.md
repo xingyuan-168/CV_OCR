@@ -8,6 +8,11 @@ and verify the unchanged deployed cohort through the independent x86 loader.
 After cleanup compare protected snapshots and measure the entire directory.
 Clean-checkout CI checks portable scripts and both native architectures; GPU
 performance remains an explicit target-machine acceptance, not CI coverage.
+Native CI uses the Windows2022 image with VS2022, restores the hash-verified
+ORT/DirectML SDK, and tests real CPU YOLO in the x64 DLL and the x86 proxy with a
+fresh paired x64 Worker. OpenCV performance and GPU checks remain local/target
+acceptance. Script checks use literal Windows PowerShell5.1 and PowerShell7
+steps; temporary path assertions compare resolved paths, including 8.3 aliases.
 
 | Trigger | Required checks |
 | --- | --- |
