@@ -1,0 +1,62 @@
+.版本 2
+
+' 在 e_language_onnx_module.txt 的声明之外加入；完整调用计时包含管道、预处理、推理和结果返回。
+.DLL命令 QueryPerformanceCounter, 整数型, "kernel32.dll", "QueryPerformanceCounter"
+    .参数 计数, 长整数型, 传址
+.DLL命令 QueryPerformanceFrequency, 整数型, "kernel32.dll", "QueryPerformanceFrequency"
+    .参数 频率, 长整数型, 传址
+
+.子程序 YOLO_完整调用毫秒, 双精度小数型
+.参数 模型句柄, 整数型
+.参数 BMP, 字节集
+.参数 结果JSON, 文本型, 传址
+.参数 错误文本, 文本型, 传址
+.局部变量 开始, 长整数型
+.局部变量 结束, 长整数型
+.局部变量 频率, 长整数型
+
+QueryPerformanceFrequency (频率)
+QueryPerformanceCounter (开始)
+结果JSON ＝ YOLO_InferJson (模型句柄, 取变量数据地址 (BMP), 取字节集长度 (BMP), 0.5, 0, 0)
+QueryPerformanceCounter (结束)
+错误文本 ＝ ""
+.如果真 (结果JSON ＝ "")
+    错误文本 ＝ AI_GetLastError ()
+    返回 (-1)
+.如果真结束
+返回 ((结束 － 开始) × 1000.0 ÷ 频率)
+
+' 五个调用线程共享一个已加载模型句柄，各自保存 BMP 和结果JSON。
+' 加载：YOLO_LoadModelFromPath (模型句柄, 模型路径, 标签路径, 0, AI_DEVICE_AUTO, 0, 推荐执行槽数)
+' 推荐执行槽数由真实五路校准报告提供；它不是内部线程数。
+' 测量期间不要逐帧输出日志，统计1000次调用的P50/P95/P99；独立重复三轮。
+' YOLO_GetLastLatencyUs 只表示最近完成的内部调用，不能用来给并发请求归属耗时。
+
+.子程序 YOLO_加载并查询, 逻辑型
+.参数 模型路径, 文本型
+.参数 推荐执行槽数, 整数型
+.参数 模型句柄, 整数型, 参考
+.参数 状态缓存, 字节集, 参考
+.参数 错误文本, 文本型, 参考
+
+错误文本 ＝ ""
+.如果真 (YOLO_Create (模型句柄) ＜ 0)
+    错误文本 ＝ AI_GetLastError ()
+    返回 (假)
+.如果真结束
+.如果真 (YOLO_LoadModelFromPath (模型句柄, 模型路径, "", 0, 0, 0, 推荐执行槽数) ＜ 0)
+    错误文本 ＝ AI_GetLastError ()
+    YOLO_Release (模型句柄)
+    模型句柄 ＝ 0
+    返回 (假)
+.如果真结束
+状态缓存 ＝ 取空白字节集 (8192)
+.如果真 (YOLO_GetRuntimeStatusJson (模型句柄, 状态缓存, 取字节集长度 (状态缓存)) ＜ 0)
+    错误文本 ＝ AI_GetLastError ()
+    YOLO_Release (模型句柄)
+    模型句柄 ＝ 0
+    返回 (假)
+.如果真结束
+' 状态缓存是UTF-8、0结尾JSON，使用项目UTF-8转换方法读取后检查active和selection_basis。
+' 成功后启动五个业务线程，全部结束后再YOLO_Release；仅在宿主整体退出时关闭Worker。
+返回 (真)

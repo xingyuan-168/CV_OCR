@@ -1,4 +1,4 @@
-' CQ_X86.dll 0.14.5（v23.5）易语言 32 位封装模块（本文件保存为UTF-8）
+﻿' CQ_X86.dll 0.14.6（v23.6，Worker协议26）易语言 32 位封装模块（本文件保存为UTF-8）
 ' 易语言所有文本型输入均按Windows当前ACP传入；标准AI_*接口使用UTF-8；模型、标签、OCR字符表的内存或文件内容仍为UTF-8。
 ' 只把 CQ_X86.dll 和 CQ_AI_worker.exe 放在调用程序EXE同目录；ORT、DirectML、VC运行库和内置OCR模型均压缩嵌入Worker。
 .版本 2
@@ -6,6 +6,7 @@
 .常量 AI_DEVICE_AUTO, "0", , 自动选择设备；先创建完整DirectML池，失败后重建完整CPU池
 .常量 AI_DEVICE_DIRECTML, "1", , 强制使用DirectML；Provider、DX12或Session创建失败时不整体降级
 .常量 AI_DEVICE_CPU, "2", , 强制使用纯CPU执行ONNX推理；不加载DirectML
+.常量 AI_DEVICE_TENSORRT, "3", , 仅YOLO；可选x64 NVIDIA模块；OCR不可使用
 .常量 AI_OCR_OUTPUT_TEXT, "1", , OCR纯文本输出；多行按识别顺序直接拼接且不插入分隔符
 .常量 AI_OCR_OUTPUT_JSON, "2", , OCR JSON输出；包含文本、置信度和左上角文本框
 .常量 AI_MODULE_CV, "1", , AI_GetLastLatencyUs使用的CV模块编号
@@ -170,8 +171,8 @@
     .参数 模型路径, 文本型, , 输入Windows当前ACP模型文件路径；绝对路径直接使用，相对路径以调用程序EXE所在目录为基准；ACP路径不存在时才兼容尝试UTF-8；不能为空且仅支持ONNX
     .参数 标签路径, 文本型, , 输入Windows当前ACP标签文件路径；无标签时传空文本；相对路径同样以调用程序EXE所在目录为基准；标签文件内容使用UTF-8且每行一个类别名称
     .参数 模型尺寸, 整数型, , 方形模型输入边长；填写0表示静态ONNX自动读取实际尺寸；动态模型必须填写320或640；显式填写时必须匹配模型输入
-    .参数 运行设备, 整数型, , 填写AI_DEVICE_AUTO、AI_DEVICE_DIRECTML或AI_DEVICE_CPU；AUTO先尝试DirectML，失败后使用CPU
-    .参数 GPU设备序号, 整数型, , GPU零基序号且必须大于等于0；CPU模式忽略但仍填写0；AUTO也会把该序号传给GPU provider
+    .参数 运行设备, 整数型, , 填写0=AUTO、1=DirectML、2=CPU或3=TensorRT；AUTO优先业务校准记录，未命中时做五路短基准
+    .参数 GPU设备序号, 整数型, , DirectML用DXGI序号，TensorRT用CUDA序号，均从0开始；AUTO分别尝试该数值；CPU填写0
     .参数 并发线程数, 整数型, , 当前模型Session池容量且必须大于0；表示可同时推理数量，不是ORT内部线程数；内部线程数由DLL自动计算
 .DLL命令 YOLO_LoadModelFromMemory, 整数型, "CQ_X86.dll", "YOLO_LoadModelFromMemory", 公开, 从内存向空句柄加载ONNX模型和可选标签；DLL成功前复制数据；成功返回0；失败返回负值
     .参数 模型句柄, 整数型, , YOLO_Create返回且尚未加载模型的有效句柄；加载失败后允许修正参数重试
@@ -180,9 +181,9 @@
     .参数 标签数据, 整数型, , 可选UTF-8标签文本字节首地址；无标签时传0且标签大小同时传0
     .参数 标签字节数, 整数型, , UTF-8标签文本字节数；无标签时传0；加载成功后原模型与标签字节集均可释放
     .参数 模型尺寸, 整数型, , 方形模型输入边长；填写0表示静态ONNX自动读取实际尺寸；动态模型必须填写320或640；best.onnx和smc.onnx均可填写0自动识别
-    .参数 运行设备, 整数型, , 填写AI_DEVICE_AUTO、AI_DEVICE_DIRECTML或AI_DEVICE_CPU；强制DirectML不可用时加载失败，AUTO允许降级CPU
-    .参数 GPU设备序号, 整数型, , GPU零基序号且必须大于等于0；CPU模式填写0
-    .参数 并发线程数, 整数型, , Session池容量且必须大于0；DLL按逻辑CPU数和该值自动计算每Session内部线程数，最大为4
+    .参数 运行设备, 整数型, , 填写0=AUTO、1=DirectML、2=CPU或3=TensorRT；显式后端失败不降级，AUTO允许选择其他后端
+    .参数 GPU设备序号, 整数型, , GPU零基序号；DirectML用DXGI序号，TensorRT用CUDA序号；CPU填写0
+    .参数 并发线程数, 整数型, , Session池容量且必须大于0；内部线程由业务校准或物理核预算选择，也可通过CQ_AI_YOLO_CPU_THREADS指定1..8；与业务线程分开
 .DLL命令 YOLO_InferJson, 文本型, "CQ_X86.dll", "YOLO_InferJson", 公开, 执行YOLO推理并直接返回Windows当前ANSI代码页JSON；无目标返回空数组文本；错误返回空文本
     .参数 模型句柄, 整数型, , 已成功加载模型的YOLO句柄；同一句柄可由多个业务线程安全共享
     .参数 BMP数据, 整数型, , 输入完整24位BGR BMP文件数据首地址；必须包含BMP文件头和像素数据

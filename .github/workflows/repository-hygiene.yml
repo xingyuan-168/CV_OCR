@@ -10,8 +10,73 @@ permissions:
 jobs:
   verify-current-release:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        shell: [powershell, pwsh]
     steps:
       - uses: actions/checkout@v4
-      - name: Verify v23.5 release, documentation and repository layout
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify current release with Windows PowerShell
+        if: matrix.shell == 'powershell'
+        shell: powershell
+        run: |
+          python scripts/check_governance.py --all --working-tree --require-clean
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify current release with PowerShell 7
+        if: matrix.shell == 'pwsh'
         shell: pwsh
-        run: ./scripts/check_repository_hygiene.ps1 -CheckWorkingTree -RequireClean
+        run: |
+          python scripts/check_governance.py --all --working-tree --require-clean
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: astral-sh/setup-uv@v6
+        if: matrix.shell == 'pwsh'
+        with:
+          version: '0.12.22'
+      - name: Prepare pinned governance runtime
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        run: |
+          ./scripts/prepare_governance.ps1
+          & .cache/aios-source/.venv/Scripts/codex-os.exe check . --change-class small_change --requirement-id REQ-GOV-001 --json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  native-architectures:
+    # Release presets use Visual Studio 17 2022; windows-latest now has VS2026.
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [ci-x86, ci-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore verified ONNX Runtime and DirectML SDK
+        shell: pwsh
+        run: |
+          ./scripts/prepare_dependencies.ps1 -OpenCVArchitecture None -PythonExe python
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build native API and tests
+        shell: pwsh
+        run: |
+          cmake --preset ${{ matrix.profile }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset ${{ matrix.profile }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and pair the x64 Worker for the x86 proxy
+        if: matrix.profile == 'ci-x86'
+        shell: pwsh
+        run: |
+          cmake --preset ci-worker
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset ci-worker
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath build/ci-worker/Release/CQ_AI_worker.exe -Destination build/ci-x86/Release/CQ_AI_worker.exe
+      - name: Test real CPU YOLO transport and OCR logic
+        shell: pwsh
+        run: |
+          ctest --test-dir build/${{ matrix.profile }} -C Release --output-on-failure -R 'ai_engine_(yolo_transport|ocr_color_filter|ocr_reading_order)_test'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

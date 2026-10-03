@@ -1,27 +1,23 @@
-# CQ_AI v23.5
+# CQ_AI v23.6
 
-CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。当前仓库只维护一个交付基线：
+> 当前可用版为 **0.14.6 / v23.6 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [v23.6交付说明](docs/V23_6_DELIVERY_CN.md)。
 
-| 项目版本 | 交付版本 | Worker 协议 | 公开导出 |
+CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
+
+| 项目版本 | 交付版本 | Worker协议 | 公开函数 |
 | --- | --- | --- | --- |
-| `0.14.5` | `v23.5` | `25` | `60` |
+| `0.14.6` | `v23.6` | `26` | `60` |
 
-32 位易语言使用 `CQ_X86.dll`，OCR/YOLO 请求通过命名管道交给同目录的
-`CQ_AI_worker.exe`；CV 在 x86 DLL 内直接执行。64 位 Python Wheel 直接加载
-`CQ_AI_x64.dll`，不启动 Worker。
+32位易语言使用 `CQ_X86.dll`；OCR/YOLO由同目录 `CQ_AI_worker.exe` 处理，CV在DLL内执行。Python x64直接加载 `CQ_AI_x64.dll`。
 
 ## 当前交付物
 
-`release/v23.5/` 是唯一正式交付目录：
+`output/` 固定只放 `CQ_X86.dll`、`CQ_AI_worker.exe`、`易语言_DLL_API_说明.html`。当前ZIP、Wheel及验证证据由 `release/current.json` 选择。NVIDIA大包仅在独立交付目录保留一份，诊断包及本机审计留在 `outpush/`。TensorRT/FP16/Graph及五窗口20/30ms性能必须由E5-2696 v4＋RTX2070实测。
 
-- `CQ_AI_e_language_v23.5.zip`：易语言 x86 DLL、x64 Worker 和 API HTML。
-- `cq_ai_engine-0.14.5-py3-none-win_amd64.whl`：Python x64 离线 Wheel。
-- `manifest.json`：版本、协议、文件大小、SHA-256 和包内容约束。
-
-验证正式交付物：
+`release/v23.5/` 保留原来的ZIP、0.14.5 Wheel及manifest，成员和成品哈希不改变。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1 -AllowSourceCandidate
 ```
 
 ## 主要能力
@@ -41,50 +37,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_relea
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare_dependencies.ps1
 ```
 
-构建 x64 Worker：
+统一构建x86 DLL、x64 Worker和x64 DLL：
 
 ```powershell
-cmake -S . -B build-release-worker-x64 -G "Visual Studio 17 2022" -A x64 `
-  -DAIENGINE_WITH_ONNXRUNTIME=ON `
-  -DAIENGINE_ONNXRUNTIME_DIR="third_party/runtime/ort-directml-1.24.4" `
-  -DAIENGINE_EMBED_OCR_ASSETS=ON `
-  -DAIENGINE_BUILD_TESTS=OFF
-cmake --build build-release-worker-x64 --config Release --parallel
+powershell -File scripts/build_delivery.ps1 -PythonExe python
 ```
 
-构建 x86 DLL 和测试：
+有效依赖按版本、架构和SHA复用，避免每次下载或重建。可选模块加`-Nvidia`。
+容量目标、归档、清理和缓存恢复见[仓库容量说明](docs/REPOSITORY_STORAGE_CN.md)。
+基础交付可通过`python scripts/package_delivery.py --reuse-current --out outpush/verified-copy`独立导出。
 
-```powershell
-cmake -S . -B build-release-x86 -G "Visual Studio 17 2022" -A Win32 `
-  -DAIENGINE_WITH_OPENCV=ON `
-  -DAIENGINE_OPENCV_DIR="third_party/opencv-5.0.0-static-mt/x86" `
-  -DAIENGINE_WITH_ONNXRUNTIME=OFF `
-  -DAIENGINE_BUILD_TESTS=ON
-cmake --build build-release-x86 --config Release --parallel
-Copy-Item build-release-worker-x64/Release/CQ_AI_worker.exe build-release-x86/Release/
-ctest --test-dir build-release-x86 -C Release --output-on-failure
-```
-
-生成可再生输出到被忽略的 `outpush/`，验收后晋升为唯一正式交付：
+生成交付前先完成 [v23.6验证步骤](docs/V23_6_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1
+# Python采用独立新目录；不覆盖历史Wheel。
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/promote_release.ps1
 ```
 
-晋升脚本根据成品重新计算大小与 SHA-256，经临时目录验证后替换
-`release/v23.5/`。普通构建不会直接覆盖正式交付。
-
-## 文档
-
-- [项目与构建说明](docs/PROJECT_GUIDE_CN.md)
-- [v23.5 运行和故障排查](docs/MINIMAL_RUNTIME_README_CN.md)
-- [v23.5 交付基线](docs/V23_5_DELIVERY_BASELINE_CN.md)
-- [易语言 DLL API](docs/易语言_DLL_API_说明.html)
-- [Python 使用说明](python/README.md)
-
-公开 ABI 以 `include/ai_engine.h` 为准，Worker 协议以
-`src/worker_protocol.h` 为准，正式成品大小和哈希以
-`release/v23.5/manifest.json` 为准。第三方许可可通过
-`CQ_AI_worker.exe --third-party-notices` 查看，也包含在 Python Wheel 中。
+占用或验证失败会保留、恢复原配套文件；回滚三文件与原哈希保存在 `outpush/rollback/`。新版本以 `promote_release.ps1` 注册；已注册版本不可替换。NVIDIA SDK准备、可选模块构建与真实BMP校准见 [YOLO说明](docs/YOLO_OPTIMIZATION_CN.md)。

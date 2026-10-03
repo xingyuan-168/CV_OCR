@@ -8,15 +8,21 @@
 // C 兼容结构体、整数常量和 stdcall 导出，避免公开 C++ 类型。
 #if defined(_WIN32)
 #define AIENGINE_CALL __stdcall
+#ifndef AIENGINE_EXPORT
 #define AIENGINE_EXPORT extern "C" __declspec(dllexport)
+#endif
 #else
 #define AIENGINE_CALL
+#ifndef AIENGINE_EXPORT
 #define AIENGINE_EXPORT extern "C" __attribute__((visibility("default")))
+#endif
 #endif
 
 #define AIENGINE_VERSION_MAJOR 0
 #define AIENGINE_VERSION_MINOR 14
-#define AIENGINE_VERSION_PATCH 5
+#define AIENGINE_VERSION_PATCH 6
+#define AIENGINE_VERSION_STRING "0.14.6"
+#define AIENGINE_DELIVERY_STRING "v23.6"
 
 #define AIENGINE_MAX_LABEL 32
 #define AIENGINE_MAX_TEXT 512
@@ -60,13 +66,13 @@ enum AIOcrLatencyStage {
     AI_OCR_STAGE_POSTPROCESS = 3
 };
 
-// ONNX Runtime YOLO/OCR 会话使用的运行设备选择。
-// AUTO 始终发布单一 Provider 的完整 Session 池：x86 Worker 按短基准选择，
-// x64 直连运行时在 DirectML 初始化或 Session 创建失败时改用 CPU。
+// YOLO 使用 0..3；OCR 和 AI_InitEx 使用 0..2。
+// YOLO AUTO 优先采用真实 BMP 校准记录，否则按五路短基准发布单一后端池。
 enum AIRuntimeDevice {
     AI_DEVICE_AUTO = 0,
     AI_DEVICE_DIRECTML = 1,
-    AI_DEVICE_CPU = 2
+    AI_DEVICE_CPU = 2,
+    AI_DEVICE_TENSORRT = 3 // YOLO only; optional x64 NVIDIA module.
 };
 
 // AI_OcrRecognizeLine(s) 文本辅助接口的输出格式。
@@ -536,6 +542,8 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL OCR_Release(void);
 
 AIENGINE_EXPORT int32_t AIENGINE_CALL YOLO_Create(int32_t* out_handle);
 
+// session_count 是正整数执行槽数量，不是 ORT 内部线程数。
+// TensorRT=3 需要可选 x64 模块；FP16/Graph 由验证过的业务记录启用。
 AIENGINE_EXPORT int32_t AIENGINE_CALL YOLO_LoadModelFromPath(
     int32_t handle,
     const char* model_path,

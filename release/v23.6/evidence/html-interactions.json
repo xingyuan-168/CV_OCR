@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "sections": 62,
+  "links": 62,
+  "offline": true,
+  "search_case_insensitive": true,
+  "deep_link": true,
+  "unknown_id_safe": true,
+  "browser_render_verified": false,
+  "browser_limitation": "Codex in-app browser webview did not attach on two attempts; script behavior verified in isolated DOM contract.",
+  "filtered_links_explicitly_hidden_by_css": true
+}

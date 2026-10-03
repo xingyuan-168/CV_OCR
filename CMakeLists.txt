@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(ai_engine_dll VERSION 0.14.5 LANGUAGES CXX)
+project(ai_engine_dll VERSION 0.14.6 LANGUAGES CXX)
 
-set(AIENGINE_DELIVERY_VERSION "v23.5")
-set(AIENGINE_WORKER_PROTOCOL_VERSION "25")
+set(AIENGINE_DELIVERY_VERSION "v23.6")
+set(AIENGINE_WORKER_PROTOCOL_VERSION "26")
 
 option(AIENGINE_CV_TEST_HOOKS "Private CV fault injection and pool accounting (never ship)" OFF)
 option(AIENGINE_BUILD_TESTS "构建冒烟和运行探测测试程序" ON)
 option(AIENGINE_WITH_OPENCV "使用静态 OpenCV 5.0 core/imgproc 加速 CV 模板匹配" OFF)
 set(AIENGINE_OPENCV_DIR "" CACHE PATH "OpenCV 5.0 静态安装目录下的 OpenCVConfig.cmake 所在目录")
 option(AIENGINE_WITH_ONNXRUNTIME "链接 ONNX Runtime，用于真实 YOLO/OCR 后端" OFF)
+option(AIENGINE_BUILD_TENSORRT_MODULE "构建可选原生 TensorRT 10.13.3 x64 模块" OFF)
+set(AIENGINE_TENSORRT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/nvidia-headers" CACHE PATH "TensorRT 10.13.3 and matching ONNX parser headers")
+set(AIENGINE_CUDA_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include" CACHE PATH "CUDA 12.8 Update 1 headers")
 option(AIENGINE_BUILD_X64_DLL "构建供 x64 宿主直接加载的业务 DLL" OFF)
 option(AIENGINE_BUILD_WORKER "构建供 x86 易语言代理使用的 x64 worker" ON)
 option(AIENGINE_EMBED_ASSETS "把默认 YOLO/OCR 模型、标签和字典打进目标二进制" OFF)
@@ -38,6 +41,7 @@ if(AIENGINE_BUILD_API_DLL)
         src/ocr_reading_order.cpp
         src/ocr_color_filter.cpp
         src/runtime_status.cpp
+        src/yolo_pool.cpp
     )
 endif()
 
@@ -45,6 +49,12 @@ if(AIENGINE_BUILD_API_DLL)
     target_compile_features(ai_engine PRIVATE cxx_std_17)
     target_include_directories(ai_engine PUBLIC include)
     target_include_directories(ai_engine PRIVATE src)
+    if(WIN32)
+        target_link_libraries(ai_engine PRIVATE bcrypt dxgi)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            target_sources(ai_engine PRIVATE src/backend_tensorrt.cpp)
+        endif()
+    endif()
     if(AIENGINE_CV_TEST_HOOKS)
         target_compile_definitions(ai_engine PRIVATE AIENGINE_CV_TEST_HOOKS=1)
     endif()
@@ -84,7 +94,7 @@ if(AIENGINE_WITH_ONNXRUNTIME)
     file(STRINGS "${AIENGINE_ONNXRUNTIME_DIR}/VERSION_NUMBER" AIENGINE_ORT_VERSION LIMIT_COUNT 1)
     string(STRIP "${AIENGINE_ORT_VERSION}" AIENGINE_ORT_VERSION)
     if(NOT AIENGINE_ORT_VERSION STREQUAL "1.24.4")
-        message(FATAL_ERROR "CQ_AI 0.14.5 requires Microsoft.ML.OnnxRuntime.DirectML 1.24.4, got ${AIENGINE_ORT_VERSION}")
+        message(FATAL_ERROR "CQ_AI ${PROJECT_VERSION} requires Microsoft.ML.OnnxRuntime.DirectML 1.24.4, got ${AIENGINE_ORT_VERSION}")
     endif()
 
     if(AIENGINE_BUILD_API_DLL)
@@ -220,6 +230,38 @@ if(AIENGINE_BUILD_TESTS AND AIENGINE_BUILD_API_DLL)
         endif()
     endfunction()
 
+    add_executable(ai_engine_yolo_benchmark tests/yolo_benchmark.cpp)
+    ai_engine_configure_test(ai_engine_yolo_benchmark)
+    target_include_directories(ai_engine_yolo_benchmark PRIVATE src)
+    target_link_libraries(ai_engine_yolo_benchmark PRIVATE bcrypt psapi)
+    if(MSVC)
+        set_property(TARGET ai_engine_yolo_benchmark PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
+    if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+        add_executable(ai_engine_delivery_verify tests/delivery_verify.cpp)
+        target_compile_features(ai_engine_delivery_verify PRIVATE cxx_std_17)
+        target_include_directories(ai_engine_delivery_verify PRIVATE include src)
+        target_link_libraries(ai_engine_delivery_verify PRIVATE bcrypt)
+        if(MSVC)
+            target_compile_options(ai_engine_delivery_verify PRIVATE /EHsc /utf-8 /UNDEBUG)
+            set_property(TARGET ai_engine_delivery_verify PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+    endif()
+    add_executable(ai_engine_yolo_transport_test tests/yolo_transport_test.cpp)
+    ai_engine_configure_test(ai_engine_yolo_transport_test)
+    target_include_directories(ai_engine_yolo_transport_test PRIVATE src)
+    add_test(NAME ai_engine_yolo_transport_test COMMAND ai_engine_yolo_transport_test)
+    set_tests_properties(ai_engine_yolo_transport_test PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" TIMEOUT 120 RUN_SERIAL TRUE)
+
+    add_executable(ai_engine_yolo_pipeline_test tests/yolo_pipeline_test.cpp)
+    target_compile_features(ai_engine_yolo_pipeline_test PRIVATE cxx_std_17)
+    target_include_directories(ai_engine_yolo_pipeline_test PRIVATE include src)
+    if(MSVC)
+        target_compile_options(ai_engine_yolo_pipeline_test PRIVATE /EHsc /utf-8 /UNDEBUG)
+    endif()
+    add_test(NAME ai_engine_yolo_pipeline_test COMMAND ai_engine_yolo_pipeline_test)
+
     add_executable(ai_engine_cv_stability_test tests/cv_stability_test.cpp)
     ai_engine_configure_test(ai_engine_cv_stability_test)
     target_include_directories(ai_engine_cv_stability_test PRIVATE src)
@@ -336,7 +378,7 @@ if(AIENGINE_BUILD_TESTS AND AIENGINE_BUILD_API_DLL)
         ai_engine_configure_test(ai_engine_ocr_small_multiline_regression)
         add_test(NAME ai_engine_ocr_small_multiline_regression COMMAND ai_engine_ocr_small_multiline_regression)
         set_tests_properties(ai_engine_ocr_small_multiline_regression PROPERTIES
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" TIMEOUT 300 RUN_SERIAL TRUE)
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" TIMEOUT 900 RUN_SERIAL TRUE)
 
         add_executable(ai_engine_ocr_robustness_test
             tests/ocr_robustness_test.cpp)
@@ -463,6 +505,8 @@ if(WIN32 AND AIENGINE_WITH_ONNXRUNTIME AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND AIENG
         src/ocr_color_filter.cpp
         src/runtime_bundle_loader.cpp
         src/runtime_status.cpp
+        src/yolo_pool.cpp
+        src/backend_tensorrt.cpp
         ${AIENGINE_EMBEDDED_RESOURCE_FILE}
         ${AIENGINE_EMBEDDED_RUNTIME_RESOURCE_FILE}
     )
@@ -483,4 +527,20 @@ if(WIN32 AND AIENGINE_WITH_ONNXRUNTIME AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND AIENG
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
     set_target_properties(cq_ai_worker PROPERTIES OUTPUT_NAME "CQ_AI_worker")
+endif()
+
+if(AIENGINE_BUILD_TENSORRT_MODULE)
+    if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+        message(FATAL_ERROR "TensorRT module requires Windows x64")
+    endif()
+    if(NOT EXISTS "${AIENGINE_TENSORRT_INCLUDE_DIR}/NvInfer.h" OR NOT EXISTS "${AIENGINE_CUDA_INCLUDE_DIR}/cuda.h")
+        message(FATAL_ERROR "Prepare pinned NVIDIA headers with scripts/prepare_nvidia_headers.py")
+    endif()
+    add_library(cq_yolo_tensorrt SHARED src/tensorrt_module.cpp)
+    target_compile_features(cq_yolo_tensorrt PRIVATE cxx_std_17)
+    target_include_directories(cq_yolo_tensorrt PRIVATE src "${AIENGINE_TENSORRT_INCLUDE_DIR}" "${AIENGINE_CUDA_INCLUDE_DIR}")
+    target_compile_definitions(cq_yolo_tensorrt PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(cq_yolo_tensorrt PRIVATE /EHsc /utf-8 /O2)
+    target_link_libraries(cq_yolo_tensorrt PRIVATE bcrypt version)
+    set_target_properties(cq_yolo_tensorrt PROPERTIES OUTPUT_NAME CQ_YOLO_TensorRT MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()

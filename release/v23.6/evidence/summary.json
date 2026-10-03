@@ -1,0 +1,564 @@
+{
+  "schema": 1,
+  "functional_passed": true,
+  "memory_growth_detected": false,
+  "formal_calls": 60000,
+  "formal_errors": 0,
+  "formal_measurements": [
+    {
+      "group": "initial-measurement",
+      "mode": "continuous",
+      "round": 0,
+      "lane_p50_ms": [
+        200.3749,
+        198.4489,
+        199.1138,
+        199.4068,
+        199.3087
+      ],
+      "lane_p95_ms": [
+        242.701,
+        237.822,
+        238.7963,
+        238.7536,
+        237.2381
+      ],
+      "lane_p99_ms": [
+        264.5804,
+        269.3221,
+        268.5336,
+        265.2705,
+        271.7471
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 199.4068,
+        "p95_ms": 238.9909,
+        "p99_ms": 268.5336
+      },
+      "throughput_per_s": 24.7844045,
+      "path": "outpush\\v23.6-validation\\initial-measurement\\continuous.json",
+      "sha256": "0a61e04c84bde1ebf722e2193118a3bf131dbc291a044880292917500c51403d"
+    },
+    {
+      "group": "initial-measurement",
+      "mode": "continuous",
+      "round": 1,
+      "lane_p50_ms": [
+        200.3492,
+        202.115,
+        200.5994,
+        201.0258,
+        200.5867
+      ],
+      "lane_p95_ms": [
+        239.6727,
+        240.3699,
+        242.4058,
+        242.0759,
+        238.5325
+      ],
+      "lane_p99_ms": [
+        274.2928,
+        272.8575,
+        277.3997,
+        271.6651,
+        261.209
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 200.9298,
+        "p95_ms": 240.211,
+        "p99_ms": 272.811
+      },
+      "throughput_per_s": 24.6170506,
+      "path": "outpush\\v23.6-validation\\initial-measurement\\continuous.json",
+      "sha256": "0a61e04c84bde1ebf722e2193118a3bf131dbc291a044880292917500c51403d"
+    },
+    {
+      "group": "initial-measurement",
+      "mode": "continuous",
+      "round": 2,
+      "lane_p50_ms": [
+        201.9279,
+        202.0824,
+        202.133,
+        202.7546,
+        201.075
+      ],
+      "lane_p95_ms": [
+        239.9345,
+        243.001,
+        244.1172,
+        245.4851,
+        240.8624
+      ],
+      "lane_p99_ms": [
+        274.0664,
+        264.2045,
+        266.369,
+        275.5542,
+        265.76
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 202.0074,
+        "p95_ms": 243.1963,
+        "p99_ms": 270.6602
+      },
+      "throughput_per_s": 24.4538445,
+      "path": "outpush\\v23.6-validation\\initial-measurement\\continuous.json",
+      "sha256": "0a61e04c84bde1ebf722e2193118a3bf131dbc291a044880292917500c51403d"
+    },
+    {
+      "group": "initial-measurement",
+      "mode": "simultaneous",
+      "round": 0,
+      "lane_p50_ms": [
+        197.9064,
+        198.3141,
+        196.8977,
+        197.7477,
+        196.254
+      ],
+      "lane_p95_ms": [
+        225.5202,
+        228.7832,
+        227.5159,
+        227.4135,
+        226.9851
+      ],
+      "lane_p99_ms": [
+        253.297,
+        254.0791,
+        253.1283,
+        248.6907,
+        245.1384
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 197.4692,
+        "p95_ms": 227.5159,
+        "p99_ms": 252.9864
+      },
+      "throughput_per_s": 23.6580168,
+      "path": "outpush\\v23.6-validation\\initial-measurement\\simultaneous.json",
+      "sha256": "e133903a28f3a8990a71113d24deb3232f71176fc3a3a73e06f1c852b83089f5"
+    },
+    {
+      "group": "initial-measurement",
+      "mode": "simultaneous",
+      "round": 1,
+      "lane_p50_ms": [
+        183.6435,
+        183.5939,
+        182.4143,
+        183.1888,
+        184.6874
+      ],
+      "lane_p95_ms": [
+        224.7578,
+        221.9087,
+        226.131,
+        224.1773,
+        224.2835
+      ],
+      "lane_p99_ms": [
+        255.0201,
+        249.1199,
+        252.1392,
+        255.7412,
+        260.1559
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 183.4452,
+        "p95_ms": 224.3588,
+        "p99_ms": 255.7656
+      },
+      "throughput_per_s": 32.9177693,
+      "path": "outpush\\v23.6-validation\\initial-measurement\\simultaneous.json",
+      "sha256": "e133903a28f3a8990a71113d24deb3232f71176fc3a3a73e06f1c852b83089f5"
+    },
+    {
+      "group": "initial-measurement",
+      "mode": "simultaneous",
+      "round": 2,
+      "lane_p50_ms": [
+        24.8622,
+        25.5972,
+        26.4136,
+        26.6401,
+        25.0727
+      ],
+      "lane_p95_ms": [
+        32.7801,
+        41.7546,
+        37.3135,
+        38.9559,
+        32.2093
+      ],
+      "lane_p99_ms": [
+        42.5587,
+        54.2482,
+        55.3773,
+        50.8718,
+        41.6702
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 25.709,
+        "p95_ms": 37.3135,
+        "p99_ms": 49.9601
+      },
+      "throughput_per_s": 153.028874,
+      "path": "outpush\\v23.6-validation\\initial-measurement\\simultaneous.json",
+      "sha256": "e133903a28f3a8990a71113d24deb3232f71176fc3a3a73e06f1c852b83089f5"
+    },
+    {
+      "group": "latest",
+      "mode": "continuous",
+      "round": 0,
+      "lane_p50_ms": [
+        24.1858,
+        24.1436,
+        27.5294,
+        27.4258,
+        25.0837
+      ],
+      "lane_p95_ms": [
+        62.2486,
+        65.7711,
+        69.544,
+        76.9891,
+        65.6364
+      ],
+      "lane_p99_ms": [
+        97.4904,
+        106.4593,
+        101.3901,
+        112.9982,
+        97.4985
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 25.5714,
+        "p95_ms": 67.9673,
+        "p99_ms": 105.519
+      },
+      "throughput_per_s": 145.123667,
+      "path": "outpush\\v23.6-validation\\continuous.json",
+      "sha256": "66398346b3b683816157b0d4528d34268fdcbd2fe0f7747626cc421e219c35e5"
+    },
+    {
+      "group": "latest",
+      "mode": "continuous",
+      "round": 1,
+      "lane_p50_ms": [
+        26.8805,
+        27.4851,
+        30.7631,
+        30.7322,
+        31.1339
+      ],
+      "lane_p95_ms": [
+        54.2376,
+        56.4236,
+        76.1923,
+        82.4061,
+        83.3057
+      ],
+      "lane_p99_ms": [
+        84.2167,
+        85.1861,
+        106.3776,
+        106.5433,
+        114.8979
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 29.1389,
+        "p95_ms": 72.7912,
+        "p99_ms": 101.6408
+      },
+      "throughput_per_s": 130.004149,
+      "path": "outpush\\v23.6-validation\\continuous.json",
+      "sha256": "66398346b3b683816157b0d4528d34268fdcbd2fe0f7747626cc421e219c35e5"
+    },
+    {
+      "group": "latest",
+      "mode": "continuous",
+      "round": 2,
+      "lane_p50_ms": [
+        186.8019,
+        187.7258,
+        187.3999,
+        187.8503,
+        187.8093
+      ],
+      "lane_p95_ms": [
+        236.9278,
+        238.4271,
+        237.9463,
+        235.4476,
+        236.9028
+      ],
+      "lane_p99_ms": [
+        283.2435,
+        278.6316,
+        272.38,
+        273.267,
+        275.8523
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 187.6042,
+        "p95_ms": 237.4759,
+        "p99_ms": 278.6316
+      },
+      "throughput_per_s": 31.9264361,
+      "path": "outpush\\v23.6-validation\\continuous.json",
+      "sha256": "66398346b3b683816157b0d4528d34268fdcbd2fe0f7747626cc421e219c35e5"
+    },
+    {
+      "group": "latest",
+      "mode": "simultaneous",
+      "round": 0,
+      "lane_p50_ms": [
+        198.1761,
+        198.4811,
+        197.8115,
+        199.1665,
+        196.8135
+      ],
+      "lane_p95_ms": [
+        227.0814,
+        224.8445,
+        227.8429,
+        225.3672,
+        225.4705
+      ],
+      "lane_p99_ms": [
+        256.8016,
+        263.5535,
+        258.955,
+        249.3913,
+        249.6283
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 198.0576,
+        "p95_ms": 226.6891,
+        "p99_ms": 254.2256
+      },
+      "throughput_per_s": 23.6089077,
+      "path": "outpush\\v23.6-validation\\simultaneous.json",
+      "sha256": "531e74f53cde7eb67db091e616a6247acca3951fba3ec4a78fed6a0374ab2ecf"
+    },
+    {
+      "group": "latest",
+      "mode": "simultaneous",
+      "round": 1,
+      "lane_p50_ms": [
+        197.0526,
+        197.3369,
+        197.0415,
+        197.1986,
+        197.2646
+      ],
+      "lane_p95_ms": [
+        228.5548,
+        230.4204,
+        226.8268,
+        228.1225,
+        227.9784
+      ],
+      "lane_p99_ms": [
+        268.2225,
+        253.0141,
+        267.6626,
+        262.7919,
+        260.8382
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 197.1823,
+        "p95_ms": 228.3968,
+        "p99_ms": 262.7919
+      },
+      "throughput_per_s": 23.5690763,
+      "path": "outpush\\v23.6-validation\\simultaneous.json",
+      "sha256": "531e74f53cde7eb67db091e616a6247acca3951fba3ec4a78fed6a0374ab2ecf"
+    },
+    {
+      "group": "latest",
+      "mode": "simultaneous",
+      "round": 2,
+      "lane_p50_ms": [
+        198.2606,
+        196.4137,
+        198.3938,
+        199.2955,
+        198.8821
+      ],
+      "lane_p95_ms": [
+        226.4127,
+        226.1824,
+        225.6889,
+        226.6306,
+        225.9308
+      ],
+      "lane_p99_ms": [
+        250.9382,
+        254.1841,
+        259.6048,
+        250.6101,
+        248.068
+      ],
+      "overall": {
+        "count": 5000,
+        "p50_ms": 198.1936,
+        "p95_ms": 226.2741,
+        "p99_ms": 254.4936
+      },
+      "throughput_per_s": 23.619564,
+      "path": "outpush\\v23.6-validation\\simultaneous.json",
+      "sha256": "531e74f53cde7eb67db091e616a6247acca3951fba3ec4a78fed6a0374ab2ecf"
+    }
+  ],
+  "soak_calls": 39708,
+  "soak_errors": 0,
+  "soak_elapsed_s": 1800.14052,
+  "soak": {
+    "round": 0,
+    "errors": 0,
+    "elapsed_s": 1800.14052,
+    "lanes": [
+      {
+        "count": 7944,
+        "p50_ms": 217.3815,
+        "p95_ms": 298.8676,
+        "p99_ms": 459.3472
+      },
+      {
+        "count": 7940,
+        "p50_ms": 217.1531,
+        "p95_ms": 299.873,
+        "p99_ms": 454.6392
+      },
+      {
+        "count": 7942,
+        "p50_ms": 217.4146,
+        "p95_ms": 299.7317,
+        "p99_ms": 450.1705
+      },
+      {
+        "count": 7942,
+        "p50_ms": 217.5747,
+        "p95_ms": 298.2032,
+        "p99_ms": 451.9687
+      },
+      {
+        "count": 7940,
+        "p50_ms": 217.3625,
+        "p95_ms": 300.0468,
+        "p99_ms": 455.8128
+      }
+    ],
+    "overall": {
+      "count": 39708,
+      "p50_ms": 217.3804,
+      "p95_ms": 299.3857,
+      "p99_ms": 453.9987
+    },
+    "throughput_per_s": 22.058278,
+    "client_cpu_core_equivalents": 0.0119608718,
+    "worker_cpu_core_equivalents": 3.1636506,
+    "client_private_peak": 120328192,
+    "worker_private_peak": 423567360
+  },
+  "memory_full_period": {
+    "client_private_mib": {
+      "min": 114.53515625,
+      "max": 114.68359375,
+      "initial_mean": 114.53515625,
+      "final_mean": 114.53515625,
+      "growth": 0.0
+    },
+    "worker_private_mib": {
+      "min": 210.18359375,
+      "max": 403.9453125,
+      "initial_mean": 210.196875,
+      "final_mean": 227.0078125,
+      "growth": 16.810937499999994
+    },
+    "continuous_growth_detected": true,
+    "samples_after_warmup": 1527
+  },
+  "memory_steady_final_600s": {
+    "samples": 544,
+    "client_private_mib": {
+      "min": 114.53515625,
+      "max": 114.53515625,
+      "initial_mean": 114.53515625,
+      "final_mean": 114.53515625,
+      "growth": 0.0
+    },
+    "worker_private_mib": {
+      "min": 227.0078125,
+      "max": 227.0078125,
+      "initial_mean": 227.0078125,
+      "final_mean": 227.0078125,
+      "growth": 0.0
+    }
+  },
+  "memory_assessment": "The full-period first/last mean warning is retained. During t234..294s a separate five-slot diagnostic model raised the Worker peak to403.945MiB then returned to227.008MiB. Its allocator retained16.811MiB relative to the early210.197MiB baseline. Client and Worker private memory stayed exactly114.535/227.008MiB in the final600s; no continuing growth observed. This controlled extra model load is not a single-model isolated memory baseline.",
+  "native_regressions": {
+    "x86_passed": 16,
+    "x64_passed": 12,
+    "small_multiline_initial_timeout_s": 300,
+    "small_multiline_retest_passed_s": 387.39,
+    "small_multiline_final_timeout_s": 900
+  },
+  "python_installed_wheel": {
+    "version": "CQ_AI_x64/0.14.6",
+    "dll": "D:\\Projects-tools\\OpenCV\\outpush\\python-v23.6-delivery\\installed-venv\\Lib\\site-packages\\cq_ai_engine\\_native\\CQ_AI_x64.dll"
+  },
+  "optional_dependency_checks": {
+    "passed": true,
+    "checks": {
+      "missing-module": {
+        "passed": true,
+        "exit_code": 2,
+        "log": "D:\\Projects-tools\\OpenCV\\outpush\\v23.6-validation\\optional-dependency-checks\\missing-module.log"
+      },
+      "missing-nvidia-runtime": {
+        "passed": true,
+        "exit_code": 2,
+        "log": "D:\\Projects-tools\\OpenCV\\outpush\\v23.6-validation\\optional-dependency-checks\\missing-nvidia-runtime.log"
+      },
+      "cpu-without-nvidia": {
+        "passed": true,
+        "exit_code": 0,
+        "log": "D:\\Projects-tools\\OpenCV\\outpush\\v23.6-validation\\optional-dependency-checks\\cpu-without-nvidia.log"
+      }
+    }
+  },
+  "html_interactions": {
+    "passed": true,
+    "sections": 62,
+    "links": 62,
+    "offline": true,
+    "search_case_insensitive": true,
+    "deep_link": true,
+    "unknown_id_safe": true,
+    "browser_render_verified": false,
+    "browser_limitation": "Codex in-app browser webview did not attach on two attempts; script behavior verified in isolated DOM contract.",
+    "filtered_links_explicitly_hidden_by_css": true
+  },
+  "target_performance_accepted": false,
+  "nvidia_execution_validation": "pending",
+  "performance_limitation": "CPU timings fluctuate substantially on this host. Neither best samples nor historical0.14.5 measurements establish latest five-lane20/30ms success. Target E5/RTX2070 and FP16/Graph/GPU cache/stability are unmeasured.",
+  "tools_windows_powershell_51_smoke_passed": true,
+  "calibration_profile_roundtrip_smoke_passed": true
+}

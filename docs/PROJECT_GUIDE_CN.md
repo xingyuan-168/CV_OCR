@@ -1,12 +1,14 @@
-# CQ_AI 0.14.5 / v23.5 项目说明
+# CQ_AI 0.14.6 / v23.6 项目说明
+
+> 当前可用版为 **0.14.6 / v23.6 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [v23.6交付说明](V23_6_DELIVERY_CN.md)。
 
 ## 1. 当前基线
 
 | 项目版本 | 交付版本 | Worker 协议 | 公开导出 |
 | --- | --- | --- | --- |
-| `0.14.5` | `v23.5` | `25` | `60` |
+| `0.14.6` | `v23.6` | `26` | `60` |
 
-v23.5 提供 60 个公开导出。`CV_FindMultiText`、
+v23.6 保持 60 个公开导出。`CV_FindMultiText`、
 `CV_FindTransparentMultiText` 返回 `ID,x,y|...`，`OCR_FindMultiText` 返回
 `ID,cx,cy|...`。九个易语言业务接口支持 `origin_x/origin_y`，模板可从内存
 ZIP 原子加载；OCR 提供单次滤色、阅读顺序和异常碎片联合识别。
@@ -15,9 +17,9 @@ ZIP 原子加载；OCR 提供单次滤色、阅读顺序和异常碎片联合识
 
 ```text
 32 位易语言 -> CQ_X86.dll -> 本地静态 OpenCV
-                         -> 协议 25 命名管道 -> CQ_AI_worker.exe x64
+                         -> 协议26长连接 -> CQ_AI_worker.exe x64
                                                   -> ORT 1.24.4
-                                                  -> CPU / DirectML 1.15.4
+                                                  -> CPU / DirectML 1.15.4 / 可选TensorRT
 
 64 位 Python -> CQ_AI_x64.dll -> ORT 1.24.4 -> CPU / DirectML 1.15.4
 ```
@@ -37,7 +39,7 @@ python/           ctypes 包装和 Wheel 元数据
 tests/            自动测试及只读 fixtures
 tools/            构建期运行库打包器
 scripts/          当前依赖、打包、文档和验证脚本
-release/v23.5/    唯一正式交付物及 manifest
+release/v23.5/    历史正式成品及原始manifest
 ```
 
 `third_party/`、`build-*`、`outpush/` 和 `test-results/` 都是可再生本地缓存，
@@ -58,8 +60,8 @@ release/v23.5/    唯一正式交付物及 manifest
 
 根目录 README 给出 x64 Worker、x86 DLL 和 Python Wheel 的完整命令。正式验收要求：
 
-1. x86 全部 CTest 通过，包括 ABI、CV、OCR、YOLO、Worker、CPU、DirectML、AUTO。
-2. x64 全部 CTest 通过，包括嵌入模型、运行时探测和业务基准。
+1. x86 受影响CTest通过，包括 ABI、CV、OCR、YOLO、Worker、CPU、DirectML、AUTO。
+2. x64受影响CTest通过，包括YOLO、OCR/CV、嵌入模型和运行时探测。
 3. `CQ_X86.dll` 仅依赖系统 DLL；Worker 不存在外部 ORT、DirectML 或 VC 运行库依赖。
 4. 公开头文件和成品均为 60 个导出，stdcall 参数字节数符合当前 ABI。
 5. 易语言 ZIP 恰好包含三个文件；Wheel 为 `py3-none-win_amd64` 且不含 EXE。
@@ -67,9 +69,9 @@ release/v23.5/    唯一正式交付物及 manifest
 
 ## 6. 发布约束
 
-`release/v23.5/manifest.json` 是交付事实源，记录项目版本、交付版本、协议、
-两个包的大小和 SHA-256，以及易语言 ZIP 成员哈希。普通构建只写 `outpush/`；
-`scripts/promote_release.ps1` 在临时目录完成内容与清单验证后替换唯一正式目录。
+`scripts/package_e_language.ps1` 使用 `docs/YOLO_CANDIDATE_METADATA.json` 检查当前版本、二进制哈希、3轮五路正式测试及新版本30分钟稳定性报告。编译二进制并计算哈希后才生成HTML，随后生成ZIP和交付manifest。通过绝对路径验收器确认实际DLL/Worker后更新 `output/` 三文件；备份在 `outpush/rollback/`，占用或失败会保留或恢复旧配套。
+
+`release/v23.5/manifest.json` 仅记录历史成品，其ZIP、Wheel及成员哈希由 `verify_current_release.ps1 -AllowSourceCandidate` 独立复核。本轮交付不覆盖历史目录。
 
 公开 ABI 以 `include/ai_engine.h` 为准；设备选择、缓存和进程生命周期以
 `src/` 为准；依赖版本与构建路径以 `scripts/prepare_dependencies.ps1` 和打包

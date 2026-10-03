@@ -14,7 +14,7 @@
 /.vscode/
 /.idea/
 
-# Compiled binaries are disposable unless explicitly stored under release/v23.5.
+# Compiled binaries are disposable except manifest-listed immutable deliveries.
 *.dll
 *.exe
 *.lib
@@ -30,6 +30,9 @@
 !release/v23.5/
 !release/v23.5/CQ_AI_e_language_v23.5.zip
 !release/v23.5/cq_ai_engine-0.14.5-py3-none-win_amd64.whl
+!release/v23.6/
+!release/v23.6/CQ_AI_e_language_v23.6.zip
+!release/v23.6/cq_ai_engine-0.14.6-py3-none-win_amd64.whl
 /release/.v23.5-stage-*/
 /release/.v23.5-backup-*/
 
@@ -39,6 +42,19 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.venv/
+node_modules/
+build/
+.worktrees/
+*.log
+/.codex-os/state/
+/.codex-os/logs/
+/.codex-os/cache/
+/.codex-os/context/
+/.codex-os/tmp/
+/.codex-os/artifacts/
+/input/
 /mock_runtime.ini
 /e_api_mock.ini
 /stdout

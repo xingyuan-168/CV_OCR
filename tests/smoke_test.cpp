@@ -28,9 +28,9 @@ float json_float_field(const char* json, const char* field) {
 
 int main(int argc, char** argv) {
 #if defined(_WIN64)
-    assert(std::strcmp(AI_GetVersion(), "CQ_AI_x64/0.14.5") == 0);
+    assert(std::strcmp(AI_GetVersion(), "CQ_AI_x64/0.14.6") == 0);
 #else
-    assert(std::strcmp(AI_GetVersion(), "CQ_X86/0.14.5") == 0);
+    assert(std::strcmp(AI_GetVersion(), "CQ_X86/0.14.6") == 0);
 #endif
     static_assert(sizeof(OCRTextResult) == 28, "OCRTextResult ABI must remain 28 bytes");
     assert(argc > 0 && argv != nullptr && argv[0] != nullptr);

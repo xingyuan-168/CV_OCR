@@ -150,14 +150,14 @@ PARAM_TEXT = {
     "output_format": "OCR 文本输出格式：AI_OCR_OUTPUT_TEXT=1 为文本，AI_OCR_OUTPUT_JSON=2 为 JSON。标准 AI_* 接口使用 UTF-8；易语言 OCR_* 兼容接口由 DLL 转为当前 Windows ANSI 代码页。",
     "min_confidence": "OCR CTC 非 blank 字符平均置信度下限，必须为 0.0-1.0。0.0 表示不过滤；低于该值的行不会进入文本、JSON、结构体和坐标查找结果。",
     "color_filter": "可空的单次 OCR 滤色规则。空文本或 NULL 为自动模式；格式为 RRGGBB-RRGGBB，多条规则使用 | 分隔，目标颜色和 RGB 三通道容差均为 6 位十六进制；最多 16 条、总长度 512 字节。非法规则返回 AI_ERR_INVALID_ARGUMENT。",
-    "runtime_device": "运行设备：0=AUTO，1=DirectML，2=CPU。易语言 x86 Worker 的 AUTO 对 CPU 与 DirectML 各执行2次预热和7次采样，按中位耗时及10%门槛选择单一Provider完整池；显式DirectML失败时不整体降级。",
-    "device": "运行设备：0=AUTO，1=DirectML，2=CPU。OCR与YOLO含义完全一致；非法值直接返回参数错误。",
+    "runtime_device": "运行设备：0=AUTO，1=DirectML，2=CPU；YOLO 另支持3=TensorRT（可选x64模块），OCR和AI_InitEx仅接受0..2。YOLO AUTO优先读取真实BMP业务校准记录，未命中时使用五路合成短基准并标明暂定依据。显式后端失败返回具体错误。",
+    "device": "OCR运行设备：0=AUTO，1=DirectML，2=CPU；OCR不接受TensorRT设备3。",
     "session_count": "Session 池容量，必须大于 0。YOLO 中它表示同一模型可同时执行的推理数量，不是业务线程总数，也不是 ONNX Runtime 算子内线程数；并发超过容量时等待空闲 Session。GPU 多 Session 会按数量增加显存占用。",
     "options": "仅用于 OCR_LoadEmbeddedModelEx 的 AIOcrRuntimeOptions 指针；允许 NULL 表示全部采用 OCR 自动策略。YOLO 加载接口没有 options 或结构体参数。",
     "input_width": "OCR 检测输入宽度；0 表示使用模型原生尺寸。YOLO 接口使用单一 input_size 参数。",
     "input_height": "OCR 检测输入高度；0 表示使用模型原生尺寸。YOLO 接口使用单一 input_size 参数。",
-    "device_id": "DirectML显卡适配器的零基编号，必须大于等于0。DirectML和AUTO严格使用该编号；CPU模式忽略该值但仍应传0。",
-    "intra_op_threads": "OCR 高级选项中的单 Session 算子内线程数；0 表示自动。YOLO 不暴露此参数，由程序按逻辑 CPU 数和 Session 数自动计算。",
+    "device_id": "必须大于等于0。DirectML使用DXGI适配器序号，TensorRT使用CUDA设备序号，两者可能不同；AUTO分别使用该序号尝试各后端。CPU忽略但仍填写0。",
+    "intra_op_threads": "OCR 高级选项中的单 Session 算子内线程数；0 表示自动。YOLO通过业务校准或物理核预算选择，也可用CQ_AI_YOLO_CPU_THREADS设置1..8；与业务调用线程数、执行槽数分别配置。",
     "big_data": "完整、未压缩 24 位 BGR BMP 的首地址。不是像素首地址；BMP 文件头和像素数据都必须存在。",
     "big_size": "big_data 指向的完整 BMP 字节数，必须覆盖 BMP 文件头与所有像素行。",
     "det_path": "OCR 检测 ONNX 文件路径。多行识别和文本坐标定位需要检测模型；纯单行识别可传空。相对路径以调用程序 EXE 所在目录为基准。",
@@ -317,22 +317,23 @@ def resource_text(name: str) -> str:
     return "调用方不得在函数执行期间释放输入或输出内存。每个 YOLO 句柄拥有独立 Session 池；同一模型并发超过 session_count 时等待空闲 Session，不同模型的锁和队列互不阻塞。CV 句柄隔离模板集，OCR 使用独立共享池。释放句柄后新调用失败，已开始的调用通过共享所有权安全完成。"
 
 
-def html_page(exports, project_version: str, delivery_version: str, worker_protocol: int):
+def html_page(exports, project_version: str, delivery_version: str, worker_protocol: int, metadata=None):
+    metadata = metadata or {}
     groups = {}
     for item in exports:
         groups.setdefault(group(item[1]), []).append(item)
-    nav = ["<h3>概览</h3><a class='nav-item' onclick=\"show('intro')\">使用与错误码</a>"]
+    nav = ["<h3>概览</h3><a class='nav-item' href='#intro' onclick=\"show('intro')\">使用与错误码</a><a class='nav-item' href='#yolo_delivery' onclick=\"show('yolo_delivery')\">YOLO部署与五路调用</a>"]
     for title, items in groups.items():
         nav.append(f"<h3>{html.escape(title)}</h3>")
-        nav.extend(f"<a class='nav-item' onclick=\"show('{name}')\">{html.escape(name)}</a>" for _, name, _ in items)
+        nav.extend(f"<a class='nav-item' href='#{name}' onclick=\"show('{name}')\">{html.escape(name)}</a>" for _, name, _ in items)
     sections = [f"""<section id='intro' class='doc-section active'><h1 class='func-title'>CQ_AI {project_version}（{delivery_version}）公开 DLL 接口说明</h1>
 <p>本页由 include/ai_engine.h 生成，并与 CQ_X86.dll 未修饰导出表校验。32位易语言只加载同目录的 CQ_X86.dll；OCR/YOLO统一由 CQ_AI_worker.exe执行。运行目录包含两个运行文件和本 HTML。</p>
-<p><b>{delivery_version} ABI：</b>公开导出为{len(exports)}个；函数名、参数、返回类型和stdcall参数字节数以本页原型为准。Worker协议为{worker_protocol}。运行设备为0=AUTO、1=DirectML、2=CPU。</p>
+<p><b>{delivery_version} ABI：</b>公开函数为{len(exports)}个，x86同时保留对应stdcall别名；函数名、参数、返回类型和stdcall参数字节数以本页原型为准。Worker协议为{worker_protocol}。YOLO设备为0=AUTO、1=DirectML、2=CPU、3=TensorRT；OCR和AI_InitEx只接受0..2。DLL与Worker须成套更新。</p>
 <p><b>多目标紧凑文本：</b>CV_FindMultiText和CV_FindTransparentMultiText返回ID,x,y|ID,x,y；OCR_FindMultiText返回ID,cx,cy|ID,cx,cy。ID是输入列表零基序号，不因前项未命中而重排；未命中和错误都返回空文本，错误通过AI_GetLastError区分。</p>
 <p><b>坐标原点规则：</b>仅命中结果增加坐标起点；三个紧凑多目标接口未命中返回空文本，其他JSON接口未命中返回[]；单结果未命中返回0且输出结构体清零；宽高、分数、文本和序号不变。</p>
 <p><b>内存模板包：</b>CV_LoadTemplateZipFromMemory直接读取易语言资源中的标准ZIP，支持Stored/Deflate和BMP；成功后按BMP文件名使用现有找图命令，失败时保留旧缓存。</p>
 <p><b>ZIP静态依赖许可：</b>Deflate和CRC使用zlib静态库，不增加运行时DLL。zlib Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler，按zlib License使用；许可声明随本 HTML 提供。</p>
-<p><b>AUTO设备选择：</b>易语言x86 Worker对CPU和DirectML候选分别执行2次预热与7次采样并比较中位耗时；DirectML至少快10%才被选中。校准结果按模型、硬件、驱动、Session配置和内嵌运行库哈希缓存。显式DirectML失败时不整体改用CPU。</p>
+<p><b>YOLO AUTO设备选择：</b>x86与x64共用选择逻辑，优先读取匹配模型、硬件、驱动、运行库、执行槽和业务图片标识的已验证业务记录；未命中时执行五路合成短基准并标明暂定依据，比较可用的CPU、DirectML和TensorRT FP32。候选先通过正确性验证，再比较最差单路P95、P50及吞吐，性能相近时优先较低资源占用。显式后端失败返回具体错误，只有AUTO允许选择其他后端。OCR仍使用自己的设备选择策略。</p>
 <p><b>OCR 鲁棒性：</b>显式滤色提供通用抗锯齿恢复候选，候选选择同时评估前景覆盖、尾部漏检、框碎片和置信度；小尺寸单行异常可采用联合行框识别，避免重叠裁剪重复字符。自动模式提供亮字候选。TEXT、JSON和找字接口使用同一最终候选；联合回退时返回原图范围内的联合行框。</p>
 <h2>CV 并发与内存</h2>
 <p>OpenCV 匹配复用 DLL 内有界工作区池：x86 最多2个、x64最多4个，超额调用等待；单次调用内模板顺序计算。空闲工作区缓存总预算分别为64 MiB与256 MiB，包含复用的图像、积分统计及变换工作缓冲；不包含正在执行的匹配、返回文本、模板资源及OpenCV临时内存，不是进程峰值保证。工作区不持有模板强引用，不缓存上一帧匹配结果。逐字节确认图像相同时可复用图像的变换和统计量，图像变化即重算；每次请求重新执行模板相关、候选筛选及精确校验。模板自身最多保留一套当前尺寸的频域预处理，随模板清理或释放而销毁，已取得快照的调用除外。</p>
@@ -348,11 +349,27 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
 <table class='error-table'><tr><th>参数</th><th>必须填写的规则</th></tr>
 <tr><td>模型路径 / 标签路径</td><td>模型路径不能为空；标签路径可传空。绝对路径直接使用，相对路径以调用程序 EXE 所在目录为基准。DLL 和 worker 不固定模型目录。</td></tr>
 <tr><td>模型尺寸</td><td>填写 0 时由 DLL 自动读取静态 ONNX 的方形输入尺寸；动态模型必须填写 320 或 640。显式尺寸必须与模型输入一致。best.onnx 和 smc.onnx 都可填写 0，加载后通过 YOLO_GetRuntimeStatusJson 查询实际宽高。</td></tr>
-<tr><td>运行设备</td><td>0=AUTO，1=DirectML，2=CPU。x86 Worker的AUTO以短基准和10%门槛选择单一Provider完整Session池；显式DirectML失败时不整体降级。</td></tr>
-<tr><td>GPU 设备序号</td><td>从0开始且不能为负数。DirectML和AUTO使用该DXGI适配器序号；CPU模式忽略但仍填写0。软件适配器、越界或不支持DX12会返回具体错误。</td></tr>
-<tr><td>并发线程数</td><td>必须大于 0，实际表示该模型 Session 池容量，不是 ORT 内部线程数。GPU 多 Session 会增加显存占用。每 Session 内部线程由程序计算：min(4, max(1, 逻辑 CPU 数 / Session 数))。</td></tr></table>
+<tr><td>运行设备</td><td>0=AUTO，1=DirectML，2=CPU，3=TensorRT。AUTO业务校准优先，未命中时短基准暂定；显式后端失败返回错误。</td></tr>
+<tr><td>GPU 设备序号</td><td>从0开始且不能为负数。DirectML使用DXGI序号，TensorRT使用CUDA序号；混合显卡机器上两者可能不同。CPU仍填写0。</td></tr>
+<tr><td>Session 数</td><td>必须大于0，表示同一模型执行槽数量，传20会建立20个槽；业务调用线程数与ORT内部线程数分别配置。CPU按物理核预算配置内部线程，也可用CQ_AI_YOLO_CPU_THREADS指定1..8；离线工具扫描预算内的1/2/4/6/8线程。每个DirectML Session串行执行；TensorRT各槽独立context/stream/buffer，多槽会增加内存及显存占用。</td></tr></table>
 <p>路径加载示例：YOLO_LoadModelFromPath(句柄, best路径, 空标签, 0, AI_DEVICE_AUTO, 0, 并发数)；另一个句柄加载 smc.onnx 时也可填写 0 自动识别。内存加载使用相同四项运行参数。NMS 由 worker 内部统一处理，调用方不传。加载失败后立即调用 AI_GetLastError 获取具体原因，成功后调用 YOLO_GetRuntimeStatusJson 核对实际尺寸、provider、设备序号、Session 数和内部线程数。</p>
 <h2>通用错误码</h2><table class='error-table'><tr><th>值</th><th>含义</th></tr><tr><td>-1</td><td>参数错误</td></tr><tr><td>-2</td><td>未初始化</td></tr><tr><td>-3</td><td>后端或模型未配置</td></tr><tr><td>-4</td><td>图像格式错误</td></tr><tr><td>-5</td><td>输出缓冲区不足</td></tr><tr><td>-6</td><td>配置或模型创建失败</td></tr><tr><td>-7</td><td>模型或实例句柄无效</td></tr><tr><td>-8</td><td>YOLO 句柄已经成功加载模型</td></tr><tr><td>-9</td><td>模型正在加载或资源忙</td></tr><tr><td>-100</td><td>运行时或 worker 错误</td></tr></table></section>"""]
+    fingerprints = metadata.get("binary_fingerprints", {})
+    hashes = "".join(f"<tr><td>{html.escape(name)}</td><td><code>{html.escape(fact['sha256'])}</code></td></tr>" for name, fact in sorted(fingerprints.items()))
+    summary = html.escape(metadata.get("validation_summary", "本版功能测试正在执行；目标机GPU性能待验。"))
+    qpc_example = html.escape((Path(__file__).resolve().parents[1] / "examples/e_language_yolo_qpc.txt").read_text(encoding="utf-8"))
+    command = html.escape("powershell -NoProfile -ExecutionPolicy Bypass -File tools/run_yolo_acceptance.ps1 -ImagesDir D:/五窗口变化BMP -Model D:/模型/best.onnx -RuntimeDir D:/业务程序目录 -BusinessWindowsActive")
+    sections.append(f"""<section id='yolo_delivery' class='doc-section'><h1 class='func-title'>YOLO部署与五路调用</h1>
+<p><b>本次交付：</b>{project_version} / {delivery_version} / Worker协议{worker_protocol}。功能验证状态：{html.escape(metadata.get('functional_validation', 'pending'))}；E5-2696 v4、128GB、RTX2070五窗口完整调用每路P50≤20ms、P95≤30ms仍须目标机实测。</p>
+<h2>三个核心文件</h2><p>将CQ_X86.dll、CQ_AI_worker.exe及本HTML一起放入业务目录，业务EXE加载32位DLL，DLL自动启动同目录64位Worker。Windows须为64位。模型路径由调用方传入，接口签名及现有CV/OCR功能保留。停止本程序的调用后成套替换文件，重建旧YOLO句柄。</p>
+<h2>启用NVIDIA TensorRT</h2><p>解压独立NVIDIA包，将其根目录CQ_YOLO_TensorRT.dll和nvidia/目录合并到Worker旁；模块为x64，由Worker加载。也可设置CQ_AI_NVIDIA_DIR为nvidia目录绝对路径。基础CPU/DirectML无需NVIDIA包。GPU初始化失败时使用AI_GetLastError读取具体原因；设备3显式失败会返回错误。</p>
+<p>固定依赖为传统TensorRT10.13.3.9、CUDA runtime12.8.90、NVRTC12.8.93、cuBLAS12.8.4.1。驱动须暴露CUDA Driver API≥12.8，GPU算力≥7.5；RTX2070兼容性及显存以目标机记录为准。nvcuda.dll由系统驱动提供，包内不携带。TensorRT/CUDA/VC许可随NVIDIA包保存在nvidia/licenses/。</p>
+<h2>首次加载与缓存</h2><p>首次加载在加载阶段构建engine，耗时另列；后续复用本机TensorRT缓存。缓存绑定模型SHA、GPU、实际驱动文件版本及SHA、TensorRT/CUDA、精度和构建参数，损坏或不匹配时重建。冷启动、模型加载、截图与稳定完整推理调用分别计时。</p>
+<h2>五线程调用示例</h2><pre>{qpc_example}</pre><p>最后一个加载参数是正整数执行槽数，推荐值由业务校准产生。状态文本建议分配至少8192字节，调用YOLO_GetRuntimeStatusJson检查active、precision、session_count、intra_op_threads、execution_slots、selection_basis、engine_cache_hit、engine_build_us、cuda_graph和驱动信息。</p>
+<h2>真实业务校准</h2><p>从独立验证工具包运行下列命令；ImagesDir提供五窗口实际变化帧，RuntimeDir指向包含配套DLL/Worker的业务目录。工具对CPU、DirectML、TensorRT及1/2/3/5槽执行持续和同时发起测试，输出业务记录、加载参数及分位数。运行前设置CQ_AI_YOLO_CALIBRATION_FILE和CQ_AI_YOLO_WORKLOAD_ID为报告值，再用推荐槽数加载AUTO。</p><pre>{command}</pre>
+<p>FP32输入输出保持不变。FP16须检测数量和类别一致、每坐标误差≤1像素、分数差≤0.02；失败回退FP32。Graph须捕获成功，且两个调用模式每轮最差单路P95改善≥10%；否则使用普通异步执行。生产中仅使用已验证记录，CQ_AI_YOLO_VALIDATING=1专供离线验证。</p>
+<h2>本机验证与目标机待验</h2><p>{summary}</p><p>目标机尚需验证TensorRT FP32运行、缓存损坏重建、FP16识别一致性、Graph收益、显存及五窗口30分钟GPU稳定性。每路完整调用未达到20/30ms时，报告必须标为未达标；通信P95&gt;2ms时才进入共享内存图像槽优化。</p>
+<h2>本版文件校验</h2><table class='error-table'><tr><th>文件</th><th>SHA-256</th></tr>{hashes}</table><p>源码提交：<code>{html.escape(metadata.get('source_revision','构建中'))}</code>。在PowerShell执行Get-FileHash -Algorithm SHA256 CQ_X86.dll,CQ_AI_worker.exe并与上表比较；HTML和ZIP的哈希另存交付清单，避免自引用。</p></section>""")
     for ret, name, params in exports:
         proto = f"{ret} __stdcall {name}({', '.join(params) if params else 'void'});"
         rows = "<tr><td>无</td><td>无参数。</td></tr>" if not params else "".join(
@@ -360,8 +377,8 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
         sections.append(
             f"<section id='{name}' class='doc-section'><h1 class='func-title'>{name}</h1><h2>函数简介</h2><p>{html.escape(function_summary(name))}</p><h2>适用范围</h2><p>{f'CQ_X86.dll 公开易语言 ABI；文本型参数按 Windows ACP 输入，OCR/YOLO 由同目录的 {delivery_version} 单一 Worker 执行。' if name.startswith(('CV_', 'OCR_', 'YOLO_')) else f'标准 C ABI；文本与路径参数严格使用 UTF-8；{delivery_version} 易语言正式包不包含 x64 业务 DLL。'}</p><h2>函数原型</h2><pre>{html.escape(proto)}</pre><h2>参数定义</h2><table class='param-list'>{rows}</table><h2>返回值</h2><table class='error-table'><tr><th>返回值</th><th>说明</th></tr><tr><td>{html.escape(ret)}</td><td>{html.escape(return_text(name, ret))}</td></tr></table><h2>资源与并发</h2><p>{html.escape(resource_text(name))}</p></section>"
         )
-    head = """<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CQ_AI 易语言 DLL 接口说明</title><style>body{font-family:SimSun,'Microsoft YaHei',sans-serif;margin:0;display:flex;height:100vh;font-size:14px}#sidebar{width:280px;overflow:auto;background:#f0f0f0;border-right:1px solid #ccc;padding:10px 0;flex-shrink:0}#sidebar h3{margin:12px 10px 5px;font-size:14px}.nav-item{display:block;padding:4px 10px 4px 25px;color:#000;text-decoration:none;cursor:pointer;font-size:13px}.nav-item:hover{background:#ddeeff;color:#06c}.nav-item.active{background:#3399ff;color:#fff}#content{padding:20px 30px;overflow:auto;flex:1}.doc-section{display:none;max-width:900px}.doc-section.active{display:block}h1.func-title{font-size:20px;border-bottom:1px solid #ddd;padding-bottom:5px}h2{font-size:16px;color:#03c;margin:15px 0 8px}p{margin:5px 0 5px 20px;line-height:1.6}pre{background:#f9f9f9;border:1px solid #eee;padding:10px;margin-left:20px;white-space:pre-wrap}.param-list,.error-table{border-collapse:collapse;margin-left:20px;width:92%}.param-list td,.error-table td,.error-table th{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}.error-table th{background:#f5f5f5}.param-name{font-weight:bold;color:#a52a2a;white-space:nowrap}code{font-family:Consolas,monospace}</style></head><body><div id='sidebar'>"""
-    foot = """</div><script>function show(id){document.querySelectorAll('.doc-section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');location.hash=id}addEventListener('load',()=>{const id=location.hash.slice(1);if(id&&document.getElementById(id))show(id)})</script></body></html>"""
+    head = """<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>CQ_AI 易语言 DLL 接口说明</title><style>body{font-family:SimSun,'Microsoft YaHei',sans-serif;margin:0;display:flex;height:100vh;font-size:14px}#sidebar{width:280px;overflow:auto;background:#f0f0f0;border-right:1px solid #ccc;padding:10px 0;flex-shrink:0}#api-search{box-sizing:border-box;width:calc(100% - 20px);margin:6px 10px;padding:8px;border:1px solid #aaa;border-radius:4px}#search-count{display:block;margin:2px 10px;color:#555}#sidebar h3{margin:12px 10px 5px;font-size:14px}.nav-item{display:block;padding:4px 10px 4px 25px;color:#000;text-decoration:none;cursor:pointer;font-size:13px}.nav-item[hidden]{display:none}.nav-item:hover{background:#ddeeff;color:#06c}.nav-item.active{background:#3399ff;color:#fff}#content{padding:20px 30px;overflow:auto;flex:1}.doc-section{display:none;max-width:900px}.doc-section.active{display:block}h1.func-title{font-size:20px;border-bottom:1px solid #ddd;padding-bottom:5px}h2{font-size:16px;color:#03c;margin:15px 0 8px}p{margin:5px 0 5px 20px;line-height:1.6}pre{background:#f9f9f9;border:1px solid #eee;padding:10px;margin-left:20px;white-space:pre-wrap}.param-list,.error-table{border-collapse:collapse;margin-left:20px;width:92%}.param-list td,.error-table td,.error-table th{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}.error-table th{background:#f5f5f5}.param-name{font-weight:bold;color:#a52a2a;white-space:nowrap}code{font-family:Consolas,monospace}</style></head><body><div id='sidebar'><label for='api-search' style='display:block;margin:4px 10px'>搜索接口和说明</label><input id='api-search' type='search' placeholder='例如 YOLO_InferJson、GPU、线程' oninput='filterNav(this.value)'><span id='search-count' role='status' aria-live='polite'></span>"""
+    foot = """</div><script>function show(id){const section=document.getElementById(id);if(!section||!section.classList.contains('doc-section'))return;document.querySelectorAll('.doc-section').forEach(x=>x.classList.remove('active'));section.classList.add('active');location.hash=id}function filterNav(value){const query=value.trim().toLowerCase();let count=0;document.querySelectorAll('.nav-item').forEach(link=>{const section=document.getElementById(link.getAttribute('href').slice(1));const text=(link.textContent+' '+section.textContent).toLowerCase();link.hidden=!!query&&!text.includes(query);if(!link.hidden)count++});document.getElementById('search-count').textContent=query?'找到 '+count+' 项':'共 '+count+' 项'}addEventListener('load',()=>{const id=location.hash.slice(1);if(id)show(id);filterNav(document.getElementById('api-search').value)})</script></body></html>"""
     return head + "".join(nav) + "</div><div id='content'>" + "".join(sections) + foot
 
 
@@ -398,7 +415,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--header", type=Path, default=Path("include/ai_engine.h"))
     parser.add_argument("--protocol", type=Path, default=Path("src/worker_protocol.h"))
-    parser.add_argument("--manifest", type=Path, default=Path("release/v23.5/manifest.json"))
+    parser.add_argument("--manifest", type=Path, default=Path("docs/YOLO_CANDIDATE_METADATA.json"))
     parser.add_argument("--output", type=Path, default=Path("docs/易语言_DLL_API_说明.html"))
     parser.add_argument("--dumpbin", type=Path)
     parser.add_argument("--dll", type=Path)
@@ -416,7 +433,8 @@ def main():
         args.header, args.protocol, args.manifest
     )
     generated = html_page(
-        exports, project_version, delivery_version, worker_protocol
+        exports, project_version, delivery_version, worker_protocol,
+        json.loads(args.manifest.read_text(encoding="utf-8"))
     )
     missing_sections = [name for _, name, _ in exports if f"id='{name}'" not in generated]
     if missing_sections:

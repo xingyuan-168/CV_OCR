@@ -12,8 +12,12 @@
 #endif
 #include "image_view.h"
 #include "runtime_status.h"
+#include "yolo_pool.h"
 #include "timer.h"
 #include "worker_protocol.h"
+#if defined(_WIN32)
+#include "pipe_io.h"
+#endif
 #include "ocr_color_filter.h"
 
 #if defined(AIENGINE_WITH_OPENCV)
@@ -219,61 +223,8 @@ std::mutex g_cv_context_mutex;
 std::unordered_map<int32_t, std::shared_ptr<CVContext>> g_cv_contexts;
 int32_t g_next_cv_handle = 1;
 
-struct YoloSessionSlot {
-    std::unique_ptr<ai::Engine> engine;
-    bool busy = false;
-};
-
-struct YoloModelPool {
-    std::mutex mutex;
-    std::condition_variable cv;
-    std::vector<YoloSessionSlot> slots;
-    std::shared_ptr<const std::vector<uint8_t>> model_bytes;
-    ai::RuntimeStatus runtime;
-    int32_t input_width = 0;
-    int32_t input_height = 0;
-    int32_t device_id = 0;
-    int32_t session_count = 0;
-    int32_t intra_op_threads = 0;
-    float nms_threshold = kYoloInternalNmsThreshold;
-    std::atomic<int64_t> last_latency_us{-1};
-
-    int32_t detect(
-        const AIImage& image,
-        float conf,
-        std::vector<AIDetectBox>* output) {
-        const auto start = std::chrono::steady_clock::now();
-        ai::Engine* engine = nullptr;
-        size_t slot_index = 0;
-        {
-            std::unique_lock<std::mutex> lock(mutex);
-            cv.wait(lock, [&] {
-                return std::any_of(slots.begin(), slots.end(), [](const YoloSessionSlot& slot) { return !slot.busy; });
-            });
-            for (size_t i = 0; i < slots.size(); ++i) {
-                if (!slots[i].busy) {
-                    slots[i].busy = true;
-                    engine = slots[i].engine.get();
-                    slot_index = i;
-                    break;
-                }
-            }
-        }
-
-        const int32_t status = engine == nullptr
-            ? AI_ERR_RUNTIME
-            : engine->yolo_detect(image, conf, nms_threshold, output);
-        {
-            std::lock_guard<std::mutex> lock(mutex);
-            if (slot_index < slots.size()) slots[slot_index].busy = false;
-        }
-        cv.notify_one();
-        const int64_t elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - start).count();
-        last_latency_us.store(elapsed, std::memory_order_relaxed);
-        return status;
-    }
-};
+using YoloSessionSlot = ai::YoloSlot;
+using YoloModelPool = ai::YoloPool;
 
 enum class YoloContextState {
     Empty,
@@ -288,13 +239,7 @@ struct YoloModelContext {
     std::shared_ptr<YoloModelPool> pool;
 };
 
-struct YoloRuntimeParams {
-    int32_t input_size = 0;
-    int32_t runtime_device = AI_DEVICE_CPU;
-    int32_t device_id = 0;
-    int32_t session_count = 1;
-    int32_t intra_op_threads = 1;
-};
+using YoloRuntimeParams = ai::YoloParameters;
 
 std::mutex g_yolo_context_mutex;
 std::unordered_map<int32_t, std::shared_ptr<YoloModelContext>> g_yolo_contexts;
@@ -432,6 +377,7 @@ const char* runtime_device_name(int32_t device) {
         case AI_DEVICE_AUTO: return "auto";
         case AI_DEVICE_DIRECTML: return "directml";
         case AI_DEVICE_CPU: return "cpu";
+        case AI_DEVICE_TENSORRT: return "tensorrt";
         default: return "invalid";
     }
 }
@@ -442,37 +388,9 @@ int32_t resolve_yolo_intra_threads(int32_t session_count) {
     return static_cast<int32_t>(std::min(4u, per_session));
 }
 
-int32_t make_yolo_runtime_params(
-    int32_t input_size,
-    int32_t runtime_device,
-    int32_t device_id,
-    int32_t session_count,
-    YoloRuntimeParams* output,
-    std::string* error) {
-    if (output == nullptr || (input_size != 0 && input_size != 320 && input_size != 640)) {
-        if (error != nullptr) *error = "YOLO input_size must be 0, 320, or 640 (0 auto-detects static models)";
-        return AI_ERR_INVALID_ARGUMENT;
-    }
-    if (runtime_device != AI_DEVICE_AUTO &&
-        runtime_device != AI_DEVICE_DIRECTML &&
-        runtime_device != AI_DEVICE_CPU) {
-        if (error != nullptr) {
-            *error = "Invalid runtime device " +
-                std::to_string(runtime_device) +
-                "; valid values are 0=AUTO, 1=DirectML, 2=CPU";
-        }
-        return AI_ERR_INVALID_ARGUMENT;
-    }
-    if (device_id < 0 || session_count <= 0) {
-        if (error != nullptr) *error = "YOLO device_id must be non-negative and session_count must be positive";
-        return AI_ERR_INVALID_ARGUMENT;
-    }
-    output->input_size = input_size;
-    output->runtime_device = runtime_device;
-    output->device_id = device_id;
-    output->session_count = session_count;
-    output->intra_op_threads = resolve_yolo_intra_threads(session_count);
-    return AI_OK;
+int32_t make_yolo_runtime_params(int32_t input, int32_t device, int32_t ordinal,
+    int32_t sessions, YoloRuntimeParams* p, std::string* error) {
+    return ai::yolo_parameters(input, device, ordinal, sessions, p, error) ? AI_OK : AI_ERR_INVALID_ARGUMENT;
 }
 
 std::shared_ptr<YoloModelContext> get_yolo_context(int32_t handle) {
@@ -558,108 +476,9 @@ ai::Config apply_yolo_options(ai::Config config, const YoloRuntimeParams& option
 }
 
 std::shared_ptr<YoloModelPool> build_local_yolo_pool(
-    const std::shared_ptr<const std::vector<uint8_t>>& model_bytes,
-    ai::Config config,
-    const YoloRuntimeParams& options,
-    int32_t* result_status,
-    std::string* error) {
-    if (!model_bytes || model_bytes->empty()) {
-        if (error != nullptr) *error = "YOLO model data is empty";
-        if (result_status != nullptr) *result_status = AI_ERR_INVALID_ARGUMENT;
-        return nullptr;
-    }
-
-    const bool real_onnx = config.get_string("yolo.backend", "onnxruntime") == "onnxruntime";
-    std::vector<int32_t> candidates;
-    if (real_onnx && options.runtime_device == AI_DEVICE_AUTO) {
-        candidates = {AI_DEVICE_DIRECTML, AI_DEVICE_CPU};
-    } else {
-        candidates = {options.runtime_device};
-    }
-
-    std::vector<std::string> failures;
-    int32_t last_status = AI_ERR_CONFIG;
-    for (const int32_t candidate : candidates) {
-        auto pool = std::make_shared<YoloModelPool>();
-        pool->model_bytes = model_bytes;
-        pool->device_id = options.device_id;
-        pool->session_count = options.session_count;
-        pool->intra_op_threads = options.intra_op_threads;
-        pool->nms_threshold = kYoloInternalNmsThreshold;
-        pool->slots.reserve(static_cast<size_t>(options.session_count));
-        ai::RuntimeStatus provider_status{runtime_device_name(options.runtime_device), runtime_device_name(candidate), "", false};
-        bool candidate_ok = true;
-        std::string candidate_error;
-
-        for (int32_t i = 0; i < options.session_count; ++i) {
-            auto engine = std::make_unique<ai::Engine>();
-            if (!engine->init_ex(nullptr, candidate, &candidate_error)) {
-                last_status = AI_ERR_CONFIG;
-                candidate_ok = false;
-                break;
-            }
-            ai::Config slot_config = config;
-            slot_config.set_int("runtime.device", candidate);
-            const int32_t status = engine->yolo_load_model_from_memory_with_config(
-                model_bytes->data(), static_cast<int32_t>(model_bytes->size()), std::move(slot_config), candidate, &candidate_error);
-            if (status < 0) {
-                last_status = status;
-                candidate_ok = false;
-                break;
-            }
-            const ai::RuntimeStatus slot_status = ai::get_thread_runtime_status();
-            if (real_onnx && slot_status.active != runtime_device_name(candidate)) {
-                candidate_error = "YOLO session pool resolved to mixed execution providers";
-                last_status = AI_ERR_RUNTIME;
-                candidate_ok = false;
-                break;
-            }
-            if (i == 0) {
-                if (real_onnx) provider_status = slot_status;
-                pool->input_width = engine->yolo_input_width();
-                pool->input_height = engine->yolo_input_height();
-            } else if (pool->input_width != engine->yolo_input_width() ||
-                       pool->input_height != engine->yolo_input_height()) {
-                candidate_error = "YOLO session pool resolved to inconsistent input shapes";
-                last_status = AI_ERR_RUNTIME;
-                candidate_ok = false;
-                break;
-            }
-            pool->slots.push_back(YoloSessionSlot{std::move(engine), false});
-        }
-
-        if (candidate_ok && static_cast<int32_t>(pool->slots.size()) == options.session_count) {
-            provider_status.requested = runtime_device_name(options.runtime_device);
-            provider_status.active = real_onnx ? runtime_device_name(candidate) : config.get_string("yolo.backend", "mock");
-            provider_status.degraded =
-                options.runtime_device == AI_DEVICE_AUTO &&
-                candidate == AI_DEVICE_CPU;
-            if (!failures.empty()) {
-                std::ostringstream reason;
-                for (size_t i = 0; i < failures.size(); ++i) {
-                    if (i > 0) reason << "; ";
-                    reason << failures[i];
-                }
-                provider_status.reason = reason.str();
-            }
-            pool->runtime = std::move(provider_status);
-            if (result_status != nullptr) *result_status = AI_OK;
-            return pool;
-        }
-        failures.push_back(std::string(runtime_device_name(candidate)) + ": " +
-            (candidate_error.empty() ? "session creation failed" : candidate_error));
-    }
-
-    if (error != nullptr) {
-        std::ostringstream message;
-        for (size_t i = 0; i < failures.size(); ++i) {
-            if (i > 0) message << "; ";
-            message << failures[i];
-        }
-        *error = message.str();
-    }
-    if (result_status != nullptr) *result_status = last_status;
-    return nullptr;
+    const std::shared_ptr<const std::vector<uint8_t>>& model, ai::Config config,
+    const YoloRuntimeParams& p, int32_t* status, std::string* error) {
+    return ai::build_yolo_pool_shared(model, std::move(config), p, status, error);
 }
 
 int32_t load_local_yolo_context(
@@ -940,6 +759,9 @@ std::string runtime_status_fields(const ai::RuntimeStatus& status) {
         ",\"requested\":\"" + json_escape(status.requested.c_str()) +
         "\",\"active\":\"" + json_escape(status.active.c_str()) +
         "\",\"degraded\":" + (status.degraded ? "true" : "false") +
+        ",\"device_id\":" + std::to_string(status.device_id) +
+        ",\"adapter_name\":\"" + json_escape(status.adapter_name.c_str()) + "\"" +
+        ",\"mixed_cpu_fallback\":" + (status.mixed_cpu_fallback ? "true" : "false") +
         ",\"selection_basis\":\"" +
             json_escape(status.selection_basis.c_str()) +
         "\",\"calibration_key\":\"" +
@@ -948,6 +770,17 @@ std::string runtime_status_fields(const ai::RuntimeStatus& status) {
             std::to_string(status.cpu_calibration_ms) +
         ",\"directml_calibration_ms\":" +
             std::to_string(status.directml_calibration_ms) +
+        ",\"precision\":\"" + status.precision + "\"" +
+        ",\"tensorrt_version\":\"" + status.tensorrt_version + "\"" +
+        ",\"cuda_version\":" + std::to_string(status.cuda_version) +
+        ",\"driver_version\":" + std::to_string(status.driver_version) +
+        ",\"driver_file_version\":\"" + status.driver_file_version + "\"" +
+        ",\"driver_binary_sha256\":\"" + status.driver_binary_sha256 + "\"" +
+        ",\"execution_slots\":" + std::to_string(status.execution_slots) +
+        ",\"engine_cache_hit\":" + (status.engine_cache_hit ? "true" : "false") +
+        ",\"cuda_graph\":" + (status.cuda_graph ? "true" : "false") +
+        ",\"engine_build_us\":" + std::to_string(status.engine_build_us) +
+        ",\"engine_cache_key\":\"" + status.engine_cache_key + "\"" +
         ",\"reason\":\"" + json_escape(status.reason.c_str()) + "\"";
 }
 
@@ -3018,6 +2851,8 @@ std::vector<ProxyRuntimeCandidate> proxy_runtime_candidates(int32_t requested_de
             return {{ai_worker::RuntimeFlavor::Core, AI_DEVICE_DIRECTML}};
         case AI_DEVICE_CPU:
             return {{ai_worker::RuntimeFlavor::Core, AI_DEVICE_CPU}};
+        case AI_DEVICE_TENSORRT:
+            return {{ai_worker::RuntimeFlavor::Core, AI_DEVICE_TENSORRT}};
         default:
             return {};
     }
@@ -3038,16 +2873,15 @@ void proxy_append_u64(std::vector<uint8_t>* out, uint64_t value) {
     out->insert(out->end(), p, p + sizeof(value));
 }
 
-void proxy_append_yolo_params(
-    std::vector<uint8_t>* out,
-    int32_t input_size,
-    int32_t runtime_device,
-    int32_t device_id,
-    int32_t session_count) {
-    proxy_append_i32(out, input_size);
-    proxy_append_i32(out, runtime_device);
-    proxy_append_i32(out, device_id);
-    proxy_append_i32(out, session_count);
+void proxy_append_yolo_params(std::vector<uint8_t>* out, int32_t input_size,
+    int32_t runtime_device, int32_t device_id, int32_t session_count) {
+    ai::YoloParameters p; std::string error;
+    ai::yolo_parameters(input_size,runtime_device,device_id,session_count,&p,&error);
+    for(int value:{input_size,runtime_device,device_id,session_count,p.intra_op_threads,p.fp16,p.graph,p.validating}) proxy_append_i32(out,value);
+    const auto text=[&](const std::string& value) {
+        proxy_append_i32(out,static_cast<int32_t>(value.size()));out->insert(out->end(),value.begin(),value.end());
+    };
+    text(p.calibration_file);text(p.workload_id);text(p.engine_cache);
 }
 
 bool get_proxy_yolo_identity(int32_t handle, ProxyYoloIdentity* identity) {
@@ -3273,137 +3107,96 @@ std::string worker_disconnect_error(
         " (Windows error " + std::to_string(pipe_error) + ")";
 }
 
-bool proxy_request(
-    ai_worker::RuntimeFlavor flavor,
-    uint32_t command,
-    const std::vector<uint8_t>& payload,
-    int32_t* status,
-    std::vector<uint8_t>* response,
-    bool allow_start = true,
-    bool wait_for_shutdown = false) {
-    if (status == nullptr || response == nullptr) return false;
-    ai::set_last_error("");
-    response->clear();
-
+struct ProxyConnection {
     HANDLE pipe = INVALID_HANDLE_VALUE;
-    const int max_attempts = allow_start ? 30 : 1;
-    for (int attempt = 0; attempt < max_attempts; ++attempt) {
-        if (WaitNamedPipeA(ai_worker::pipe_name(flavor), 250)) {
-            pipe = CreateFileA(ai_worker::pipe_name(flavor), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
-            if (pipe != INVALID_HANDLE_VALUE) break;
-        }
-        if (allow_start && (attempt == 0 || attempt == 10)) {
-            std::lock_guard<std::mutex> lock(g_worker_start_mutex);
-            if (WaitNamedPipeA(ai_worker::pipe_name(flavor), 50)) {
-                pipe = CreateFileA(ai_worker::pipe_name(flavor), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
-                if (pipe != INVALID_HANDLE_VALUE) break;
-            } else {
-                if (!start_worker_process(flavor)) {
-                    *status = AI_ERR_RUNTIME;
-                    return false;
-                }
+    HANDLE process = nullptr;
+    ~ProxyConnection() { reset(); }
+    void reset() {
+        if (pipe != INVALID_HANDLE_VALUE) CloseHandle(pipe);
+        if (process) CloseHandle(process);
+        pipe = INVALID_HANDLE_VALUE; process = nullptr;
+    }
+};
+thread_local ProxyConnection g_proxy_connection;
+
+bool proxy_request(
+    ai_worker::RuntimeFlavor flavor, uint32_t command,
+    const std::vector<uint8_t>& payload, int32_t* status,
+    std::vector<uint8_t>* response, bool allow_start = true,
+    bool wait_for_shutdown = false) {
+    if (!status || !response) return false;
+    *status = AI_ERR_RUNTIME;
+    ai::set_last_error(""); response->clear();
+    if (payload.size() > ai_worker::kMaxPayload) {
+        ai::set_last_error("worker payload exceeds 512 MiB limit"); return false;
+    }
+    auto& connection = g_proxy_connection;
+    if (connection.process && WaitForSingleObject(connection.process, 0) != WAIT_TIMEOUT) connection.reset();
+    const auto connect_start = ai::YoloClock::now();
+    if (connection.pipe == INVALID_HANDLE_VALUE) {
+        const auto deadline = connect_start + std::chrono::seconds(5);
+        bool started = false;
+        do {
+            connection.pipe = CreateFileA(ai_worker::pipe_name(flavor), GENERIC_READ | GENERIC_WRITE,
+                0, nullptr, OPEN_EXISTING, 0, nullptr);
+            if (connection.pipe != INVALID_HANDLE_VALUE) break;
+            const DWORD error = GetLastError();
+            if (!allow_start) break;
+            if (error == ERROR_FILE_NOT_FOUND && !started) {
+                std::lock_guard<std::mutex> lock(g_worker_start_mutex);
+                if (!WaitNamedPipeA(ai_worker::pipe_name(flavor), 0) && !start_worker_process(flavor)) return false;
+                started = true;
             }
+            // Blocking wait only when establishing a connection. A loaded
+            // model's normal inference reuses its calling thread's pipe.
+            if (!WaitNamedPipeA(ai_worker::pipe_name(flavor), 250) && GetLastError() == ERROR_FILE_NOT_FOUND)
+                WaitForSingleObject(GetCurrentProcess(), 10);
+        } while (ai::YoloClock::now() < deadline);
+        if (connection.pipe == INVALID_HANDLE_VALUE) {
+            ai::set_last_error("Worker did not create the v26 named pipe within 5 seconds"); return false;
         }
-        Sleep(100);
+        connection.process = open_pipe_server_process(connection.pipe);
     }
-    if (pipe == INVALID_HANDLE_VALUE) {
-        if (ai::last_error().empty()) {
-            ai::set_last_error(
-                std::string(ai_worker::runtime_flavor_name(flavor)) +
-                " worker did not create the v23 named pipe or exited during startup");
+    if (command == ai_worker::CMD_YOLO_INFER_JSON) ai::yolo_timing.connect_us = ai::elapsed_us(connect_start);
+    const uint64_t request_id = command == ai_worker::CMD_YOLO_INFER_JSON
+        ? ai::yolo_timing.request_id : ai::next_yolo_request_id();
+    const ai_worker::Header header{ai_worker::kMagic, ai_worker::kVersion, command,
+        static_cast<uint32_t>(payload.size()), request_id};
+    const auto transport_start = ai::YoloClock::now();
+    const auto fail = [&](const char* phase) {
+        const auto message = worker_disconnect_error(flavor, connection.process, phase, GetLastError());
+        connection.reset(); ai::set_last_error(message); return false;
+    };
+    if (!ai_worker::write_frame(connection.pipe, &header, sizeof(header)) ||
+        !ai_worker::write_frame(connection.pipe, payload.data(), static_cast<DWORD>(payload.size())))
+        return fail("writing the request");
+    ai_worker::ResponseHeader reply{};
+    if (!ai_worker::read_frame(connection.pipe, &reply, sizeof(reply))) return fail("waiting for the response");
+    if (reply.magic != ai_worker::kMagic || reply.version != ai_worker::kVersion ||
+        reply.request_id != request_id || reply.payload_size > ai_worker::kMaxPayload) {
+        connection.reset(); ai::set_last_error("Worker response protocol, request ID or length mismatch"); return false;
+    }
+    response->resize(reply.payload_size);
+    if (!ai_worker::read_frame(connection.pipe, response->data(), reply.payload_size)) return fail("reading the response payload");
+    if (command == ai_worker::CMD_YOLO_INFER_JSON) {
+        const auto caller = ai::yolo_timing;
+        ai::yolo_timing = reply.timing;
+        ai::yolo_timing.request_id = request_id;
+        ai::yolo_timing.pack_us = caller.pack_us;
+        ai::yolo_timing.connect_us = caller.connect_us;
+        ai::yolo_timing.transport_us = std::max<int64_t>(0, ai::elapsed_us(transport_start) - reply.timing.worker_us);
+    }
+    *status = reply.status;
+    if (wait_for_shutdown && command == ai_worker::CMD_SHUTDOWN && *status >= 0) {
+        if (!connection.process || WaitForSingleObject(connection.process, 5000) != WAIT_OBJECT_0) {
+            *status = AI_ERR_RUNTIME; ai::set_last_error("Worker shutdown did not complete within 5000 ms");
         }
-        *status = AI_ERR_RUNTIME;
-        return false;
+        connection.reset();
     }
-    HANDLE worker_process = open_pipe_server_process(pipe);
-
-    ai_worker::Header header{ai_worker::kMagic, ai_worker::kVersion, command, static_cast<uint32_t>(payload.size())};
-    DWORD written = 0;
-    BOOL ok = WriteFile(pipe, &header, sizeof(header), &written, nullptr);
-    if (ok && !payload.empty()) {
-        ok = WriteFile(pipe, payload.data(), static_cast<DWORD>(payload.size()), &written, nullptr);
-    }
-    if (!ok) {
-        const DWORD error_code = GetLastError();
-        CloseHandle(pipe);
-        ai::set_last_error(worker_disconnect_error(flavor, worker_process, "writing the request", error_code));
-        if (worker_process != nullptr) CloseHandle(worker_process);
-        *status = AI_ERR_RUNTIME;
-        return false;
-    }
-
-    ai_worker::ResponseHeader rh{};
-    DWORD got = 0;
-    ok = ReadFile(pipe, &rh, sizeof(rh), &got, nullptr);
-    if (!ok) {
-        const DWORD error_code = GetLastError();
-        CloseHandle(pipe);
-        ai::set_last_error(worker_disconnect_error(flavor, worker_process, "waiting for the response", error_code));
-        if (worker_process != nullptr) CloseHandle(worker_process);
-        *status = AI_ERR_RUNTIME;
-        return false;
-    }
-    if (got != sizeof(rh)) {
-        CloseHandle(pipe);
-        if (worker_process != nullptr) CloseHandle(worker_process);
-        ai::set_last_error("worker returned a truncated response header");
-        *status = AI_ERR_RUNTIME;
-        return false;
-    }
-    if (rh.magic != ai_worker::kMagic || rh.version != ai_worker::kVersion) {
-        CloseHandle(pipe);
-        if (worker_process != nullptr) CloseHandle(worker_process);
-        ai::set_last_error(
-            "worker protocol mismatch: expected version " + std::to_string(ai_worker::kVersion) +
-            ", got " + std::to_string(rh.version));
-        *status = AI_ERR_RUNTIME;
-        return false;
-    }
-
-    response->resize(rh.payload_size);
-    uint32_t total = 0;
-    while (total < rh.payload_size) {
-        got = 0;
-        ok = ReadFile(pipe, response->data() + total, rh.payload_size - total, &got, nullptr);
-        if (!ok || got == 0) {
-            const DWORD error_code = GetLastError();
-            CloseHandle(pipe);
-            ai::set_last_error(worker_disconnect_error(flavor, worker_process, "reading the response payload", error_code));
-            if (worker_process != nullptr) CloseHandle(worker_process);
-            *status = AI_ERR_RUNTIME;
-            return false;
-        }
-        total += got;
-    }
-    const int32_t response_status = rh.status;
-    CloseHandle(pipe);
-    *status = response_status;
-    if (wait_for_shutdown && command == ai_worker::CMD_SHUTDOWN && response_status >= 0) {
-        if (worker_process == nullptr) {
-            ai::set_last_error("Worker shutdown was acknowledged but its process handle was unavailable");
-            *status = AI_ERR_RUNTIME;
-        } else {
-            const DWORD wait_result = WaitForSingleObject(worker_process, 5000);
-            if (wait_result == WAIT_TIMEOUT) {
-                ai::set_last_error("Worker shutdown acknowledged but process did not exit within 5000 ms");
-                *status = AI_ERR_RUNTIME;
-            } else if (wait_result == WAIT_FAILED) {
-                ai::set_last_error(
-                    "Worker shutdown was acknowledged but waiting for process exit failed (Windows error " +
-                    std::to_string(GetLastError()) + ")");
-                *status = AI_ERR_RUNTIME;
-            }
-        }
-    }
-    if (worker_process != nullptr) CloseHandle(worker_process);
     if (*status < 0) {
         std::string error;
-        if (proxy_read_string(*response, &error) && !error.empty()) {
-            ai::set_last_error(error);
-        } else {
-            ai::set_last_error(
-                "worker returned error status " + std::to_string(*status) + " without details");
-        }
+        if (proxy_read_string(*response, &error) && !error.empty()) ai::set_last_error(error);
+        else ai::set_last_error("Worker returned error status " + std::to_string(*status) + " without details");
     }
     return true;
 }
@@ -3491,6 +3284,10 @@ bool proxy_load_ocr_candidates(
     const std::function<std::vector<uint8_t>(const ProxyRuntimeCandidate&)>& make_payload,
     int32_t* status,
     std::vector<uint8_t>* response) {
+    if (requested_device == AI_DEVICE_TENSORRT) {
+        if (status) *status = AI_ERR_INVALID_ARGUMENT;
+        ai::set_last_error("TensorRT device 3 is available for YOLO only"); return false;
+    }
     const std::vector<ProxyRuntimeCandidate> candidates = proxy_runtime_candidates(requested_device);
     if (candidates.empty() || status == nullptr || response == nullptr) {
         if (status != nullptr) *status = AI_ERR_INVALID_ARGUMENT;
@@ -3723,9 +3520,9 @@ bool proxy_load_yolo_candidates(
 // 返回 DLL 内部持有的静态版本字符串。
 AIENGINE_EXPORT const char* AIENGINE_CALL AI_GetVersion(void) {
 #if defined(AIENGINE_BINARY_NAME)
-    return AIENGINE_BINARY_NAME "/0.14.5";
+    return AIENGINE_BINARY_NAME "/" AIENGINE_VERSION_STRING;
 #else
-    return "CQ_X86/0.14.5";
+    return "CQ_X86/" AIENGINE_VERSION_STRING;
 #endif
 }
 
@@ -5699,8 +5496,11 @@ AIENGINE_EXPORT const char* AIENGINE_CALL YOLO_InferJson(
     float conf,
     int32_t origin_x,
     int32_t origin_y) {
+    const auto call_start = ai::YoloClock::now();
+    ai::yolo_timing = {};
+    ai::yolo_timing.request_id = ai::next_yolo_request_id();
     g_yolo_json_result.clear();
-    if (big_data == nullptr || big_size <= 0 || conf < 0.0f || conf > 1.0f) {
+    if (big_data == nullptr || big_size <= 0 || !std::isfinite(conf) || conf < 0.0f || conf > 1.0f) {
         finish_status(AI_ERR_INVALID_ARGUMENT, "YOLO_InferJson");
         return g_yolo_json_result.c_str();
     }
@@ -5710,14 +5510,17 @@ AIENGINE_EXPORT const char* AIENGINE_CALL YOLO_InferJson(
         finish_status(AI_ERR_INVALID_HANDLE, "YOLO_InferJson");
         return g_yolo_json_result.c_str();
     }
-    std::vector<uint8_t> request;
+    thread_local std::vector<uint8_t> request, response;
+    request.clear();
+    response.clear();
+    const auto pack_start = ai::YoloClock::now();
     proxy_append_yolo_identity(&request, identity);
     proxy_append_bytes(&request, big_data, big_size);
     proxy_append_f32(&request, conf);
     proxy_append_i32(&request, origin_x);
     proxy_append_i32(&request, origin_y);
+    ai::yolo_timing.pack_us = ai::elapsed_us(pack_start);
     int32_t status = AI_ERR_RUNTIME;
-    std::vector<uint8_t> response;
     proxy_request(identity.flavor, ai_worker::CMD_YOLO_INFER_JSON, request, &status, &response);
     if (status >= 0) {
         std::string utf8_json;
@@ -5727,26 +5530,30 @@ AIENGINE_EXPORT const char* AIENGINE_CALL YOLO_InferJson(
             return g_yolo_json_result.c_str();
         }
         finish_status(status, "YOLO_InferJson");
+        ai::write_yolo_trace(ai::elapsed_us(call_start), status);
         return g_yolo_json_result.c_str();
     }
     finish_proxy_status(status, "YOLO_InferJson");
     return g_yolo_json_result.c_str();
 #else
+    const auto bmp_start = ai::YoloClock::now();
     BmpImageView big;
     if (!parse_bmp_view(big_data, big_size, &big, false)) {
         finish_status(AI_ERR_IMAGE_FORMAT, "YOLO_InferJson");
         return g_yolo_json_result.c_str();
     }
+    ai::yolo_timing.bmp_us = ai::elapsed_us(bmp_start);
     int32_t lookup_status = AI_OK;
     const auto pool = get_loaded_yolo_pool(handle, &lookup_status);
     if (!pool) {
         finish_status(lookup_status, "YOLO_InferJson");
         return g_yolo_json_result.c_str();
     }
-    std::vector<AIDetectBox> results;
+    thread_local std::vector<AIDetectBox> results;
+    results.clear();
     const int32_t status = pool->detect(big.image, conf, &results);
     if (status < 0 || status != static_cast<int32_t>(results.size())) {
-        finish_status(status < 0 ? status : AI_ERR_RUNTIME, "YOLO_InferJson");
+        finish_status_with_detail(status < 0 ? status : AI_ERR_RUNTIME, "YOLO_InferJson", ai::last_error());
         return g_yolo_json_result.c_str();
     }
     if (!offset_yolo_boxes(&results, origin_x, origin_y)) {
@@ -5756,13 +5563,16 @@ AIENGINE_EXPORT const char* AIENGINE_CALL YOLO_InferJson(
             "coordinate origin causes int32 overflow");
         return g_yolo_json_result.c_str();
     }
+    const auto json_start = ai::YoloClock::now();
     const std::string utf8_json = format_yolo_json(results, status);
     if (!utf8_to_windows_acp(utf8_json, &g_yolo_json_result)) {
         g_yolo_json_result.clear();
         finish_status_with_detail(AI_ERR_RUNTIME, "YOLO_InferJson", "failed to convert UTF-8 JSON to the current Windows ANSI code page");
         return g_yolo_json_result.c_str();
     }
+    ai::yolo_timing.json_us = ai::elapsed_us(json_start);
     finish_status(status, "YOLO_InferJson");
+    ai::write_yolo_trace(ai::elapsed_us(call_start), status);
     return g_yolo_json_result.c_str();
 #endif
 }

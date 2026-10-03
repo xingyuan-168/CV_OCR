@@ -8,3 +8,8 @@
 *.pdiparams binary
 *.whl binary
 *.zip binary
+
+# Unified diff context lines intentionally contain a leading blank.
+scripts/patches/*.patch text eol=lf whitespace=-blank-at-eol
+# Registered byte fingerprints must survive checkout unchanged.
+release/v23.6/** -text whitespace=cr-at-eol
