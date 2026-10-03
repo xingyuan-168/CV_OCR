@@ -18,8 +18,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify current source, historical artifacts and documentation
-        shell: ${{ matrix.shell }}
+      - name: Verify current release with Windows PowerShell
+        if: matrix.shell == 'powershell'
+        shell: powershell
+        run: |
+          python scripts/check_governance.py --all --working-tree --require-clean
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify current release with PowerShell 7
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
         run: |
           python scripts/check_governance.py --all --working-tree --require-clean
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
