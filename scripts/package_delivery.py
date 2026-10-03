@@ -304,6 +304,9 @@ def main():
         shutil.rmtree(tools)
         if not args.no_zip:
             shutil.rmtree(core)
+            result['core_directory'] = None
+        result['staging_cleaned'] = True
+        (output / 'manifest.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
     print(str(output / "manifest.json"))
 
 

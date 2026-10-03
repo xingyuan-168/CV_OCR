@@ -33,6 +33,7 @@ def register(package, wheel, select=False):
     stage = ROOT / 'outpush' / ('register-' + version)
     if stage.exists(): raise ValueError('Registration staging already exists')
     stage.mkdir(parents=True)
+    (stage / '.gitattributes').write_text('* -text whitespace=cr-at-eol\n', encoding='ascii')
     try:
         copy(easy,stage/easy.name); copy(wheel,stage/wheel.name)
         m['schema']=2
