@@ -17,7 +17,7 @@ class PackagingTests(unittest.TestCase):
             with self.subTest(path=p),self.assertRaises(ValueError): safe_output(p,external=True)
         self.assertEqual(safe_output(ROOT/'outpush/scratch/test.zip'),ROOT/'outpush/scratch/test.zip')
         with tempfile.TemporaryDirectory() as t:
-            self.assertEqual(safe_output(Path(t)/'optional.zip',external=True),Path(t)/'optional.zip')
+            self.assertEqual(safe_output(Path(t)/'optional.zip',external=True),(Path(t)/'optional.zip').resolve())
             with self.assertRaises(ValueError):safe_output(Path(t)/'file.dll',external=True)
 
     def test_current_archives_can_be_packaged_without_sdk_or_model(self):

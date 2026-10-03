@@ -43,7 +43,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   native-architectures:
-    runs-on: windows-latest
+    # Release presets use Visual Studio 17 2022; windows-latest now has VS2026.
+    runs-on: windows-2022
     strategy:
       matrix:
         profile: [ci-x86, ci-x64]
