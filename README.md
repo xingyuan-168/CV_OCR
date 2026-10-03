@@ -12,7 +12,7 @@ CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
 ## 当前交付物
 
-`output/` 固定只放 `CQ_X86.dll`、`CQ_AI_worker.exe`、`易语言_DLL_API_说明.html`。三文件ZIP、含模块与运行库的可选NVIDIA包、诊断工具包、哈希清单及日志分别保存在 `outpush/`。TensorRT/FP16/Graph及五窗口20/30ms性能必须由E5-2696 v4＋RTX2070实测。
+`output/` 固定只放 `CQ_X86.dll`、`CQ_AI_worker.exe`、`易语言_DLL_API_说明.html`。当前ZIP、Wheel及验证证据由 `release/current.json` 选择。NVIDIA大包仅在独立交付目录保留一份，诊断包及本机审计留在 `outpush/`。TensorRT/FP16/Graph及五窗口20/30ms性能必须由E5-2696 v4＋RTX2070实测。
 
 `release/v23.5/` 保留原来的ZIP、0.14.5 Wheel及manifest，成员和成品哈希不改变。
 
@@ -37,29 +37,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_relea
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare_dependencies.ps1
 ```
 
-构建 x64 Worker：
+统一构建x86 DLL、x64 Worker和x64 DLL：
 
 ```powershell
-cmake -S . -B build-cv-candidate-worker -G "Visual Studio 17 2022" -A x64 `
-  -DAIENGINE_WITH_ONNXRUNTIME=ON `
-  -DAIENGINE_ONNXRUNTIME_DIR="third_party/runtime/ort-directml-1.24.4" `
-  -DAIENGINE_EMBED_OCR_ASSETS=ON `
-  -DAIENGINE_BUILD_TESTS=OFF
-cmake --build build-cv-candidate-worker --config Release --parallel
+powershell -File scripts/build_delivery.ps1 -PythonExe python
 ```
 
-构建 x86 DLL 和测试：
-
-```powershell
-cmake -S . -B build-cv-candidate-x86 -G "Visual Studio 17 2022" -A Win32 `
-  -DAIENGINE_WITH_OPENCV=ON `
-  -DAIENGINE_OPENCV_DIR="third_party/opencv-5.0.0-static-mt/x86" `
-  -DAIENGINE_WITH_ONNXRUNTIME=OFF `
-  -DAIENGINE_BUILD_TESTS=ON
-cmake --build build-cv-candidate-x86 --config Release --parallel
-Copy-Item build-cv-candidate-worker/Release/CQ_AI_worker.exe build-cv-candidate-x86/Release/
-ctest --test-dir build-cv-candidate-x86 -C Release --output-on-failure
-```
+有效依赖按版本、架构和SHA复用，避免每次下载或重建。可选模块加`-Nvidia`。
+容量目标、归档、清理和缓存恢复见[仓库容量说明](docs/REPOSITORY_STORAGE_CN.md)。
+基础交付可通过`python scripts/package_delivery.py --reuse-current --out outpush/verified-copy`独立导出。
 
 生成交付前先完成 [v23.6验证步骤](docs/V23_6_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
 
@@ -69,4 +55,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.p
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
 ```
 
-占用或验证失败会保留、恢复原配套文件；回滚三文件与原哈希保存在 `outpush/rollback/`。本轮不调用历史 `promote_release.ps1`。NVIDIA SDK准备、可选模块构建与真实BMP校准见 [YOLO说明](docs/YOLO_OPTIMIZATION_CN.md)。
+占用或验证失败会保留、恢复原配套文件；回滚三文件与原哈希保存在 `outpush/rollback/`。新版本以 `promote_release.ps1` 注册；已注册版本不可替换。NVIDIA SDK准备、可选模块构建与真实BMP校准见 [YOLO说明](docs/YOLO_OPTIMIZATION_CN.md)。

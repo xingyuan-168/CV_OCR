@@ -10,8 +10,44 @@ permissions:
 jobs:
   verify-current-release:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        shell: [powershell, pwsh]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Verify current source, historical artifacts and documentation
+        shell: ${{ matrix.shell }}
+        run: |
+          python scripts/check_governance.py --all --working-tree --require-clean
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: astral-sh/setup-uv@v6
+        if: matrix.shell == 'pwsh'
+        with:
+          version: '0.12.22'
+      - name: Prepare pinned governance runtime
+        if: matrix.shell == 'pwsh'
         shell: pwsh
-        run: ./scripts/check_repository_hygiene.ps1 -CheckWorkingTree -RequireClean
+        run: |
+          ./scripts/prepare_governance.ps1
+          & .cache/aios-source/.venv/Scripts/codex-os.exe check . --change-class small_change --requirement-id REQ-GOV-001 --json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  native-architectures:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        profile: [ci-x86, ci-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native API and tests
+        shell: pwsh
+        run: |
+          cmake --preset ${{ matrix.profile }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset ${{ matrix.profile }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build/${{ matrix.profile }} -C Release --output-on-failure -R 'ai_engine_(yolo_transport|ocr_color_filter|ocr_reading_order)_test'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

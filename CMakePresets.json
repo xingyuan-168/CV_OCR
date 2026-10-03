@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "configurePresets": [
+    {
+      "name": "release-x86", "generator": "Visual Studio 17 2022", "architecture": "Win32",
+      "binaryDir": "${sourceDir}/build/release-x86",
+      "cacheVariables": {
+        "AIENGINE_BUILD_WORKER": "OFF", "AIENGINE_BUILD_TESTS": "ON",
+        "AIENGINE_WITH_OPENCV": "ON", "AIENGINE_WITH_ONNXRUNTIME": "OFF", "AIENGINE_CV_TEST_HOOKS": "OFF",
+        "AIENGINE_OPENCV_DIR": "${sourceDir}/third_party/opencv-5.0.0-static-mt/x86"
+      }
+    },
+    {
+      "name": "release-worker", "generator": "Visual Studio 17 2022", "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/release-worker",
+      "cacheVariables": {
+        "AIENGINE_BUILD_WORKER": "ON", "AIENGINE_BUILD_X64_DLL": "OFF", "AIENGINE_BUILD_TESTS": "OFF",
+        "AIENGINE_WITH_ONNXRUNTIME": "ON", "AIENGINE_EMBED_OCR_ASSETS": "ON", "AIENGINE_CV_TEST_HOOKS": "OFF",
+        "AIENGINE_ONNXRUNTIME_DIR": "${sourceDir}/third_party/runtime/ort-directml-1.24.4"
+      }
+    },
+    {
+      "name": "release-x64", "generator": "Visual Studio 17 2022", "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/release-x64",
+      "cacheVariables": {
+        "AIENGINE_BUILD_WORKER": "OFF", "AIENGINE_BUILD_X64_DLL": "ON", "AIENGINE_BUILD_TESTS": "ON",
+        "AIENGINE_CV_TEST_HOOKS": "OFF", "AIENGINE_WITH_OPENCV": "ON", "AIENGINE_WITH_ONNXRUNTIME": "ON",
+        "AIENGINE_EMBED_OCR_ASSETS": "ON",
+        "AIENGINE_OPENCV_DIR": "${sourceDir}/third_party/opencv-5.0.0-static-mt/x64",
+        "AIENGINE_ONNXRUNTIME_DIR": "${sourceDir}/third_party/runtime/ort-directml-1.24.4"
+      }
+    },
+    {
+      "name": "nvidia-x64", "inherits": "release-x64", "binaryDir": "${sourceDir}/build/nvidia-x64",
+      "cacheVariables": {"AIENGINE_BUILD_TENSORRT_MODULE": "ON"}
+    },
+    {
+      "name": "ci-x86", "inherits": "release-x86", "binaryDir": "${sourceDir}/build/ci-x86",
+      "cacheVariables": {"AIENGINE_WITH_OPENCV": "OFF", "AIENGINE_OPENCV_DIR": ""}
+    },
+    {
+      "name": "ci-x64", "inherits": "release-x64", "binaryDir": "${sourceDir}/build/ci-x64",
+      "cacheVariables": {"AIENGINE_WITH_OPENCV": "OFF", "AIENGINE_WITH_ONNXRUNTIME": "OFF", "AIENGINE_EMBED_OCR_ASSETS": "OFF", "AIENGINE_ONNXRUNTIME_DIR": "", "AIENGINE_OPENCV_DIR": ""}
+    }
+  ],
+  "buildPresets": [
+    {"name": "release-x86", "configurePreset": "release-x86", "configuration": "Release", "jobs": 4},
+    {"name": "release-worker", "configurePreset": "release-worker", "configuration": "Release", "jobs": 4},
+    {"name": "release-x64", "configurePreset": "release-x64", "configuration": "Release", "jobs": 4},
+    {"name": "nvidia-x64", "configurePreset": "nvidia-x64", "configuration": "Release", "jobs": 4},
+    {"name": "ci-x86", "configurePreset": "ci-x86", "configuration": "Release", "jobs": 4},
+    {"name": "ci-x64", "configurePreset": "ci-x64", "configuration": "Release", "jobs": 4}
+  ]
+}

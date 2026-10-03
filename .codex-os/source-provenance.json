@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "vendors": [
+    {
+      "path": "third_party/src/opencv-5.0.0",
+      "origin": "https://github.com/opencv/opencv.git",
+      "commit": "40738fb16ceddb5fb3fea747585f7ce6abb0605b",
+      "patched_files": {
+        "modules/core/include/opencv2/core/hal/intrin_avx.hpp": "353277b42a9c6f024ce81d6c573c96e4498655c17174ee2a26e1741025ed2125"
+      }
+    }
+  ]
+}

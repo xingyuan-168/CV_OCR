@@ -2,7 +2,9 @@ param(
     [ValidateSet("All", "x86", "x64", "None")]
     [string]$OpenCVArchitecture = "All",
     [switch]$SkipRuntime,
-    [switch]$ForceDownload
+    [switch]$ForceDownload,
+    [switch]$ForceRebuild,
+    [string]$PythonExe = 'python'
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,6 +14,21 @@ $project = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $thirdPartyRoot = [System.IO.Path]::GetFullPath((Join-Path $project "third_party"))
 $downloadRoot = Join-Path $thirdPartyRoot "downloads"
 $extractRoot = Join-Path $thirdPartyRoot "extract"
+
+function Test-DependencyCache {
+    param([string]$Group)
+    if ($ForceDownload -or $ForceRebuild) { return $false }
+    $result = & $PythonExe (Join-Path $PSScriptRoot 'dependency_cache.py') check --group $Group --root $project
+    $passed = $LASTEXITCODE -eq 0
+    Write-Host $result
+    return $passed
+}
+
+function Seal-DependencyCache {
+    param([string]$Group)
+    & $PythonExe (Join-Path $PSScriptRoot 'dependency_cache.py') seal --group $Group --root $project
+    if ($LASTEXITCODE -ne 0) { throw "Dependency verification failed: $Group" }
+}
 
 function Assert-UnderRoot {
     param([string]$Path, [string]$Root, [string]$Label)
@@ -93,6 +110,7 @@ function Invoke-GitWithRetry {
 }
 
 function Prepare-Runtime {
+    if (Test-DependencyCache 'runtime') { return }
     $runtimePath = Assert-UnderRoot `
         -Path (Join-Path $thirdPartyRoot "runtime\ort-directml-1.24.4") `
         -Root $thirdPartyRoot -Label "Runtime path"
@@ -158,6 +176,7 @@ function Prepare-Runtime {
         }
     }
     Write-Host "Runtime ready: $runtimePath"
+    Seal-DependencyCache 'runtime'
 }
 
 function Prepare-OpenCVSource {
@@ -289,14 +308,19 @@ function Build-OpenCV {
         }
     }
     Write-Host "OpenCV $Architecture /MT ready: $installPath"
+    Seal-DependencyCache "opencv-$Architecture"
 }
 
 New-Item -ItemType Directory -Force -Path $thirdPartyRoot | Out-Null
 if (!$SkipRuntime) { Prepare-Runtime }
 if ($OpenCVArchitecture -ne "None") {
-    $sourcePath = Prepare-OpenCVSource | Select-Object -Last 1
-    if ($OpenCVArchitecture -in @("All", "x86")) { Build-OpenCV -Architecture "x86" -SourcePath $sourcePath }
-    if ($OpenCVArchitecture -in @("All", "x64")) { Build-OpenCV -Architecture "x64" -SourcePath $sourcePath }
+    $sourcePath = $null
+    foreach ($arch in @('x86', 'x64')) {
+        if ($OpenCVArchitecture -notin @('All', $arch)) { continue }
+        if (Test-DependencyCache "opencv-$arch") { continue }
+        if (!$sourcePath) { $sourcePath = Prepare-OpenCVSource | Select-Object -Last 1 }
+        Build-OpenCV -Architecture $arch -SourcePath $sourcePath
+    }
 }
 
-Write-Host "Pinned v23.5 dependencies are ready below $thirdPartyRoot"
+Write-Host "Pinned dependencies are ready below $thirdPartyRoot"

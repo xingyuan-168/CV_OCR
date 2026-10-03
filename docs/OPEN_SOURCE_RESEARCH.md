@@ -1,4 +1,42 @@
-# YOLO 五路并发：后端调研与决策
+# Open Source Research
+
+## Requirement
+
+requirement_id: REQ-GOV-001
+summary: Register the delivered v23.6 source and integrate observable repository governance.
+scope: scripts, configs, docs, CI, release manifests, AIOS compatibility
+updated_at: 2026-10-03
+
+## Candidates
+
+### AI Engineering OS
+
+- URL: https://github.com/xingyuan-168/AI_Engineering_OS
+- Upstream revision: 3ba90c2d1962c6129ca03c0d4e305156f60bdc0d
+- License: upstream has no LICENSE or declared project license at this revision; it is the user-owned governance tool. Record this explicitly; dependency licenses remain in their distributions.
+- Solves: Start/Finish gates, document checks, project memory and disposable worktrees.
+- Direct reuse: official CLI and its frozen uv.lock; Codex retains task execution.
+- Extension: minimal regression-tested preservation of existing input/output directories.
+- Useful design: deterministic observable gates and Git-tracked engineering facts.
+- Limits: stock init/check requires .gitkeep files; the existing three-file output forbids them.
+
+### Existing CQ_AI scripts
+
+- Source: scripts/package_delivery.py and scripts/check_repository_hygiene.ps1.
+- Reuse: native verification, exact ABI/protocol checks, report hash binding and transactional output promotion.
+- Extension: current-manifest selection, portable paths, declared fixtures, shared NVIDIA preparation.
+- Limits: hardcoded historical release and dependence on machine-local input/build paths.
+
+## Decision
+
+decision: use
+reason: Reuse official AIOS gates with a narrowly scoped compatibility patch and strengthen existing delivery scripts; avoid adding another agent runtime or rewriting native inference.
+
+The patch, runtime lock and actual gate results are recorded with the governance report.
+
+## Prior backend research — REQ-YOLO-001
+
+### YOLO 五路并发：后端调研与决策
 
 ## Requirement
 
@@ -19,4 +57,4 @@ E5-2696 v4 / RTX2070 上，五个线程共享一个 YOLO 模型句柄；完整�
 
 同一模型共享 engine，各槽独立 context / stream / pinned host buffer / device buffer。缓存完整记录模型 SHA-256、GPU、驱动、CUDA、TensorRT、精度和构建参数；损坏或不匹配时重建。首先 FP32，FP16 只有离线业务验证通过后可选。CUDA Graph 作为测量后启用的选项，不预设性能收益。
 
-性能依据来自完整业务调用的 QPC 测量，不能以 GPU kernel 时间替代验收。RTX2070 目标机未实测前，候选包保留在 outpush，不晋升正式交付。
+性能依据来自完整业务调用的 QPC 测量，不能以 GPU kernel 时间替代验收。可用版在功能验证通过后可以交付，目标机性能认证另列；RTX2070 实测通过前不得标注20/30ms已达标。

@@ -14,7 +14,7 @@ CQ_AI_worker.exe
 
 DLL为x86，Worker为x64。公开函数保持60个，原有签名及stdcall别名保留；正整数session_count仍表示执行槽容量。YOLO支持设备0/1/2/3，OCR和AI_InitEx仅支持0..2。协议26新管道使用`cq_ai_worker_v26_core_0146`，与之前0.14.5协议26候选及协议25成品区分。
 
-三文件ZIP、可选NVIDIA模块与运行库ZIP、基准/校准工具ZIP和清单在outpush独立保存。历史release/v23.5的ZIP、Wheel和成员哈希不修改。易语言业务目录启用NVIDIA时，可以另行解压可选包；仓库output仍只维护基础三文件。
+当前三文件ZIP和Wheel已登记到release/v23.6，由release/current.json选择；可选NVIDIA ZIP仅在独立交付目录保留一份，基准/校准工具ZIP及本机日志保留在outpush。归档和恢复步骤见[仓库容量说明](REPOSITORY_STORAGE_CN.md)。历史release/v23.5的ZIP、Wheel和成员哈希不修改。易语言业务目录启用NVIDIA时，可以另行解压可选包；仓库output仍只维护基础三文件。
 
 ## 构建与验证顺序
 

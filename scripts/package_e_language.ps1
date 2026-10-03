@@ -1,18 +1,27 @@
 ﻿param(
     [string]$PythonExe = 'python',
-    [string]$X86Dll = 'build-cv-candidate-x86/Release/CQ_X86.dll',
-    [string]$WorkerExe = 'build-cv-candidate-worker/Release/CQ_AI_worker.exe',
-    [string]$X64Dir = 'build-cv-candidate-x64/Release',
+    [string]$X86Dll = 'build/release-x86/Release/CQ_X86.dll',
+    [string]$WorkerExe = 'build/release-worker/Release/CQ_AI_worker.exe',
+    [string]$X64Dir = 'build/release-x64/Release',
     [string]$ApiHtml = 'docs/易语言_DLL_API_说明.html',
     [string]$OutputDir = 'output',
-    [string]$StageDir = 'outpush/v23.6-delivery',
-    [string]$ValidationDir = 'outpush/v23.6-validation',
+    [string]$StageDir = '',
+    [string]$ValidationDir = '',
+    [string]$Metadata = '',
+    [string]$Model = 'input/best.onnx',
+    [string]$Image = 'tests/fixtures/yolo/baseline-800x600.bmp',
     [switch]$SkipNvidiaPacking,
     [switch]$NoZip
 )
 
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$currentPointer = Get-Content -LiteralPath (Join-Path $project 'release/current.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$currentManifest = Join-Path (Join-Path $project 'release') $currentPointer.manifest
+$current = Get-Content -LiteralPath $currentManifest -Raw -Encoding UTF8 | ConvertFrom-Json
+if (!$Metadata) { $Metadata = $currentManifest }
+if (!$StageDir) { $StageDir = 'outpush/delivery-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') }
+if (!$ValidationDir) { $ValidationDir = "outpush/$($current.delivery_version)-validation" }
 $outpushRoot = [IO.Path]::GetFullPath((Join-Path $project 'outpush'))
 function Resolve-ProjectPath([string]$Path) {
     if ([IO.Path]::IsPathRooted($Path)) { return [IO.Path]::GetFullPath($Path) }
@@ -37,7 +46,7 @@ $python = (Get-Command $PythonExe -ErrorAction Stop).Source
 $msvcRoot = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC'
 $dumpbin = Get-ChildItem -LiteralPath $msvcRoot -Directory | Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin/Hostx64/x64/dumpbin.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (!$dumpbin) { throw 'dumpbin.exe was not found' }
-$arguments = @((Join-Path $PSScriptRoot 'package_delivery.py'), '--x86', (Split-Path -Parent $x86Path), '--worker', $workerPath, '--x64', $x64Path, '--out', $stageRoot, '--validation', $validation, '--dumpbin', $dumpbin)
+$arguments = @((Join-Path $PSScriptRoot 'package_delivery.py'), '--x86', (Split-Path -Parent $x86Path), '--worker', $workerPath, '--x64', $x64Path, '--out', $stageRoot, '--validation', $validation, '--dumpbin', $dumpbin, '--metadata', (Resolve-ProjectPath $Metadata), '--model', (Resolve-ProjectPath $Model), '--image', (Resolve-ProjectPath $Image), '--keep-stage')
 if ($SkipNvidiaPacking) { $arguments += '--skip-nvidia' }
 if ($NoZip) { $arguments += '--no-zip' }
 & $python @arguments
@@ -78,7 +87,7 @@ try {
     foreach ($name in $expected) {
         if ((Get-FileHash -LiteralPath (Join-Path $finalOutput $name) -Algorithm SHA256).Hash -ne $manifest.files.$name.sha256) { throw "Promoted file hash differs: $name" }
     }
-    & (Join-Path (Split-Path -Parent $x86Path) 'ai_engine_delivery_verify.exe') --dll (Join-Path $finalOutput 'CQ_X86.dll') --header (Join-Path $project 'include/ai_engine.h') --model (Join-Path $validation '中文路径/best.onnx') --image (Join-Path $project 'input/yolo测试图.bmp') --expected-json (Join-Path $validation 'frozen-detections.json') --report (Join-Path $stageRoot 'delivery-output.json')
+    & (Join-Path (Split-Path -Parent $x86Path) 'ai_engine_delivery_verify.exe') --dll (Join-Path $finalOutput 'CQ_X86.dll') --header (Join-Path $project 'include/ai_engine.h') --model (Resolve-ProjectPath $Model) --image (Resolve-ProjectPath $Image) --expected-json (Join-Path $validation 'frozen-detections.json') --report (Join-Path $stageRoot 'delivery-output.json') --preserve-worker 1
     if ($LASTEXITCODE -ne 0) { throw 'Actual output delivery loader failed' }
     $manifest.output_directory = $finalOutput
     $manifest.output_promotion = 'verified'

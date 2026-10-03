@@ -1,13 +1,14 @@
 ﻿param(
     [string]$PythonExe = 'python',
-    [string]$BuildDir = 'build-release-python-x64',
+    [string]$BuildDir = 'build/release-x64',
     [string]$OpenCVDir = 'third_party/opencv-5.0.0-static-mt/x64',
     [string]$RuntimeDir = 'third_party/runtime/ort-directml-1.24.4',
     [string]$OutputDir = '',
     [switch]$SkipDependencyPreparation,
     [switch]$SkipNativeTests,
     [switch]$SkipNativeBuild,
-    [switch]$BuildTensorRTModule
+    [switch]$BuildTensorRTModule,
+    [switch]$KeepStage
 )
 $ErrorActionPreference='Stop'
 $project=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -22,7 +23,8 @@ $runtimePath=Resolve-ProjectPath $RuntimeDir
 $python=(Get-Command $PythonExe -ErrorAction Stop).Source
 $cmake=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
 $ctest=Join-Path (Split-Path -Parent $cmake) 'ctest.exe'
-$meta=Get-Content -LiteralPath (Join-Path $project 'docs/YOLO_CANDIDATE_METADATA.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$pointer=Get-Content -LiteralPath (Join-Path $project 'release/current.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$meta=Get-Content -LiteralPath (Join-Path (Join-Path $project 'release') $pointer.manifest) -Raw -Encoding UTF8 | ConvertFrom-Json
 $stamp=Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 if (!$OutputDir) { $OutputDir="outpush/python-$($meta.delivery_version)-$stamp" }
 $output=Resolve-ProjectPath $OutputDir
@@ -30,7 +32,8 @@ $outpush=Join-Path $project 'outpush'
 if (!$output.StartsWith($outpush + [IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)) { throw 'OutputDir must be a child of outpush' }
 if (Test-Path -LiteralPath $output) { throw 'Choose a fresh OutputDir; previous packages are preserved' }
 if (!$SkipNativeBuild) {
-    if (!$SkipDependencyPreparation) { & (Join-Path $PSScriptRoot 'prepare_dependencies.ps1') -OpenCVArchitecture x64 }
+    if (!$SkipDependencyPreparation) { & (Join-Path $PSScriptRoot 'prepare_dependencies.ps1') -OpenCVArchitecture x64 -PythonExe $python }
+    if ($BuildTensorRTModule) { & $python (Join-Path $PSScriptRoot 'prepare_nvidia_headers.py'); if ($LASTEXITCODE -ne 0) { throw 'NVIDIA header preparation failed' } }
     $arguments=@('-S',$project,'-B',$buildRoot,'-G','Visual Studio 17 2022','-A','x64','-DAIENGINE_BUILD_X64_DLL=ON','-DAIENGINE_BUILD_WORKER=OFF','-DAIENGINE_WITH_OPENCV=ON',"-DAIENGINE_OPENCV_DIR=$opencvPath",'-DAIENGINE_WITH_ONNXRUNTIME=ON',"-DAIENGINE_ONNXRUNTIME_DIR=$runtimePath",'-DAIENGINE_EMBED_OCR_ASSETS=ON','-DAIENGINE_BUILD_TESTS=ON')
     if ($BuildTensorRTModule) { $arguments += '-DAIENGINE_BUILD_TENSORRT_MODULE=ON' }
     & $cmake @arguments
@@ -59,3 +62,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Installed Wheel CV/OCR/YOLO acceptance failed'
 Get-FileHash -LiteralPath $wheel -Algorithm SHA256 | Format-List
 Write-Host "Verified Wheel: $wheel"
 Write-Host 'Target NVIDIA performance is pending; installing this Wheel does not constitute GPU acceptance.'
+if (!$KeepStage) {
+    Import-Module (Join-Path $PSScriptRoot 'CleanupSafety.psm1') -Force
+    $relativeVenv = $venv.Substring($project.Length + 1).Replace('\', '/')
+    $result = Remove-RegisteredTarget -Root $project -Relative $relativeVenv -Allowed @($relativeVenv) -Apply
+    if ($result.state -ne 'deleted') { throw "Verified Wheel retained, but install staging cleanup failed: $($result.state)" }
+}

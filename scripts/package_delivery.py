@@ -12,7 +12,8 @@ import sys
 import zipfile
 
 from generate_e_language_api_doc import exported_names, parse_exports, source_metadata
-from package_yolo_candidate import copy, digest, zip_directory
+from package_common import copy, digest, zip_directory
+from release_manifest import current_manifest, verify_current, safe_member, verify_file
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_NAMES = {"CQ_X86.dll", "CQ_AI_worker.exe", "易语言_DLL_API_说明.html"}
@@ -41,9 +42,13 @@ def check_zip(path, expected=None):
         return names
 
 
-def safe_output(path):
+def safe_output(path, external=False):
     path = path.resolve()
     base = (ROOT / "outpush").resolve()
+    if external and not path.is_relative_to(ROOT):
+        if path.suffix.lower() != '.zip':
+            raise ValueError('External packaging target must be a ZIP file')
+        return path
     if not path.is_relative_to(base) or path == base:
         raise ValueError("Packaging output must be a child of the workspace outpush directory")
     return path
@@ -109,7 +114,9 @@ def verified_reports(args, binaries, metadata):
 
 
 def nvidia_package(args, metadata):
-    output = safe_output(args.nvidia_zip)
+    output = safe_output(args.nvidia_zip, external=True)
+    if output.exists():
+        raise ValueError('Optional packages are immutable; choose a fresh external target')
     output.parent.mkdir(parents=True, exist_ok=True)
     dependency = args.nvidia_deps.resolve()
     manifest = json.loads((dependency / "manifest.json").read_text(encoding="utf-8"))
@@ -163,27 +170,54 @@ def python_wheel(args, output, metadata):
             data = archive.read("cq_ai_engine/_native/" + path.name)
             if hashlib.sha256(data).hexdigest() != digest(path):
                 raise ValueError(f"Wheel native payload differs: {path.name}")
-    return dict(path=str(wheel), **info(wheel))
+    result = dict(path=str(wheel), **info(wheel))
+    if not args.keep_stage:
+        shutil.rmtree(stage)
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--x86", type=Path, default=ROOT / "build-cv-candidate-x86/Release")
-    parser.add_argument("--x64", type=Path, default=ROOT / "build-cv-candidate-x64/Release")
-    parser.add_argument("--worker", type=Path, default=ROOT / "build-cv-candidate-worker/Release/CQ_AI_worker.exe")
-    parser.add_argument("--out", type=Path, default=ROOT / "outpush/v23.6-delivery")
-    parser.add_argument("--validation", type=Path, default=ROOT / "outpush/v23.6-validation")
-    parser.add_argument("--dumpbin", type=Path, required=True)
-    parser.add_argument("--nvidia-deps", type=Path, default=ROOT / "outpush/nvidia-runtime-trt10.13.3-cuda12.8")
-    parser.add_argument("--nvidia-zip", type=Path, default=ROOT / "outpush/CQ_AI_NVIDIA_v23.6_TRT10.13.3_CUDA12.8.zip")
+    parser.add_argument("--x86", type=Path, default=ROOT / "build/release-x86/Release")
+    parser.add_argument("--x64", type=Path, default=ROOT / "build/release-x64/Release")
+    parser.add_argument("--worker", type=Path, default=ROOT / "build/release-worker/Release/CQ_AI_worker.exe")
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--validation", type=Path)
+    parser.add_argument("--metadata", type=Path, help='Binary-bound validated metadata for a new candidate')
+    parser.add_argument("--dumpbin", type=Path)
+    parser.add_argument("--nvidia-deps", type=Path)
+    parser.add_argument("--nvidia-zip", type=Path)
+    parser.add_argument("--reuse-current", action="store_true", help='Copy verified registered archives without rebuilding')
+    parser.add_argument("--with-nvidia", action="store_true")
+    parser.add_argument("--keep-stage", action="store_true")
+    parser.add_argument("--model", type=Path, default=ROOT / 'input/best.onnx')
+    parser.add_argument("--image", type=Path, default=ROOT / 'tests/fixtures/yolo/baseline-800x600.bmp')
     parser.add_argument("--nvidia-only", action="store_true")
     parser.add_argument("--skip-nvidia", action="store_true")
     parser.add_argument("--python-only", action="store_true")
     parser.add_argument("--no-zip", action="store_true")
     args = parser.parse_args()
-    for key in ("x86", "x64", "worker", "validation", "dumpbin"):
+    registered_path, registered = current_manifest(ROOT)
+    args.out = args.out or ROOT / 'outpush' / ('package-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S-%f'))
+    args.validation = args.validation or ROOT / 'outpush' / (registered['delivery_version'] + '-validation')
+    if args.reuse_current:
+        verify_current(ROOT)
+        output = safe_output(args.out)
+        if output.exists(): raise ValueError('Choose a fresh package output')
+        output.mkdir(parents=True)
+        artifacts = {}
+        for kind, item in registered['artifacts'].items():
+            dest = output / item['file']
+            copy(safe_member(registered_path.parent, item['file']), dest)
+            verify_file(dest, item); artifacts[kind] = dict(item)
+        (output / 'manifest.json').write_text(json.dumps(dict(project_version=registered['project_version'], delivery_version=registered['delivery_version'], source_manifest=registered_path.relative_to(ROOT).as_posix(), artifacts=artifacts), indent=2), encoding='utf-8')
+        print(str(output / 'manifest.json')); return
+    if args.dumpbin is None: parser.error('--dumpbin is required for candidate packaging')
+    if (args.nvidia_only or args.with_nvidia) and (args.nvidia_deps is None or args.nvidia_zip is None):
+        parser.error('Optional NVIDIA packaging requires --nvidia-deps and an explicit --nvidia-zip')
+    for key in ("x86", "x64", "worker", "validation", "dumpbin", "model", "image"):
         setattr(args, key, getattr(args, key).resolve())
-    metadata_path = ROOT / "docs/YOLO_CANDIDATE_METADATA.json"
+    metadata_path = args.metadata or registered_path
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     source_metadata(ROOT / "include/ai_engine.h", ROOT / "src/worker_protocol.h", metadata_path)
     if args.nvidia_only:
@@ -203,7 +237,10 @@ def main():
     if metadata.get("binary_fingerprints") != binaries:
         raise ValueError("HTML metadata must contain the latest DLL/Worker fingerprints")
     reports = verified_reports(args, binaries, metadata)
-    for relative, expected_sha in metadata["native_source_sha256"].items():
+    from release_manifest import verify_sources
+    if 'git_source_sha256' in metadata:
+        verify_sources(ROOT, metadata)
+    for relative, expected_sha in ({} if 'git_source_sha256' in metadata else metadata["native_source_sha256"]).items():
         path = (ROOT / relative).resolve()
         if not path.is_relative_to(ROOT) or digest(path) != expected_sha:
             raise ValueError(f"Native source changed after the tested build snapshot: {relative}")
@@ -213,7 +250,7 @@ def main():
         copy(path, core / name)
     if {p.name for p in core.iterdir()} != CORE_NAMES:
         raise ValueError("Core stage must contain exactly the three delivery files")
-    run([args.x86 / "ai_engine_delivery_verify.exe", "--dll", core / "CQ_X86.dll", "--header", ROOT / "include/ai_engine.h", "--model", args.validation / "中文路径/best.onnx", "--image", ROOT / "input/yolo测试图.bmp", "--expected-json", args.validation / "frozen-detections.json", "--report", output / "delivery-staged.json"], output / "delivery-staged.log")
+    run([args.x86 / "ai_engine_delivery_verify.exe", "--dll", core / "CQ_X86.dll", "--header", ROOT / "include/ai_engine.h", "--model", args.model, "--image", args.image, "--expected-json", args.validation / "frozen-detections.json", "--report", output / "delivery-staged.json", "--preserve-worker", "1"], output / "delivery-staged.log")
     artifacts = {}
     if not args.no_zip:
         base_zip = output / f"CQ_AI_e_language_{metadata['delivery_version']}.zip"
@@ -235,24 +272,27 @@ def main():
         copy(ROOT / "examples" / name, tools / "examples" / name)
     for name in ("YOLO_OPTIMIZATION_CN.md", "YOLO_VALIDATION_CN.md", "V23_6_DELIVERY_CN.md"):
         copy(ROOT / "docs" / name, tools / name)
-    copy(ROOT / "input/best.onnx", tools / "validation/best.onnx")
-    for directory in (ROOT / "input", ROOT / "tests/fixtures/yolo"):
-        for path in directory.glob("*.bmp"):
-            copy(path, tools / "validation" / path.name)
+    copy(args.model, tools / "validation/best.onnx")
+    copy(args.image, tools / "validation" / args.image.name)
+    for path in (ROOT / 'tests/fixtures/yolo').glob('*.bmp'):
+        copy(path, tools / 'validation' / path.name)
     (tools / "README.txt").write_text("Requires Windows x64 and Python3.9+. Run powershell -File tools/run_yolo_acceptance.ps1 -RuntimeDir D:/your/application -Model D:/models/best.onnx -ImagesDir D:/businessBMP. RuntimeDir supplies the three delivered files; reports/staging do not modify it. Read V23_6_DELIVERY_CN.md. Baseline fixtures alone cannot accept five real business windows.\n", encoding="utf-8")
     tools_zip = output / f"CQ_AI_YOLO_tools_{metadata['delivery_version']}.zip"
     zip_directory(tools, tools_zip); check_zip(tools_zip)
     artifacts["diagnostics_zip"] = dict(path=str(tools_zip), **info(tools_zip))
-    if args.skip_nvidia:
+    if args.skip_nvidia and args.nvidia_zip:
         package = json.loads(args.nvidia_zip.with_suffix(".manifest.json").read_text(encoding="utf-8"))
         if info(args.nvidia_zip) != {k: package[k] for k in ("size", "sha256")} or package["module"] != info(args.x64 / "CQ_YOLO_TensorRT.dll"):
             raise ValueError("The existing optional NVIDIA package differs from the current module")
-    else:
+    elif args.with_nvidia:
         package = nvidia_package(args, metadata)
-    artifacts["nvidia_zip"] = package
+    else:
+        package = None
+    if package: artifacts["nvidia_zip"] = package
     caches = {}
-    for name in ("build-cv-candidate-x86", "build-cv-candidate-worker", "build-cv-candidate-x64"):
-        path = ROOT / name / "CMakeCache.txt"
+    for name, binary_dir in (('x86', args.x86), ('worker', args.worker.parent), ('x64', args.x64)):
+        path = binary_dir.parent / "CMakeCache.txt"
+        if not path.is_file(): raise ValueError(f'Missing build provenance: {path}')
         selected = {}
         for line in path.read_text(encoding="utf-8").splitlines():
             if re.match(r"(CMAKE_BUILD_TYPE|CMAKE_GENERATOR|CMAKE_GENERATOR_PLATFORM|AIENGINE_\w+|CMAKE_CXX_COMPILER):", line):
@@ -260,6 +300,10 @@ def main():
         caches[name] = selected
     result = dict(metadata, source_committed_revision=run(["git", "rev-parse", "HEAD"], cwd=ROOT).strip(), source_snapshot_verified=True, created_utc=datetime.now(timezone.utc).isoformat(), core_directory=str(core), output_directory=str(ROOT / "output"), output_promotion="pending", files={p.name: info(p) for p in core.iterdir()}, worker_probe=probe, validation_reports=reports, build_configuration=caches, artifacts=artifacts, historical_release="release/v23.5 retained unchanged")
     (output / "manifest.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    if not args.keep_stage:
+        shutil.rmtree(tools)
+        if not args.no_zip:
+            shutil.rmtree(core)
     print(str(output / "manifest.json"))
 
 

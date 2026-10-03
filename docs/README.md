@@ -11,4 +11,6 @@
 - [OPEN_SOURCE_RESEARCH.md](OPEN_SOURCE_RESEARCH.md)：固定后端与依赖选型依据。
 - [V23_5_DELIVERY_BASELINE_CN.md](V23_5_DELIVERY_BASELINE_CN.md)：历史v23.5成品边界，原始哈希保持不变。
 
-ABI以 `include/ai_engine.h` 为准，实现以 `src/` 为准。最新成品SHA、验证日志和包清单以 `outpush/` 的v23.6交付manifest为准；历史ZIP/Wheel以 `release/v23.5/manifest.json` 为准。
+ABI以 `include/ai_engine.h` 为准，实现以 `src/` 为准。当前成品和验证证据由 `release/current.json` 选择；历史ZIP/Wheel以各版本原始manifest为准。
+
+- [仓库容量、缓存与依赖恢复](REPOSITORY_STORAGE_CN.md)

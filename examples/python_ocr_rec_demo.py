@@ -15,7 +15,7 @@ import ai_engine as ai  # noqa: E402
 
 
 def _default_model(root: Path) -> Path | None:
-    """返回 v23.5 基线中的 FP32 OCR 识别模型。"""
+    """返回仓库内置的 FP32 OCR 识别模型。"""
     path = root / "models" / "ocr_ppocrv6" / "rec.fp32.onnx"
     return path if path.exists() else None
 

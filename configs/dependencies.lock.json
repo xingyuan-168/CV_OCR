@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "groups": {
+    "runtime": {
+      "directory": "third_party/runtime/ort-directml-1.24.4",
+      "ort": "1.24.4",
+      "directml": "1.15.4",
+      "required": [
+        "VERSION_NUMBER",
+        "include/onnxruntime_cxx_api.h",
+        "include/DirectML.h",
+        "bin/onnxruntime.dll",
+        "bin/DirectML.dll",
+        "lib/onnxruntime.lib",
+        "licenses/onnxruntime-LICENSE.txt",
+        "licenses/directml-LICENSE.txt"
+      ]
+    },
+    "nvidia-headers": {
+      "directory": "third_party/nvidia-headers",
+      "trt_commit": "94e2b9ef6d2cce74c76cdad499cca36cc4949197",
+      "parser_commit": "SDK-10.13.3.9",
+      "required": [
+        "NvInfer.h",
+        "NvInferImpl.h",
+        "NvInferLegacyDims.h",
+        "NvInferPlugin.h",
+        "NvInferPluginBase.h",
+        "NvInferPluginUtils.h",
+        "NvInferRuntime.h",
+        "NvInferRuntimeBase.h",
+        "NvInferRuntimeCommon.h",
+        "NvInferRuntimePlugin.h",
+        "NvInferVersion.h",
+        "NvOnnxConfig.h",
+        "NvOnnxParser.h",
+        "NVIDIA_TensorRT_LICENSE.html",
+        "headers-manifest.json"
+      ]
+    },
+    "cuda-headers": {
+      "directory": "third_party/nvidia-cuda-runtime-12.8.90",
+      "runtime": "12.8.90",
+      "nvcc": "12.8.93",
+      "required": [
+        "nvidia/cuda_runtime/include/cuda_runtime_api.h",
+        "nvidia/cuda_runtime/include/crt/host_defines.h",
+        "nvidia_cuda_runtime_cu12-12.8.90.dist-info/License.txt"
+      ]
+    },
+    "opencv-x86": {
+      "directory": "third_party/opencv-5.0.0-static-mt/x86",
+      "commit": "40738fb16ceddb5fb3fea747585f7ce6abb0605b",
+      "patch_sha256": "bf00035239a3e8477e6b856e5b3dd4ae15855d0cd06dea843125820b82132127",
+      "architecture": "x86",
+      "crt": "MT",
+      "components": [
+        "core",
+        "imgproc"
+      ],
+      "ipp": true,
+      "required": [
+        "OpenCVConfig.cmake",
+        "include/opencv2/cvconfig.h",
+        "x86/vc17/staticlib/opencv_core500.lib",
+        "x86/vc17/staticlib/opencv_imgproc500.lib",
+        "x86/vc17/staticlib/libtiff.lib",
+        "x86/vc17/staticlib/libwebp.lib",
+        "x86/vc17/staticlib/libpng.lib",
+        "x86/vc17/staticlib/libprotobuf.lib"
+      ]
+    },
+    "opencv-x64": {
+      "directory": "third_party/opencv-5.0.0-static-mt/x64",
+      "commit": "40738fb16ceddb5fb3fea747585f7ce6abb0605b",
+      "patch_sha256": "bf00035239a3e8477e6b856e5b3dd4ae15855d0cd06dea843125820b82132127",
+      "architecture": "x64",
+      "crt": "MT",
+      "components": [
+        "core",
+        "imgproc"
+      ],
+      "ipp": true,
+      "required": [
+        "OpenCVConfig.cmake",
+        "include/opencv2/cvconfig.h",
+        "x64/vc17/staticlib/opencv_core500.lib",
+        "x64/vc17/staticlib/opencv_imgproc500.lib",
+        "x64/vc17/staticlib/libtiff.lib",
+        "x64/vc17/staticlib/libwebp.lib",
+        "x64/vc17/staticlib/libpng.lib",
+        "x64/vc17/staticlib/libprotobuf.lib"
+      ]
+    }
+  },
+  "nvidia_header_downloads": [
+    {
+      "file": "NvInfer.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInfer.h",
+      "size": 380284,
+      "sha256": "07f99e74e28d8ae7e64471b5e643217e5e052cd9a798afab7b5bc87b6a04b0e7"
+    },
+    {
+      "file": "NvInferImpl.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferImpl.h",
+      "size": 59418,
+      "sha256": "fa0e22eea6bac43579d43036e02eab57963c3358fda4c9013939fc699c20dc1b"
+    },
+    {
+      "file": "NvInferLegacyDims.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferLegacyDims.h",
+      "size": 4214,
+      "sha256": "99a80d98a7cdcac515d64a5f48dafe2a6d4f920c4513ec3f2b07bacf7c4ab09f"
+    },
+    {
+      "file": "NvInferPlugin.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferPlugin.h",
+      "size": 1582,
+      "sha256": "3ab7107afc15e4317a17a57b31d7d42d677091380918bfc2dc45eb4ab38570ad"
+    },
+    {
+      "file": "NvInferPluginBase.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferPluginBase.h",
+      "size": 9253,
+      "sha256": "6088613d4657d17eff6f351c196c5bd79c264636f2979a9f7e83e4c445c16efa"
+    },
+    {
+      "file": "NvInferPluginUtils.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferPluginUtils.h",
+      "size": 10356,
+      "sha256": "367f961bbb3126e59cfd415650d077023f4d7d697d21f3ee92fef8b1b4ec7d28"
+    },
+    {
+      "file": "NvInferRuntime.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferRuntime.h",
+      "size": 235742,
+      "sha256": "ffc14ed737cbd4bdf9fe53fc200f48a627a4465a058fdf49ee6e2e35c9ed80b9"
+    },
+    {
+      "file": "NvInferRuntimeBase.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferRuntimeBase.h",
+      "size": 27249,
+      "sha256": "5ce053d48acaee91013c5239103cdbec6e1773f68c354e40d60b815fb5d7a359"
+    },
+    {
+      "file": "NvInferRuntimeCommon.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferRuntimeCommon.h",
+      "size": 13551,
+      "sha256": "c2f97d350090f106e995bf4522a89dd19ab0c15441023408ac6bf19fe7506688"
+    },
+    {
+      "file": "NvInferRuntimePlugin.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferRuntimePlugin.h",
+      "size": 45800,
+      "sha256": "940c39b8d35045cd91970abc023e9f5deaadc8783aa4ec778f042a74531c8ecb"
+    },
+    {
+      "file": "NvInferVersion.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvInferVersion.h",
+      "size": 1884,
+      "sha256": "b8c2ec02058769a541e22775329ba00e6821e5688eea7015325ef262b0c10475"
+    },
+    {
+      "file": "NvOnnxConfig.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvOnnxConfig.h",
+      "size": 5964,
+      "sha256": "a64a532c86d5ab9e12b009541541ad54531ce39eeecdc53d7b46cb3b7954d746"
+    },
+    {
+      "file": "NvOnnxParser.h",
+      "sdk_member": "TensorRT-10.13.3.9/include/NvOnnxParser.h",
+      "size": 25526,
+      "sha256": "195fe795f7b4cf6951336451b6966c143672078da4c114f688abe85d5a5072bd"
+    }
+  ],
+  "nvidia_wheels": [
+    {
+      "package": "nvidia-cuda-runtime-cu12",
+      "version": "12.8.90",
+      "file": "nvidia_cuda_runtime_cu12-12.8.90-py3-none-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/30/a5/a515b7600ad361ea14bfa13fb4d6687abf500adc270f19e89849c0590492/nvidia_cuda_runtime_cu12-12.8.90-py3-none-win_amd64.whl",
+      "size": 944318,
+      "sha256": "c0c6027f01505bfed6c3b21ec546f69c687689aad5f1a377554bc6ca4aa993a8"
+    },
+    {
+      "package": "nvidia-cuda-nvcc-cu12",
+      "version": "12.8.93",
+      "file": "nvidia_cuda_nvcc_cu12-12.8.93-py3-none-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/05/e9/0adfcf7b228413645b41b0fafaa0b93a71dfe8f23cb15591a0f7fe6c3f63/nvidia_cuda_nvcc_cu12-12.8.93-py3-none-win_amd64.whl",
+      "size": 33424101,
+      "sha256": "bb9dc7c291cd105d14f9b220bdcdf6ce6063c2d6ff01a505e358471530a8d226"
+    },
+    {
+      "package": "nvidia-cuda-nvrtc-cu12",
+      "version": "12.8.93",
+      "file": "nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/45/51/52a3d84baa2136cc8df15500ad731d74d3a1114d4c123e043cb608d4a32b/nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-win_amd64.whl",
+      "size": 73586838,
+      "sha256": "7a4b6b2904850fe78e0bd179c4b655c404d4bb799ef03ddc60804247099ae909"
+    },
+    {
+      "package": "nvidia-cublas-cu12",
+      "version": "12.8.4.1",
+      "file": "nvidia_cublas_cu12-12.8.4.1-py3-none-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/70/61/7d7b3c70186fb651d0fbd35b01dbfc8e755f69fd58f817f3d0f642df20c3/nvidia_cublas_cu12-12.8.4.1-py3-none-win_amd64.whl",
+      "size": 567544208,
+      "sha256": "47e9b82132fa8d2b4944e708049229601448aaad7e6f296f630f2d1a32de35af"
+    }
+  ],
+  "tensorrt_sdk": {
+    "file": "TensorRT-10.13.3.9.Windows.win10.cuda-12.9.zip",
+    "url": "https://developer.download.nvidia.com/compute/machine-learning/tensorrt/10.13.3/zip/TensorRT-10.13.3.9.Windows.win10.cuda-12.9.zip",
+    "sha256": "d7fd63dc111dc68bc7bdf3b0b494c669ed50315502b016ec3022ac7cb3ba0615"
+  },
+  "baseline_external_zip": "CQ_AI_NVIDIA_v23.6_TRT10.13.3_CUDA12.8.zip"
+}

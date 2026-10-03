@@ -274,7 +274,7 @@ def _rgb_text(value: Union[int, TextValue]) -> bytes:
 
 
 def _parse_compact_points(text: str, x_key: str, y_key: str) -> List[Dict[str, int]]:
-    """解析 v23.5 的 ID,x,y|ID,x,y 紧凑结果文本。"""
+    """解析 ID,x,y|ID,x,y 紧凑结果文本。"""
     if text == "":
         return []
     results: List[Dict[str, int]] = []
