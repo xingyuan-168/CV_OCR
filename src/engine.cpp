@@ -15,8 +15,8 @@ bool is_valid_runtime_device(int32_t runtime_device) {
 }
 
 // 将 API 指定的运行设备覆盖写入 Config。
-bool apply_runtime_device(Config* config, int32_t runtime_device, std::string* error) {
-    if (config == nullptr || !is_valid_runtime_device(runtime_device)) {
+bool apply_runtime_device(Config* config, int32_t runtime_device, std::string* error, bool yolo_only = false) {
+    if (config == nullptr || (!is_valid_runtime_device(runtime_device) && !(yolo_only && runtime_device == AI_DEVICE_TENSORRT))) {
         if (error != nullptr) {
             *error = "Invalid runtime device " + std::to_string(runtime_device) +
                 "; valid values are 0=AUTO, 1=DirectML, 2=CPU";
@@ -82,11 +82,12 @@ int32_t Engine::yolo_load_model(const char* model_path, const char* config_path,
             return AI_ERR_CONFIG;
         }
     }
-    if (!apply_runtime_device(&next_config, runtime_device, error)) {
+    if (!apply_runtime_device(&next_config, runtime_device, error, true)) {
         return AI_ERR_INVALID_ARGUMENT;
     }
     if (model_path != nullptr && model_path[0] != '\0') {
         default_backend_if_empty(&next_config, "yolo.backend", "onnxruntime");
+    if (runtime_device == AI_DEVICE_TENSORRT) next_config.set_string("yolo.backend", "tensorrt");
     }
 
     std::unique_ptr<YoloBackend> next_yolo = create_yolo_backend(next_config, error);
@@ -129,10 +130,11 @@ int32_t Engine::yolo_load_model_from_memory_with_config(
 
     std::lock_guard<std::mutex> lock(yolo_mutex_);
 
-    if (!apply_runtime_device(&next_config, runtime_device, error)) {
+    if (!apply_runtime_device(&next_config, runtime_device, error, true)) {
         return AI_ERR_INVALID_ARGUMENT;
     }
     default_backend_if_empty(&next_config, "yolo.backend", "onnxruntime");
+    if (runtime_device == AI_DEVICE_TENSORRT) next_config.set_string("yolo.backend", "tensorrt");
 
     std::unique_ptr<YoloBackend> next_yolo = create_yolo_backend(next_config, error);
     if (!next_yolo) {

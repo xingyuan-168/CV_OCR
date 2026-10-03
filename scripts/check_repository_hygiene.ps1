@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$CheckWorkingTree,
     [switch]$RequireClean
 )
@@ -74,6 +74,9 @@ $requiredDocuments = @(
     "docs\PROJECT_GUIDE_CN.md",
     "docs\MINIMAL_RUNTIME_README_CN.md",
     "docs\V23_5_DELIVERY_BASELINE_CN.md",
+    "docs\V23_6_DELIVERY_CN.md",
+    "docs\YOLO_OPTIMIZATION_CN.md",
+    "docs\YOLO_VALIDATION_CN.md",
     "docs\易语言_DLL_API_说明.html",
     "python\README.md",
     "examples\e_language.md"
@@ -107,10 +110,13 @@ foreach ($relative in $markdownPaths) {
 }
 
 $python = (Get-Command python -ErrorAction Stop).Source
+$sourceManifest = Join-Path $project "docs\YOLO_CANDIDATE_METADATA.json"
+$hasCandidate = Test-Path -LiteralPath $sourceManifest -PathType Leaf
+if (!$hasCandidate) { $sourceManifest = Join-Path $project "release\v23.5\manifest.json" }
 & $python (Join-Path $project "scripts\generate_e_language_api_doc.py") `
     --header (Join-Path $project "include\ai_engine.h") `
     --protocol (Join-Path $project "src\worker_protocol.h") `
-    --manifest (Join-Path $project "release\v23.5\manifest.json") `
+    --manifest $sourceManifest `
     --output (Join-Path $project "docs\易语言_DLL_API_说明.html") `
     --check
 if ($LASTEXITCODE -ne 0) {
@@ -126,7 +132,7 @@ if ($CheckWorkingTree) {
     }
 }
 
-& (Join-Path $PSScriptRoot "verify_current_release.ps1") | Out-Host
+& (Join-Path $PSScriptRoot "verify_current_release.ps1") -AllowSourceCandidate:$hasCandidate | Out-Host
 
 if ($RequireClean) {
     $status = @(& git -C $project status --porcelain=v1 --untracked-files=all)

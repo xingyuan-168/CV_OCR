@@ -7,7 +7,10 @@
 #include "error.h"
 #include "runtime_bundle_loader.h"
 #include "runtime_status.h"
+#include "yolo_pool.h"
 #include "worker_protocol.h"
+#include "pipe_io.h"
+#include "bmp_view.h"
 #include "ocr_color_filter.h"
 #include <onnxruntime_cxx_api.h>
 
@@ -78,6 +81,14 @@ public:
         return true;
     }
 
+    bool read_view(const uint8_t** out, size_t* length) {
+        int32_t size = 0;
+        if (!out || !length || !read_i32(&size) || size < 0 ||
+            static_cast<size_t>(size) > data_.size() - offset_) return false;
+        *out = data_.data() + offset_; *length = static_cast<size_t>(size);
+        offset_ += static_cast<size_t>(size); return true;
+    }
+
     bool read_bytes(std::vector<uint8_t>* out) {
         int32_t size = 0;
         if (!read_i32(&size) || size < 0 || offset_ + static_cast<size_t>(size) > data_.size() || out == nullptr) return false;
@@ -105,25 +116,8 @@ struct OwnedBmp {
     AIImage image{};
 };
 
-struct YoloSlot {
-    std::unique_ptr<ai::Engine> engine;
-    bool busy = false;
-};
-
-struct WorkerYoloPool {
-    std::mutex mutex;
-    std::condition_variable cv;
-    std::vector<YoloSlot> slots;
-    std::shared_ptr<const std::vector<uint8_t>> model_bytes;
-    ai::RuntimeStatus runtime;
-    int32_t input_width = 0;
-    int32_t input_height = 0;
-    int32_t device_id = 0;
-    int32_t session_count = 0;
-    int32_t intra_op_threads = 0;
-    float nms_threshold = kYoloInternalNmsThreshold;
-    std::atomic<int64_t> last_latency_us{-1};
-};
+using YoloSlot = ai::YoloSlot;
+using WorkerYoloPool = ai::YoloPool;
 
 enum class WorkerYoloState { Empty, Loading, Loaded, Closing };
 
@@ -133,13 +127,7 @@ struct WorkerYoloContext {
     std::shared_ptr<WorkerYoloPool> pool;
 };
 
-struct WorkerYoloParams {
-    int32_t input_size = 0;
-    int32_t runtime_device = AI_DEVICE_CPU;
-    int32_t device_id = 0;
-    int32_t session_count = 1;
-    int32_t intra_op_threads = 1;
-};
+using WorkerYoloParams = ai::YoloParameters;
 
 struct OcrSlot {
     std::unique_ptr<ai::Engine> engine;
@@ -212,7 +200,8 @@ std::atomic<int64_t> g_last_latency_us[4]{};
 std::atomic<int64_t> g_last_ocr_stage_us[4]{};
 std::mutex g_client_mutex;
 std::condition_variable g_client_cv;
-int32_t g_active_clients = 0;
+std::atomic<int32_t> g_active_requests{0};
+std::atomic<int32_t> g_live_connections{0};
 bool g_shutting_down = false;
 constexpr DWORD kClientWatchdogPollMs = 250;
 constexpr DWORD kOrphanGraceMs = 3000;
@@ -257,7 +246,7 @@ public:
     ClientGuard() {
         std::lock_guard<std::mutex> lock(g_client_mutex);
         if (!g_shutting_down) {
-            ++g_active_clients;
+            ++g_active_requests;
             active_ = true;
         }
     }
@@ -265,7 +254,7 @@ public:
         if (!active_) return;
         {
             std::lock_guard<std::mutex> lock(g_client_mutex);
-            --g_active_clients;
+            --g_active_requests;
         }
         g_client_cv.notify_all();
     }
@@ -440,6 +429,19 @@ std::string runtime_status_fields(const ai::RuntimeStatus& runtime) {
             std::to_string(runtime.cpu_calibration_ms) +
         ",\"directml_calibration_ms\":" +
             std::to_string(runtime.directml_calibration_ms) +
+        ",\"active_requests\":" + std::to_string(g_active_requests) +
+        ",\"live_connections\":" + std::to_string(g_live_connections.load()) +
+        ",\"precision\":\"" + runtime.precision + "\"" +
+        ",\"tensorrt_version\":\"" + runtime.tensorrt_version + "\"" +
+        ",\"cuda_version\":" + std::to_string(runtime.cuda_version) +
+        ",\"driver_version\":" + std::to_string(runtime.driver_version) +
+        ",\"driver_file_version\":\"" + runtime.driver_file_version + "\"" +
+        ",\"driver_binary_sha256\":\"" + runtime.driver_binary_sha256 + "\"" +
+        ",\"execution_slots\":" + std::to_string(runtime.execution_slots) +
+        ",\"engine_cache_hit\":" + (runtime.engine_cache_hit ? "true" : "false") +
+        ",\"cuda_graph\":" + (runtime.cuda_graph ? "true" : "false") +
+        ",\"engine_build_us\":" + std::to_string(runtime.engine_build_us) +
+        ",\"engine_cache_key\":\"" + runtime.engine_cache_key + "\"" +
         ",\"reason\":\"" + json_escape(runtime.reason.c_str()) + "\"";
 }
 
@@ -524,6 +526,7 @@ const char* runtime_device_name(int32_t device) {
         case AI_DEVICE_AUTO: return "auto";
         case AI_DEVICE_DIRECTML: return "directml";
         case AI_DEVICE_CPU: return "cpu";
+        case AI_DEVICE_TENSORRT: return "tensorrt";
         default: return "invalid";
     }
 }
@@ -757,36 +760,10 @@ void write_calibration_record(
     }
 }
 
-bool make_yolo_params(
-    int32_t input_size,
-    int32_t runtime_device,
-    int32_t device_id,
-    int32_t session_count,
-    WorkerYoloParams* options,
-    std::string* error) {
-    if (options == nullptr || (input_size != 0 && input_size != 320 && input_size != 640)) {
-        if (error != nullptr) *error = "YOLO input_size must be 0, 320, or 640 (0 auto-detects static models)";
-        return false;
-    }
-    if (runtime_device != AI_DEVICE_AUTO &&
-        runtime_device != AI_DEVICE_DIRECTML &&
-        runtime_device != AI_DEVICE_CPU) {
-        if (error != nullptr) {
-            *error = "Invalid runtime device " + std::to_string(runtime_device) +
-                "; valid values are 0=AUTO, 1=DirectML, 2=CPU";
-        }
-        return false;
-    }
-    if (device_id < 0 || session_count <= 0) {
-        if (error != nullptr) *error = "YOLO device_id must be non-negative and session_count must be positive";
-        return false;
-    }
-    options->input_size = input_size;
-    options->runtime_device = runtime_device;
-    options->device_id = device_id;
-    options->session_count = session_count;
-    options->intra_op_threads = resolve_yolo_intra_threads(session_count);
-    return true;
+bool make_yolo_params(int32_t input,int32_t device,int32_t ordinal,int32_t sessions,WorkerYoloParams* p,std::string* error) {
+    // The host serialized a complete per-model configuration. Worker startup
+    // environment must not override or reject a later caller's settings.
+    return ai::yolo_parameters(input,device,ordinal,sessions,p,error,false);
 }
 
 ai::Config make_yolo_config(
@@ -831,88 +808,6 @@ int32_t create_yolo_context(int32_t* out_handle) {
     return AI_OK;
 }
 
-std::shared_ptr<WorkerYoloPool> create_yolo_pool_for_device(
-    const std::shared_ptr<const std::vector<uint8_t>>& model,
-    const std::string& labels_path,
-    const std::string& labels_inline,
-    const WorkerYoloParams& options,
-    int32_t device,
-    int32_t* result_status,
-    std::string* error) {
-    int32_t last_status = AI_ERR_CONFIG;
-    auto pool = std::make_shared<WorkerYoloPool>();
-    pool->model_bytes = model;
-    pool->device_id = options.device_id;
-    pool->session_count = options.session_count;
-    pool->intra_op_threads = options.intra_op_threads;
-    pool->nms_threshold = kYoloInternalNmsThreshold;
-    pool->slots.reserve(static_cast<size_t>(options.session_count));
-    std::string candidate_error;
-    ai::RuntimeStatus candidate_runtime;
-    WorkerYoloParams candidate_options = options;
-    candidate_options.runtime_device = device;
-    for (int32_t i = 0; i < options.session_count; ++i) {
-        auto engine = std::make_unique<ai::Engine>();
-        if (!engine->init_ex(nullptr, device, &candidate_error)) {
-            last_status = AI_ERR_CONFIG;
-            break;
-        }
-        ai::Config config = make_yolo_config(
-            labels_path, labels_inline, candidate_options, device);
-        const int32_t status =
-            engine->yolo_load_model_from_memory_with_config(
-                model->data(),
-                static_cast<int32_t>(model->size()),
-                std::move(config),
-                device,
-                &candidate_error);
-        if (status < 0) {
-            last_status = status;
-            break;
-        }
-        const ai::RuntimeStatus slot_status =
-            ai::get_thread_runtime_status();
-        if (slot_status.active != runtime_device_name(device)) {
-            candidate_error =
-                "YOLO session pool resolved to mixed execution providers";
-            last_status = AI_ERR_RUNTIME;
-            break;
-        }
-        if (i == 0) {
-            candidate_runtime = slot_status;
-            pool->input_width = engine->yolo_input_width();
-            pool->input_height = engine->yolo_input_height();
-        } else if (
-            pool->input_width != engine->yolo_input_width() ||
-            pool->input_height != engine->yolo_input_height()) {
-            candidate_error =
-                "YOLO session pool resolved to inconsistent input shapes";
-            last_status = AI_ERR_RUNTIME;
-            break;
-        }
-        pool->slots.push_back(YoloSlot{std::move(engine), false});
-    }
-
-    if (static_cast<int32_t>(pool->slots.size()) !=
-        options.session_count) {
-        if (error != nullptr) {
-            *error = candidate_error.empty()
-                ? std::string(runtime_device_name(device)) +
-                      " session creation failed"
-                : candidate_error;
-        }
-        if (result_status != nullptr) *result_status = last_status;
-        return nullptr;
-    }
-    pool->runtime = std::move(candidate_runtime);
-    pool->runtime.requested =
-        runtime_device_name(options.runtime_device);
-    pool->runtime.active = runtime_device_name(device);
-    pool->runtime.degraded = false;
-    if (result_status != nullptr) *result_status = AI_OK;
-    return pool;
-}
-
 double median_sample(std::vector<double> samples) {
     if (samples.empty()) return -1.0;
     std::sort(samples.begin(), samples.end());
@@ -922,302 +817,12 @@ double median_sample(std::vector<double> samples) {
         : samples[middle];
 }
 
-double calibrate_yolo_pool(
-    const std::shared_ptr<WorkerYoloPool>& pool) {
-    if (!pool || pool->slots.empty() || pool->input_width <= 0 ||
-        pool->input_height <= 0) {
-        return -1.0;
-    }
-    const int32_t width = pool->input_width;
-    const int32_t height = pool->input_height;
-    std::vector<uint8_t> pixels(
-        static_cast<size_t>(width) * height * 3);
-    for (int32_t y = 0; y < height; ++y) {
-        for (int32_t x = 0; x < width; ++x) {
-            const size_t offset =
-                (static_cast<size_t>(y) * width + x) * 3;
-            pixels[offset] =
-                static_cast<uint8_t>((x * 13 + y * 3) & 0xff);
-            pixels[offset + 1] =
-                static_cast<uint8_t>((x * 5 + y * 11) & 0xff);
-            pixels[offset + 2] =
-                static_cast<uint8_t>(((x / 8 + y / 8) & 1) * 255);
-        }
-    }
-    AIImage image{
-        pixels.data(), width, height, width * 3, AI_IMAGE_BGR24};
-    ai::Engine* engine = pool->slots.front().engine.get();
-    std::vector<AIDetectBox> boxes;
-    for (int i = 0; i < 2; ++i) {
-        if (engine->yolo_detect(
-                image,
-                0.25f,
-                pool->nms_threshold,
-                &boxes) < 0) {
-            return -1.0;
-        }
-    }
-    std::vector<double> samples;
-    samples.reserve(7);
-    for (int i = 0; i < 7; ++i) {
-        const auto start = std::chrono::steady_clock::now();
-        if (engine->yolo_detect(
-                image,
-                0.25f,
-                pool->nms_threshold,
-                &boxes) < 0) {
-            return -1.0;
-        }
-        samples.push_back(
-            std::chrono::duration<double, std::milli>(
-                std::chrono::steady_clock::now() - start)
-                .count());
-    }
-    return median_sample(std::move(samples));
-}
-
-int32_t tune_yolo_cpu_threads(
-    const std::shared_ptr<const std::vector<uint8_t>>& model,
-    const std::string& labels_path,
-    const std::string& labels_inline,
-    const WorkerYoloParams& options,
-    std::string* calibration_key_out,
-    double* best_ms_out) {
-    const std::string key = make_calibration_key(
-        "yolo-cpu-threads",
-        *model,
-        options.input_size,
-        options.session_count,
-        options.device_id);
-    if (calibration_key_out != nullptr) {
-        *calibration_key_out = key;
-    }
-    CalibrationRecord cached;
-    if (read_calibration_record(key, &cached) &&
-        cached.cpu_threads > 0) {
-        if (best_ms_out != nullptr) *best_ms_out = cached.cpu_ms;
-        return cached.cpu_threads;
-    }
-
-    const unsigned int logical =
-        std::max(1u, std::thread::hardware_concurrency());
-    const unsigned int per_session = std::max(
-        1u,
-        logical /
-            static_cast<unsigned int>(
-                std::max(1, options.session_count)));
-    const int32_t candidates[] = {1, 2, 4, 6, 8};
-    int32_t best_threads =
-        std::max(1, options.intra_op_threads);
-    double best_ms = std::numeric_limits<double>::infinity();
-    for (const int32_t threads : candidates) {
-        if (static_cast<unsigned int>(threads) > per_session &&
-            threads != 1) {
-            continue;
-        }
-        WorkerYoloParams calibration_options = options;
-        calibration_options.runtime_device = AI_DEVICE_CPU;
-        calibration_options.session_count = 1;
-        calibration_options.intra_op_threads = threads;
-        int32_t status = AI_ERR_CONFIG;
-        std::string ignored_error;
-        auto pool = create_yolo_pool_for_device(
-            model,
-            labels_path,
-            labels_inline,
-            calibration_options,
-            AI_DEVICE_CPU,
-            &status,
-            &ignored_error);
-        const double elapsed = calibrate_yolo_pool(pool);
-        if (elapsed >= 0.0 && elapsed < best_ms) {
-            best_ms = elapsed;
-            best_threads = threads;
-        }
-    }
-    if (!std::isfinite(best_ms)) {
-        best_ms = -1.0;
-    }
-    write_calibration_record(
-        key,
-        CalibrationRecord{
-            "cpu", best_threads, best_ms, -1.0});
-    if (best_ms_out != nullptr) *best_ms_out = best_ms;
-    return best_threads;
-}
-
 std::shared_ptr<WorkerYoloPool> build_yolo_pool(
     const std::shared_ptr<const std::vector<uint8_t>>& model,
-    const std::string& labels_path,
-    const std::string& labels_inline,
-    const WorkerYoloParams& options,
-    int32_t* result_status,
-    std::string* error) {
-    if (!model || model->empty()) {
-        if (error != nullptr) *error = "empty yolo model";
-        if (result_status != nullptr) {
-            *result_status = AI_ERR_INVALID_ARGUMENT;
-        }
-        return nullptr;
-    }
-    WorkerYoloParams effective_options = options;
-    if (options.runtime_device != AI_DEVICE_AUTO) {
-        auto pool = create_yolo_pool_for_device(
-            model,
-            labels_path,
-            labels_inline,
-            effective_options,
-            options.runtime_device,
-            result_status,
-            error);
-        if (pool) {
-            pool->runtime.requested =
-                runtime_device_name(options.runtime_device);
-            pool->runtime.selection_basis = "explicit";
-        }
-        return pool;
-    }
-
-    const std::string calibration_key = make_calibration_key(
-        "yolo",
-        *model,
-        options.input_size,
-        effective_options.session_count,
-        effective_options.device_id);
-    CalibrationRecord cached;
-    if (read_calibration_record(calibration_key, &cached)) {
-        const int32_t cached_device =
-            cached.active == "directml"
-            ? AI_DEVICE_DIRECTML
-            : AI_DEVICE_CPU;
-        auto cached_pool = create_yolo_pool_for_device(
-            model,
-            labels_path,
-            labels_inline,
-            effective_options,
-            cached_device,
-            result_status,
-            error);
-        if (cached_pool) {
-            cached_pool->runtime.requested = "auto";
-            cached_pool->runtime.selection_basis =
-                "cached_short_benchmark_10_percent_gate";
-            cached_pool->runtime.calibration_key =
-                calibration_key;
-            cached_pool->runtime.cpu_calibration_ms =
-                cached.cpu_ms;
-            cached_pool->runtime.directml_calibration_ms =
-                cached.directml_ms;
-            cached_pool->runtime.reason =
-                "AUTO reused the hardware and model calibration cache";
-            return cached_pool;
-        }
-    }
-
-    WorkerYoloParams calibration_options = effective_options;
-    calibration_options.session_count = 1;
-    int32_t dml_status = AI_ERR_CONFIG;
-    int32_t cpu_status = AI_ERR_CONFIG;
-    std::string dml_error;
-    std::string cpu_error;
-    auto cpu_pool = create_yolo_pool_for_device(
-        model,
-        labels_path,
-        labels_inline,
-        calibration_options,
-        AI_DEVICE_CPU,
-        &cpu_status,
-        &cpu_error);
-    const double cpu_ms = calibrate_yolo_pool(cpu_pool);
-    auto dml_pool = create_yolo_pool_for_device(
-        model,
-        labels_path,
-        labels_inline,
-        calibration_options,
-        AI_DEVICE_DIRECTML,
-        &dml_status,
-        &dml_error);
-    const double dml_ms = calibrate_yolo_pool(dml_pool);
-    int32_t selected = AI_DEVICE_CPU;
-    if (dml_ms >= 0.0 &&
-        (cpu_ms < 0.0 || dml_ms <= cpu_ms * 0.90)) {
-        selected = AI_DEVICE_DIRECTML;
-    }
-    if (selected == AI_DEVICE_CPU && cpu_ms < 0.0) {
-        if (error != nullptr) {
-            *error = "AUTO calibration failed; DirectML: " +
-                (dml_error.empty() ? std::string("benchmark failed")
-                                   : dml_error) +
-                "; CPU: " +
-                (cpu_error.empty() ? std::string("benchmark failed")
-                                   : cpu_error);
-        }
-        if (result_status != nullptr) {
-            *result_status =
-                cpu_status < 0 ? cpu_status : AI_ERR_RUNTIME;
-        }
-        return nullptr;
-    }
-
-    std::shared_ptr<WorkerYoloPool> selected_pool;
-    if (effective_options.session_count == 1) {
-        selected_pool = selected == AI_DEVICE_DIRECTML
-            ? std::move(dml_pool)
-            : std::move(cpu_pool);
-        if (result_status != nullptr) *result_status = AI_OK;
-    } else {
-        selected_pool = create_yolo_pool_for_device(
-            model,
-            labels_path,
-            labels_inline,
-            effective_options,
-            selected,
-            result_status,
-            error);
-    }
-    if (!selected_pool && selected == AI_DEVICE_DIRECTML &&
-        cpu_ms >= 0.0) {
-        selected = AI_DEVICE_CPU;
-        selected_pool = create_yolo_pool_for_device(
-            model,
-            labels_path,
-            labels_inline,
-            effective_options,
-            selected,
-            result_status,
-            error);
-    }
-    if (!selected_pool) return nullptr;
-    selected_pool->runtime.requested = "auto";
-    selected_pool->runtime.selection_basis =
-        "short_benchmark_10_percent_gate";
-    selected_pool->runtime.calibration_key = calibration_key;
-    selected_pool->runtime.cpu_calibration_ms = cpu_ms;
-    selected_pool->runtime.directml_calibration_ms = dml_ms;
-    selected_pool->runtime.degraded =
-        dml_ms < 0.0 && selected == AI_DEVICE_CPU;
-    if (selected == AI_DEVICE_CPU) {
-        if (dml_ms < 0.0) {
-            selected_pool->runtime.reason =
-                "AUTO selected CPU because DirectML calibration failed: " +
-                (dml_error.empty() ? std::string("unknown error")
-                                   : dml_error);
-        } else {
-            selected_pool->runtime.reason =
-                "AUTO selected CPU because DirectML was not at least 10% faster";
-        }
-    } else {
-        selected_pool->runtime.reason =
-            "AUTO selected DirectML because calibration exceeded the 10% gate";
-    }
-    write_calibration_record(
-        calibration_key,
-        CalibrationRecord{
-            runtime_device_name(selected),
-            effective_options.intra_op_threads,
-            cpu_ms,
-            dml_ms});
-    return selected_pool;
+    const std::string& labels_path, const std::string& labels_inline,
+    const WorkerYoloParams& p, int32_t* status, std::string* error) {
+    auto config=make_yolo_config(labels_path,labels_inline,p,p.runtime_device);
+    return ai::build_yolo_pool_shared(model,std::move(config),p,status,error);
 }
 
 int32_t load_yolo_context(
@@ -1270,30 +875,10 @@ std::shared_ptr<WorkerYoloPool> get_loaded_yolo_pool(int32_t handle, int32_t* st
 }
 
 int32_t acquire_yolo_slot(const std::shared_ptr<WorkerYoloPool>& pool, ai::Engine** engine) {
-    if (!pool || engine == nullptr) return AI_ERR_INVALID_ARGUMENT;
-    std::unique_lock<std::mutex> lock(pool->mutex);
-    pool->cv.wait(lock, [&] {
-        return std::any_of(pool->slots.begin(), pool->slots.end(), [](const YoloSlot& slot) { return !slot.busy; });
-    });
-    for (size_t i = 0; i < pool->slots.size(); ++i) {
-        if (!pool->slots[i].busy) {
-            pool->slots[i].busy = true;
-            *engine = pool->slots[i].engine.get();
-            return static_cast<int32_t>(i);
-        }
-    }
-    return AI_ERR_RUNTIME;
+    return pool && engine ? pool->acquire(engine) : AI_ERR_INVALID_ARGUMENT;
 }
-
-void release_yolo_slot(const std::shared_ptr<WorkerYoloPool>& pool, int32_t index) {
-    if (!pool) return;
-    {
-        std::lock_guard<std::mutex> lock(pool->mutex);
-        if (index >= 0 && static_cast<size_t>(index) < pool->slots.size()) {
-            pool->slots[static_cast<size_t>(index)].busy = false;
-        }
-    }
-    pool->cv.notify_one();
+void release_yolo_slot(const std::shared_ptr<WorkerYoloPool>& pool,int32_t index) {
+    if(pool && index>=0)pool->release(index);
 }
 
 int32_t release_yolo_context(int32_t handle) {
@@ -1326,46 +911,55 @@ void clear_yolo_contexts() {
 
 int32_t yolo_pool_infer_json(
     int32_t handle,
-    const std::vector<uint8_t>& image_bytes,
+    const uint8_t* image_bytes, size_t image_size,
     float conf,
     int32_t origin_x,
     int32_t origin_y,
     std::string* json,
     std::string* error) {
     const auto start = std::chrono::steady_clock::now();
-    OwnedBmp bmp;
-    if (!parse_bmp24(image_bytes.data(), static_cast<int32_t>(image_bytes.size()), &bmp)) {
+    AIImage bmp{};
+    if (!ai::bmp24_view(image_bytes, image_size, &bmp)) {
         if (error != nullptr) *error = "invalid 24-bit BMP image";
         return AI_ERR_IMAGE_FORMAT;
     }
 
+    ai::yolo_timing.bmp_us = ai::elapsed_us(start);
     int32_t lookup_status = AI_OK;
     const auto pool = get_loaded_yolo_pool(handle, &lookup_status);
     if (!pool) return lookup_status;
     ai::Engine* engine = nullptr;
+    const auto wait_start = ai::YoloClock::now();
     const int32_t slot = acquire_yolo_slot(pool, &engine);
+    ai::yolo_timing.wait_us = ai::elapsed_us(wait_start);
     if (slot < 0) {
         if (error != nullptr) *error = "yolo model is not loaded";
         return slot;
     }
 
-    std::vector<AIDetectBox> boxes;
-    const int32_t status = engine->yolo_detect(bmp.image, conf, pool->nms_threshold, &boxes);
-    release_yolo_slot(pool, slot);
+    struct Lease {
+        std::shared_ptr<WorkerYoloPool> pool; int32_t slot;
+        ~Lease() { release_yolo_slot(pool, slot); }
+    } lease{pool, slot};
+    thread_local std::vector<AIDetectBox> boxes;
+    boxes.clear();
+    const int32_t status = engine->yolo_detect(bmp, conf, pool->nms_threshold, &boxes);
     set_worker_latency(AI_MODULE_YOLO, start);
     pool->last_latency_us.store(std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - start).count(), std::memory_order_relaxed);
     if (status < 0) {
-        if (error != nullptr) *error = "yolo detect failed";
+        if (error != nullptr) *error = ai::last_error().empty() ? "yolo detect failed" : ai::last_error();
         return status;
     }
     if (!offset_yolo_boxes(&boxes, origin_x, origin_y)) {
         if (error != nullptr) *error = "coordinate origin causes int32 overflow";
         return AI_ERR_INVALID_ARGUMENT;
     }
+    const auto json_start = ai::YoloClock::now();
     if (json != nullptr) {
         *json = format_yolo_json(boxes, status, conf);
     }
+    ai::yolo_timing.json_us = ai::elapsed_us(json_start);
     return count_yolo_boxes(boxes, status, conf);
 }
 
@@ -1973,7 +1567,7 @@ void rotate_worker_after_response_if_requested() {
     const bool drained = g_client_cv.wait_for(
         lock,
         std::chrono::milliseconds(kShutdownDrainMs),
-        [] { return g_active_clients <= 1; });
+        [] { return g_active_requests <= 1; });
     if (!drained) {
         g_shutting_down = false;
         g_ocr_rotation_requested.store(true, std::memory_order_release);
@@ -2022,7 +1616,7 @@ void worker_client_watchdog() {
         const bool drained = g_client_cv.wait_for(
             lock,
             std::chrono::milliseconds(kShutdownDrainMs),
-            [] { return g_active_clients == 0 && g_client_processes.empty(); });
+            [] { return g_active_requests == 0 && g_client_processes.empty(); });
         if (drained) {
             lock.unlock();
             ExitProcess(0);
@@ -2240,58 +1834,42 @@ int32_t ocr_pool_find(const std::vector<uint8_t>& image_bytes, const std::string
         lines, target, output, selection.used_merged_line_recognition);
 }
 
-void send_response(HANDLE pipe, int32_t status, const std::vector<uint8_t>& payload) {
-    ai_worker::ResponseHeader header{ai_worker::kMagic, ai_worker::kVersion, status, static_cast<uint32_t>(payload.size())};
-    DWORD written = 0;
-    WriteFile(pipe, &header, sizeof(header), &written, nullptr);
-    if (!payload.empty()) {
-        WriteFile(pipe, payload.data(), static_cast<DWORD>(payload.size()), &written, nullptr);
-    }
-}
-
-bool read_exact(HANDLE pipe, void* data, DWORD size) {
-    uint8_t* out = static_cast<uint8_t*>(data);
-    DWORD total = 0;
-    while (total < size) {
-        DWORD got = 0;
-        if (!ReadFile(pipe, out + total, size - total, &got, nullptr) || got == 0) return false;
-        total += got;
-    }
-    return true;
+bool send_response(HANDLE pipe, int32_t status, const std::vector<uint8_t>& payload) {
+    if (payload.size() > ai_worker::kMaxPayload) return false;
+    ai_worker::ResponseHeader header{ai_worker::kMagic, ai_worker::kVersion, status,
+        static_cast<uint32_t>(payload.size()), ai::yolo_timing.request_id, ai::yolo_timing};
+    return ai_worker::write_frame(pipe, &header, sizeof(header)) &&
+        ai_worker::write_frame(pipe, payload.data(), static_cast<DWORD>(payload.size()));
 }
 
 void handle_client(HANDLE pipe) {
     register_client_process(pipe);
+    struct ConnectionGuard {
+        ConnectionGuard() { ++g_live_connections; }
+        ~ConnectionGuard() { --g_live_connections; }
+    } connection_guard;
+    std::vector<uint8_t> payload;
+    for (;;) {
+    ai_worker::Header header{};
+    // An idle persistent connection is not an executing request. Shutdown,
+    // orphan cleanup and OCR rotation drain requests, not connections.
+    if (!ai_worker::read_frame(pipe, &header, sizeof(header))) break;
+    ai::yolo_timing = {}; ai::yolo_timing.request_id = header.request_id;
+    if (header.magic != ai_worker::kMagic || header.version != ai_worker::kVersion ||
+        header.payload_size > ai_worker::kMaxPayload) {
+        send_response(pipe, AI_ERR_INVALID_ARGUMENT, text_payload("invalid v26 frame")); break;
+    }
     ClientGuard client_guard;
     if (!client_guard.active()) {
-        send_response(pipe, AI_ERR_BUSY, text_payload("worker is shutting down"));
-        CloseHandle(pipe);
-        return;
+        send_response(pipe, AI_ERR_BUSY, text_payload("Worker is shutting down")); break;
     }
-    ai_worker::Header header{};
-    if (!read_exact(pipe, &header, sizeof(header)) || header.magic != ai_worker::kMagic || header.version != ai_worker::kVersion) {
-        send_response(pipe, AI_ERR_INVALID_ARGUMENT, {});
-        CloseHandle(pipe);
-        return;
-    }
-
-    std::vector<uint8_t> payload(header.payload_size);
-    if (!payload.empty() && !read_exact(pipe, payload.data(), static_cast<DWORD>(payload.size()))) {
-        send_response(pipe, AI_ERR_INVALID_ARGUMENT, {});
-        CloseHandle(pipe);
-        return;
-    }
-    if (!g_runtime_ready.load(std::memory_order_acquire) &&
-        header.command != ai_worker::CMD_SHUTDOWN) {
-        send_response(
-            pipe,
-            AI_ERR_RUNTIME,
-            text_payload(
-                g_runtime_initialization_error.empty()
-                    ? "Embedded runtime initialization failed"
-                    : g_runtime_initialization_error));
-        CloseHandle(pipe);
-        return;
+    try {
+    payload.resize(header.payload_size);
+    if (!ai_worker::read_frame(pipe, payload.data(), header.payload_size)) break;
+    const auto request_start = ai::YoloClock::now();
+    if (!g_runtime_ready.load(std::memory_order_acquire) && header.command != ai_worker::CMD_SHUTDOWN) {
+        if (!send_response(pipe, AI_ERR_RUNTIME, text_payload(g_runtime_initialization_error))) break;
+        continue;
     }
 
     Reader r(payload);
@@ -2312,7 +1890,17 @@ void handle_client(HANDLE pipe) {
             !r.read_i32(&device_id) || !r.read_i32(&session_count)) {
             return false;
         }
-        return make_yolo_params(input_size, runtime_device, device_id, session_count, options, &pool_error);
+        if (!make_yolo_params(input_size, runtime_device, device_id, session_count, options, &pool_error)) return false;
+        if (!r.read_i32(&options->intra_op_threads) || !r.read_i32(&options->fp16) ||
+            !r.read_i32(&options->graph) || !r.read_i32(&options->validating) ||
+            !r.read_string(&options->calibration_file) || !r.read_string(&options->workload_id) ||
+            !r.read_string(&options->engine_cache)) return false;
+        return options->intra_op_threads >= 0 && options->intra_op_threads <= 8 &&
+            (runtime_device==AI_DEVICE_DIRECTML ||runtime_device==AI_DEVICE_TENSORRT ||
+                options->intra_op_threads <= 1 || options->intra_op_threads <= ai::physical_cores()/session_count) &&
+            options->fp16 >= 0 && options->fp16 <= 1 && options->graph >= 0 && options->graph <= 1 &&
+            options->validating >= 0 && options->validating <= 1 &&
+            options->calibration_file.size() < 32768 && options->engine_cache.size() < 32768 && options->workload_id.size() <= 256;
     };
     const auto read_string_candidates = [&](std::vector<std::string>* candidates) {
         int32_t count = 0;
@@ -2618,20 +2206,23 @@ void handle_client(HANDLE pipe) {
             break;
         }
         case ai_worker::CMD_YOLO_INFER_JSON: {
-            std::vector<uint8_t> image;
+            const uint8_t* image = nullptr;
+            size_t image_size = 0;
             int32_t handle = 0;
             int32_t origin_x = 0;
             int32_t origin_y = 0;
             float conf = 0.25f;
-            if (read_yolo_identity(&handle) && r.read_bytes(&image) && r.read_f32(&conf) &&
+            const bool identity_ok = read_yolo_identity(&handle);
+            if (identity_ok && r.read_view(&image, &image_size) && r.read_f32(&conf) &&
                 r.read_i32(&origin_x) && r.read_i32(&origin_y) &&
-                conf >= 0.0f && conf <= 1.0f) {
+                std::isfinite(conf) && conf >= 0.0f && conf <= 1.0f) {
                 std::string json;
                 status = yolo_pool_infer_json(
-                    handle, image, conf, origin_x, origin_y, &json, &pool_error);
+                    handle, image, image_size, conf, origin_x, origin_y, &json, &pool_error);
                 if (status >= 0) response = text_payload(json);
             } else {
-                status = AI_ERR_INVALID_ARGUMENT;
+                status = identity_ok ? AI_ERR_INVALID_ARGUMENT : AI_ERR_INVALID_HANDLE;
+                if (!identity_ok) pool_error = "YOLO handle belongs to an earlier Worker instance; create and load a new handle";
             }
             break;
         }
@@ -2728,7 +2319,7 @@ void handle_client(HANDLE pipe) {
                 const bool drained = g_client_cv.wait_for(
                     lock,
                     std::chrono::milliseconds(kShutdownDrainMs),
-                    [] { return g_active_clients <= 1; });
+                    [] { return g_active_requests <= 1; });
                 if (!drained) {
                     g_shutting_down = false;
                     status = AI_ERR_BUSY;
@@ -2764,9 +2355,17 @@ void handle_client(HANDLE pipe) {
          header.command == ai_worker::CMD_OCR_FIND_ONE_COORD)) {
         request_ocr_worker_rotation_if_needed();
     }
-    send_response(pipe, status, response);
-    CloseHandle(pipe);
+    ai::yolo_timing.worker_us = ai::elapsed_us(request_start);
+    if (!send_response(pipe, status, response)) break;
+    if (header.command == ai_worker::CMD_YOLO_INFER_JSON) ai::write_yolo_trace(ai::elapsed_us(request_start), status);
     rotate_worker_after_response_if_requested();
+    } catch (const std::exception& e) {
+        if (!send_response(pipe, AI_ERR_RUNTIME, text_payload(e.what()))) break;
+    } catch (...) {
+        if (!send_response(pipe, AI_ERR_RUNTIME, text_payload("unhandled Worker request exception"))) break;
+    }
+    }
+    CloseHandle(pipe);
 }
 
 } // namespace

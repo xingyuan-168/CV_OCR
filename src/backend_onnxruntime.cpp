@@ -1,4 +1,7 @@
 #include "backend_onnxruntime.h"
+#include "yolo_preprocess.h"
+#include "yolo_decode.h"
+#include "yolo_diagnostics.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -672,96 +675,6 @@ std::unique_ptr<Ort::Session> create_session_from_memory(const void* model_data,
 // YOLO 前处理/后处理辅助函数
 // ---------------------------------------------------------------------------
 
-// 记录 letterbox 如何把原图坐标映射到模型输入坐标。
-struct LetterboxInfo {
-    float scale;   // scaling factor applied to the original image
-    float pad_x;   // horizontal padding (pixels in resized coordinate)
-    float pad_y;   // vertical padding (pixels in resized coordinate)
-};
-
-// letterbox 缩放：保持宽高比把 src 缩放到 dst_w x dst_h 内，并用灰色 114 填充边缘。
-LetterboxInfo letterbox_resize(const uint8_t* src, int src_w, int src_h, int src_stride, int channels,
-                               std::vector<uint8_t>& dst, int dst_w, int dst_h) {
-    LetterboxInfo info{};
-    const float scale_w = static_cast<float>(dst_w) / static_cast<float>(src_w);
-    const float scale_h = static_cast<float>(dst_h) / static_cast<float>(src_h);
-    info.scale = std::min(scale_w, scale_h);
-
-    const int new_w = static_cast<int>(std::round(src_w * info.scale));
-    const int new_h = static_cast<int>(std::round(src_h * info.scale));
-    info.pad_x = (dst_w - new_w) / 2.0f;
-    info.pad_y = (dst_h - new_h) / 2.0f;
-
-    const int pad_left = static_cast<int>(info.pad_x);
-    const int pad_top = static_cast<int>(info.pad_y);
-
-    dst.assign(static_cast<size_t>(dst_w) * dst_h * 3, 114);
-
-    // 使用最近邻缩放到居中区域，对 YOLO 输入已经足够。
-    for (int dy = 0; dy < new_h; ++dy) {
-        const float src_y = dy / info.scale;
-        const int sy = std::min(static_cast<int>(src_y), src_h - 1);
-        uint8_t* dst_row = dst.data() + (static_cast<size_t>(dy + pad_top) * dst_w + pad_left) * 3;
-        const uint8_t* src_row = src + static_cast<std::ptrdiff_t>(sy) * static_cast<std::ptrdiff_t>(src_stride);
-        for (int dx = 0; dx < new_w; ++dx) {
-            const float src_x = dx / info.scale;
-            const int sx = std::min(static_cast<int>(src_x), src_w - 1);
-            const uint8_t* sp = src_row + sx * channels;
-            uint8_t* dp = dst_row + dx * 3;
-            // 复制像素；此处保留调用方提供的原通道顺序。
-            dp[0] = sp[0];
-            dp[1] = (channels >= 3) ? sp[1] : sp[0];
-            dp[2] = (channels >= 3) ? sp[2] : sp[0];
-        }
-    }
-
-    return info;
-}
-
-// 将 AIImage 转为 RGB 顺序、归一化到 [0,1] 的 float32 CHW 张量。
-// 支持 BGR24/RGB24/GRAY8/BGRA32/RGBA32 输入格式。
-void image_to_chw_float(
-    const uint8_t* data,
-    int width,
-    int height,
-    int stride,
-    int format,
-    int target_w,
-    int target_h,
-    std::vector<float>& output,
-    std::vector<uint8_t>& resized,
-    LetterboxInfo& info) {
-    const int channels = channels_for_format(format);
-
-    // 第 1 步：letterbox 缩放，输出仍按源通道顺序，三通道。
-    info = letterbox_resize(data, width, height, stride, channels, resized, target_w, target_h);
-
-    // 第 2 步：HWC 转 CHW float，并归一化、重排为 RGB。
-    const size_t pixels = static_cast<size_t>(target_w) * target_h;
-    output.resize(3 * pixels);
-    float* r_plane = output.data();
-    float* g_plane = output.data() + pixels;
-    float* b_plane = output.data() + 2 * pixels;
-
-    const bool is_bgr = (format == AI_IMAGE_BGR24 || format == AI_IMAGE_BGRA32);
-    // GRAY 会在 letterbox_resize 中扩展为 3 个相同通道。
-
-    for (size_t i = 0; i < pixels; ++i) {
-        const uint8_t* p = resized.data() + i * 3;
-        if (is_bgr) {
-            // 源顺序为 B G R，需要写入 R G B 平面。
-            r_plane[i] = p[2] / 255.0f;
-            g_plane[i] = p[1] / 255.0f;
-            b_plane[i] = p[0] / 255.0f;
-        } else {
-            // 源顺序为 R G B，或由 GRAY 扩展而来。
-            r_plane[i] = p[0] / 255.0f;
-            g_plane[i] = p[1] / 255.0f;
-            b_plane[i] = p[2] / 255.0f;
-        }
-    }
-}
-
 // PP-OCR 检测模型使用独立的图像预处理约定：BGR 通道、ImageNet mean/std，
 // 并把原图直接缩放到 32 对齐的动态输入尺寸。检测框映射使用独立的 X/Y 比例。
 void ocr_detection_to_chw_float(
@@ -807,61 +720,6 @@ void ocr_detection_to_chw_float(
 }
 
 // 计算两个原图坐标框的交并比。
-float compute_iou(float x1a, float y1a, float x2a, float y2a,
-                  float x1b, float y1b, float x2b, float y2b) {
-    const float inter_x1 = std::max(x1a, x1b);
-    const float inter_y1 = std::max(y1a, y1b);
-    const float inter_x2 = std::min(x2a, x2b);
-    const float inter_y2 = std::min(y2a, y2b);
-    const float inter_w = std::max(0.0f, inter_x2 - inter_x1);
-    const float inter_h = std::max(0.0f, inter_y2 - inter_y1);
-    const float inter_area = inter_w * inter_h;
-    const float area_a = (x2a - x1a) * (y2a - y1a);
-    const float area_b = (x2b - x1b) * (y2b - y1b);
-    const float union_area = area_a + area_b - inter_area;
-    return (union_area > 0.0f) ? (inter_area / union_area) : 0.0f;
-}
-
-// NMS 和公开标签复制前的内部 YOLO 候选检测框。
-struct RawDetection {
-    float x1, y1, x2, y2;
-    float score;
-    int class_id;
-};
-
-// 贪心 NMS：按分数降序排序，并抑制重叠框。
-std::vector<int> nms_greedy(const std::vector<RawDetection>& dets, float iou_threshold) {
-    std::vector<int> indices(dets.size());
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(), [&](int a, int b) {
-        return dets[a].score > dets[b].score;
-    });
-
-    std::vector<bool> suppressed(dets.size(), false);
-    std::vector<int> keep;
-    keep.reserve(dets.size());
-
-    for (int idx : indices) {
-        if (suppressed[idx]) {
-            continue;
-        }
-        keep.push_back(idx);
-        for (size_t j = 0; j < indices.size(); ++j) {
-            const int other = indices[j];
-            if (suppressed[other] || other == idx) {
-                continue;
-            }
-            const float iou = compute_iou(
-                dets[idx].x1, dets[idx].y1, dets[idx].x2, dets[idx].y2,
-                dets[other].x1, dets[other].y1, dets[other].x2, dets[other].y2);
-            if (iou > iou_threshold) {
-                suppressed[other] = true;
-            }
-        }
-    }
-    return keep;
-}
-
 // 将 ORT 节点名复制到自持有字符串，确保 Run() 使用稳定的 c_str() 指针。
 void cache_node_names(Ort::Session& session, std::vector<std::string>& input_names, std::vector<std::string>& output_names) {
     Ort::AllocatorWithDefaultOptions allocator;
@@ -1399,135 +1257,67 @@ public:
             return loaded_without_model_ ? AI_ERR_BACKEND_NOT_CONFIGURED : AI_ERR_RUNTIME;
         }
 
-        // 1. 前处理：letterbox、归一化、HWC 转 CHW。
-        input_tensor_data_.clear();
-        LetterboxInfo lbox{};
-        image_to_chw_float(image.data, image.width, image.height, image.stride, image.format,
-                           input_width_, input_height_, input_tensor_data_,
-                           resized_scratch_, lbox);
-
-        // 2. 创建输入 Ort::Value。
-        const std::array<int64_t, 4> input_shape = {1, 3, input_height_, input_width_};
-        Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-        Ort::Value input_value = Ort::Value::CreateTensor<float>(
-            mem_info, input_tensor_data_.data(), input_tensor_data_.size(),
-            input_shape.data(), input_shape.size());
-
-        // 4. 执行推理。
+        const auto preprocess_start = YoloClock::now();
+        if (!input_value_) {
+            input_tensor_data_.resize(static_cast<size_t>(3) * input_width_ * input_height_);
+            const std::array<int64_t, 4> input_shape = {1, 3, input_height_, input_width_};
+            const auto memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+            input_value_ = Ort::Value::CreateTensor<float>(memory, input_tensor_data_.data(),
+                input_tensor_data_.size(), input_shape.data(), input_shape.size());
+            if (output_name_ptrs_.size() == 1) {
+                const auto type = session_->GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo();
+                const auto shape = type.GetShape();
+                if (type.GetElementType() == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT &&
+                    shape.size() == 3 && std::all_of(shape.begin(), shape.end(), [](int64_t n) { return n > 0; })) {
+                    output_tensor_data_.resize(type.GetElementCount());
+                    output_value_ = Ort::Value::CreateTensor<float>(memory, output_tensor_data_.data(),
+                        output_tensor_data_.size(), shape.data(), shape.size());
+                }
+            }
+        }
+        const auto lbox = yolo_preprocess(image, input_width_, input_height_, input_tensor_data_.data(), columns_);
+        yolo_timing.preprocess_us = elapsed_us(preprocess_start);
+        const auto run_start = YoloClock::now();
         std::vector<Ort::Value> output_values;
         try {
-            output_values = session_->Run(
-                Ort::RunOptions{nullptr},
-                input_name_ptrs_.data(), &input_value, input_name_ptrs_.size(),
-                output_name_ptrs_.data(), output_name_ptrs_.size());
-        } catch (const Ort::Exception&) {
+            if (output_value_) {
+                session_->Run(Ort::RunOptions{nullptr}, input_name_ptrs_.data(), &input_value_, 1,
+                    output_name_ptrs_.data(), &output_value_, 1);
+            } else {
+                output_values = session_->Run(Ort::RunOptions{nullptr}, input_name_ptrs_.data(),
+                    &input_value_, input_name_ptrs_.size(), output_name_ptrs_.data(), output_name_ptrs_.size());
+            }
+        } catch (const Ort::Exception& e) {
+            set_last_error(e.what());
             return AI_ERR_RUNTIME;
         }
-
-        if (output_values.empty()) {
+        yolo_timing.run_us = elapsed_us(run_start);
+        const auto postprocess_start = YoloClock::now();
+        if (!output_value_ && output_values.empty()) {
             return 0;
         }
 
         // 5. 后处理：输出形状通常为 [1, 84, 8400]（YOLOv8 格式）。
-        const auto& out_tensor = output_values[0];
+        const auto& out_tensor = output_value_ ? output_value_ : output_values[0];
         const auto type_info = out_tensor.GetTensorTypeAndShapeInfo();
         const auto shape = type_info.GetShape();
 
         // 期望形状为 [1, num_attrs, num_candidates]，其中 num_attrs = 4 + num_classes。
-        if (shape.size() != 3) {
+        if (shape.size() != 3 || shape[0] != 1 ||
+            type_info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
             return AI_ERR_RUNTIME;
         }
 
-        const int64_t num_attrs = shape[1];      // e.g. 84 = 4 + 80
-        const int64_t num_candidates = shape[2]; // e.g. 8400
-        const int num_classes = static_cast<int>(num_attrs - 4);
-        if (num_classes <= 0) {
-            return AI_ERR_RUNTIME;
-        }
-
-        const float* raw_output = out_tensor.GetTensorData<float>();
-
-        // 按候选框遍历 [1, 84, 8400] 输出。
-        // raw_output 布局为 attr_i * num_candidates + candidate_j。
-        if (num_candidates < 0 || static_cast<uint64_t>(num_candidates) > static_cast<uint64_t>(std::numeric_limits<int32_t>::max())) {
-            return AI_ERR_RUNTIME;
-        }
-        candidates_.clear();
-        candidates_.reserve(static_cast<size_t>(num_candidates));
-
-        for (int64_t j = 0; j < num_candidates; ++j) {
-            // 查找最佳类别分数。
-            float max_score = 0.0f;
-            int best_class = 0;
-            for (int c = 0; c < num_classes; ++c) {
-                const float s = raw_output[(4 + c) * num_candidates + j];
-                if (s > max_score) {
-                    max_score = s;
-                    best_class = c;
-                }
-            }
-
-            if (max_score < conf_threshold) {
-                continue;
-            }
-
-            // 输入空间中的 cx、cy、w、h（例如带 letterbox 的 640x640）。
-            const float cx = raw_output[0 * num_candidates + j];
-            const float cy = raw_output[1 * num_candidates + j];
-            const float w  = raw_output[2 * num_candidates + j];
-            const float h  = raw_output[3 * num_candidates + j];
-
-            // 转换为输入空间中的 x1,y1,x2,y2。
-            float x1 = cx - w * 0.5f;
-            float y1 = cy - h * 0.5f;
-            float x2 = cx + w * 0.5f;
-            float y2 = cy + h * 0.5f;
-
-            // 映射回原图坐标。
-            x1 = (x1 - lbox.pad_x) / lbox.scale;
-            y1 = (y1 - lbox.pad_y) / lbox.scale;
-            x2 = (x2 - lbox.pad_x) / lbox.scale;
-            y2 = (y2 - lbox.pad_y) / lbox.scale;
-
-            // 裁剪到图像边界内。
-            x1 = std::max(0.0f, std::min(x1, static_cast<float>(image.width)));
-            y1 = std::max(0.0f, std::min(y1, static_cast<float>(image.height)));
-            x2 = std::max(0.0f, std::min(x2, static_cast<float>(image.width)));
-            y2 = std::max(0.0f, std::min(y2, static_cast<float>(image.height)));
-
-            candidates_.push_back(RawDetection{x1, y1, x2, y2, max_score, best_class});
-        }
-
-        if (candidates_.empty()) {
-            return 0;
-        }
-
-        // 6. NMS。
-        const std::vector<int> keep = nms_greedy(candidates_, nms_threshold);
-
-        // 7. 填充全部输出；调用层通过线程局部 vector 暴露结果，不再截断。
-        if (keep.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-            return AI_ERR_RUNTIME;
-        }
-        const int32_t result_count = static_cast<int32_t>(keep.size());
-        output->resize(keep.size());
-        for (int32_t i = 0; i < result_count; ++i) {
-            const auto& det = candidates_[keep[i]];
-            AIDetectBox& box = (*output)[static_cast<size_t>(i)];
-            box.x1 = det.x1;
-            box.y1 = det.y1;
-            box.x2 = det.x2;
-            box.y2 = det.y2;
-            box.score = det.score;
-            box.class_id = det.class_id;
-            copy_yolo_label(det.class_id, box.label, AIENGINE_MAX_LABEL);
-        }
-
+        const int32_t result_count = yolo_decode(out_tensor.GetTensorData<float>(), shape[1], shape[2],
+            image, lbox, conf_threshold, nms_threshold, labels_, candidates_, output);
+        yolo_timing.postprocess_us = elapsed_us(postprocess_start);
         return result_count;
     }
 
     // 释放当前 ORT session 和所有复制的内存模型数据。
     int32_t release_model() override {
+        input_value_ = Ort::Value{nullptr};
+        output_value_ = Ort::Value{nullptr};
         session_.reset();
         loaded_without_model_ = false;
         return AI_OK;
@@ -1649,7 +1439,9 @@ private:
     std::vector<const char*> input_name_ptrs_;
     std::vector<const char*> output_name_ptrs_;
     std::vector<std::string> labels_;
-    std::vector<uint8_t> resized_scratch_;
+    Ort::Value input_value_{nullptr}, output_value_{nullptr};
+    std::vector<float> output_tensor_data_;
+    std::vector<int> columns_;
     std::vector<float> input_tensor_data_;
     std::vector<RawDetection> candidates_;
     int input_width_ = 0;

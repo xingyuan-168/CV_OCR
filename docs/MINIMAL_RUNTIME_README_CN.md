@@ -1,7 +1,9 @@
-# CQ_AI 0.14.5 / v23.5 运行包说明
+# CQ_AI 0.14.6 / v23.6 运行包说明
 
-本文描述 `v23.5` 正式成品的部署、设备选择、缓存、构建和故障排查。多目标
-返回、坐标和交付边界见 [v23.5 单一交付基线](V23_5_DELIVERY_BASELINE_CN.md)。
+> 当前可用版为 **0.14.6 / v23.6 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [v23.6交付说明](V23_6_DELIVERY_CN.md)。
+
+本文描述 `v23.6` 当前可用版的部署、设备选择、缓存、构建和故障排查。多目标
+返回、坐标和交付边界见 [v23.6交付说明](V23_6_DELIVERY_CN.md)。
 
 ## 1. 易语言运行目录
 
@@ -14,31 +16,31 @@ CQ_AI_worker.exe
 ```
 
 32 位易语言只加载 `CQ_X86.dll`。CV 在该 DLL 内执行；OCR 和 YOLO 通过协议
-`25` 的命名管道交给同目录 x64 Worker。运行不需要管理员权限，不写注册表或
-系统目录，不安装 CUDA/cuDNN，也不依赖系统 PATH 中的 ONNX Runtime。
+`26` 的长连接管道交给同目录 x64 Worker。运行不需要管理员权限，不写注册表或
+系统目录，基础包无需CUDA/cuDNN，也不依赖系统 PATH 中的 ONNX Runtime。
 
-文件大小、ZIP 成员和 SHA-256 只以
-[`release/v23.5/manifest.json`](../release/v23.5/manifest.json) 为准。
-该清单描述历史 ZIP；本次 CV 修复直接交付 `output/` 三文件，独立验证记录与哈希保留在内部验证目录，详见本文末尾。
+历史成品的大小、成员和SHA以 [`release/v23.5/manifest.json`](../release/v23.5/manifest.json) 为准；最新成品依据本轮outpush清单。
+该清单仅描述历史ZIP；最新版本在 `output/` 交付三文件，新版哈希与验证记录在outpush的v23.6清单。
 
 ## 2. API 与结果语义
 
-公开头文件定义 60 个导出，项目版本为 `0.14.5`。错误文本接口无参数，返回
+公开头文件定义 60 个导出，项目版本为 `0.14.6`。错误文本接口无参数，返回
 DLL 当前线程持有的只读文本：
 
 ```text
 .DLL命令 AI_GetLastError, 文本型, "CQ_X86.dll", "AI_GetLastError", 公开
 ```
 
-OCR 和 YOLO 使用相同的设备常量：
+OCR支持0..2，YOLO支持以下0..3设备常量：
 
 ```text
 AI_DEVICE_AUTO      ＝ 0
 AI_DEVICE_DIRECTML  ＝ 1
 AI_DEVICE_CPU       ＝ 2
+AI_DEVICE_TENSORRT  ＝ 3  （仅YOLO）
 ```
 
-其他设备值直接返回参数错误。需要固定使用 CPU 时传 `2`。
+OCR的设备3和所有超范围设备值返回参数错误。需要固定使用 CPU 时传 `2`。
 
 ### OCR 单次滤色与鲁棒性
 
@@ -90,22 +92,17 @@ ZIP64、多卷、路径穿越和重复 BMP 基础名会被拒绝。
 
 ## 3. 设备选择
 
-### 易语言 x86 Worker
+### YOLO x86与x64
 
-AUTO 为 CPU 与 DirectML 分别创建单 Session 候选池，每种候选执行 2 次预热和
-7 次采样并比较中位耗时。DirectML 必须至少快 10% 才被选中；否则发布 CPU
-池。选定后按请求的 `session_count` 建立完整单 Provider 池，不会在一个池内
-混用 CPU 与 DirectML。
+共用后端选择逻辑，优先读取通过真实BMP精度与性能验证的业务记录。未命中时执行五路短基准，在CPU、DirectML和TensorRT FP32间选择，并标明selection_basis。显式后端失败返回具体错误，只有AUTO允许选择其他后端。CPU按物理核预算和槽数选择内部线程，也可指定CQ_AI_YOLO_CPU_THREADS=1..8；单线程始终允许以保持正整数槽数语义，槽数大于物理核数会超订阅。
 
-校准键包含模块、模型内容、输入尺寸、Session 数、CPU 标识、显卡、驱动和
-内嵌运行库哈希。命中缓存时直接重建已选 Provider 的完整池。显式 DirectML
-失败时返回错误；显式 CPU 不加载 DirectML。
+DirectML使用DXGI序号，TensorRT使用CUDA序号。`session_count`为执行槽容量，与业务线程和ORT内部线程分开；传20建立20槽，不建议盲目增加。每个DirectML Session串行，各TensorRT槽拥有独立context/stream/buffer。
 
-### Python x64 直连 DLL
+校准键包含算法版本、模型SHA、尺寸、槽数、CPU、GPU、实际驱动、运行库及业务负载标识。FP16和Graph只读取通过业务门槛的记录；设备3需要独立NVIDIA包。部署和五路一键验收见 [YOLO优化说明](YOLO_OPTIMIZATION_CN.md)。
 
-Python Wheel 在宿主进程中直接加载 `CQ_AI_x64.dll`。AUTO 配置 DirectML，
-DirectML 初始化或 Session 创建失败时重试 CPU；不会执行 Worker 的短基准，
-也不会创建 `CQ_AI_worker.exe`。实际 Provider 和原因通过运行状态 JSON 查询。
+### OCR
+
+OCR保留CPU、DirectML、AUTO和原有Worker选择行为。Python x64直接加载 `CQ_AI_x64.dll`，不创建Worker；YOLO的选择依据以模型句柄运行状态为准。
 
 ### DirectML 生命周期
 
@@ -133,7 +130,7 @@ PP-OCRv6 tiny 检测模型、识别模型和字符表直接从 Worker 只读资�
 缓存路径为：
 
 ```text
-%LOCALAPPDATA%\CQ_AI\runtime\v23.5\
+%LOCALAPPDATA%\CQ_AI\runtime\v23.6\
   ort-dml-1.24.4-<嵌入包SHA-256>\
 ```
 
@@ -210,18 +207,12 @@ ctest --test-dir build-release-x86 -C Release --output-on-failure
 python scripts/generate_e_language_api_doc.py
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/promote_release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1 -AllowSourceCandidate
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check_repository_hygiene.ps1 -CheckWorkingTree
 ```
 
-打包脚本验证 PE 位数、公开导出、stdcall 参数字节数、普通依赖、Worker 协议、
-Provider、内嵌运行库、许可和 Wheel 隔离安装。晋升脚本只接受 `outpush/` 下的
-指定两个成品，生成 manifest 后在临时目录验证，再替换 `release/v23.5/`。
-
-性能只代表对应硬件、模型和输入。部署机应使用正式成品执行业务验收，并以
-运行状态 JSON 确认实际 Provider。
-
+统一入口验证PE位数、60个公开导出及stdcall别名、普通依赖、内嵌运行库和协议26；核对新版本正式五路及30分钟报告后生成HTML和ZIP。随后将现有output三文件备份到outpush/rollback，整组更新并按绝对路径加载最终DLL确认配套Worker。占用时保留原文件；替换失败时恢复原三文件。ZIP、可选NVIDIA包、工具、模型、哈希和日志保存在outpush，output只保留三文件。历史release/v23.5不改写。
 
 ## CV 多线程稳定性修复
 

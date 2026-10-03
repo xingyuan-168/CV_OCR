@@ -1,4 +1,7 @@
 #include "backends.h"
+#if defined(_WIN32) && !defined(_M_IX86)
+#include "backend_tensorrt.h"
+#endif
 
 #if defined(AIENGINE_WITH_ONNXRUNTIME)
 #include "backend_onnxruntime.h"
@@ -239,6 +242,14 @@ std::unique_ptr<YoloBackend> create_yolo_backend(const Config& config, std::stri
     }
     if (backend == "mock") {
         return std::make_unique<MockYoloBackend>();
+    }
+    if (backend == "tensorrt") {
+#if defined(_WIN32) && !defined(_M_IX86)
+        return create_tensorrt_yolo_backend(config, error);
+#else
+        if (error) *error = "TensorRT requires the optional Windows x64 backend module";
+        return nullptr;
+#endif
     }
     if (backend == "onnxruntime") {
 #if defined(AIENGINE_WITH_ONNXRUNTIME)

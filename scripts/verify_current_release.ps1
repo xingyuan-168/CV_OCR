@@ -1,5 +1,6 @@
-param(
-    [string]$ReleaseDir = "release\v23.5"
+﻿param(
+    [string]$ReleaseDir = "release\v23.5",
+    [switch]$AllowSourceCandidate
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +19,19 @@ if (!(Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "Current release manifest is missing: $manifestPath"
 }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$sourceProtocol = 25
+$sourceVersion = $manifest.project_version
+$sourceDelivery = $manifest.delivery_version
+if ($AllowSourceCandidate) {
+    $candidate = Get-Content -LiteralPath (Join-Path $project "docs\YOLO_CANDIDATE_METADATA.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($candidate.formal_release -ne $false -or $candidate.project_version -ne "0.14.6" -or
+        $candidate.delivery_version -ne "v23.6" -or $candidate.worker_protocol -ne 26) {
+        throw "Source candidate metadata is invalid"
+    }
+    $sourceProtocol = $candidate.worker_protocol
+    $sourceVersion = $candidate.project_version
+    $sourceDelivery = $candidate.delivery_version
+}
 if ($manifest.schema -ne 1 -or $manifest.project_version -ne "0.14.5" -or
     $manifest.delivery_version -ne "v23.5" -or $manifest.worker_protocol -ne 25) {
     throw "Release manifest version metadata is not the v23.5 baseline"
@@ -105,7 +119,7 @@ try {
         if ($actualHash -ne $member.sha256) {
             throw "ZIP member SHA-256 mismatch: $($member.file)"
         }
-        if ($member.file -ceq "易语言_DLL_API_说明.html") {
+        if ($member.file -ceq "易语言_DLL_API_说明.html" -and !$AllowSourceCandidate) {
             $sourceHtml = Join-Path $project "docs\易语言_DLL_API_说明.html"
             if (!(Test-Path -LiteralPath $sourceHtml -PathType Leaf) -or
                 (Get-FileHash -LiteralPath $sourceHtml -Algorithm SHA256).Hash -ne $actualHash) {
@@ -160,17 +174,20 @@ $headerExports = @([regex]::Matches(
         $header,
         'AIENGINE_EXPORT[\s\S]*?AIENGINE_CALL\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(') |
     ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-if ($cmake -notmatch "project\(ai_engine_dll VERSION 0\.14\.5" -or
-    $cmake -notmatch 'set\(AIENGINE_DELIVERY_VERSION\s+"v23\.5"\)' -or
-    $cmake -notmatch 'set\(AIENGINE_WORKER_PROTOCOL_VERSION\s+"25"\)' -or
-    $header -notmatch "AIENGINE_VERSION_MINOR\s+14" -or
-    $header -notmatch "AIENGINE_VERSION_PATCH\s+5" -or
-    $protocol -notmatch "kVersion\s*=\s*25" -or
-    $pythonProject -notmatch 'version\s*=\s*"0\.14\.5"' -or
-    $pythonInit -notmatch '__version__\s*=\s*"0\.14\.5"' -or
+$versionPattern = [regex]::Escape($sourceVersion)
+$deliveryPattern = [regex]::Escape($sourceDelivery)
+$parts = $sourceVersion.Split('.')
+if ($cmake -notmatch ("project\(ai_engine_dll VERSION " + $versionPattern) -or
+    $cmake -notmatch ('set\(AIENGINE_DELIVERY_VERSION\s+"' + $deliveryPattern + '"\)') -or
+    $cmake -notmatch ('set\(AIENGINE_WORKER_PROTOCOL_VERSION\s+"' + $sourceProtocol + '"\)') -or
+    $header -notmatch ("AIENGINE_VERSION_MINOR\s+" + $parts[1] + "\b") -or
+    $header -notmatch ("AIENGINE_VERSION_PATCH\s+" + $parts[2] + "\b") -or
+    $protocol -notmatch ("kVersion\s*=\s*" + $sourceProtocol + "\b") -or
+    $pythonProject -notmatch ('version\s*=\s*"' + $versionPattern + '"') -or
+    $pythonInit -notmatch ('__version__\s*=\s*"' + $versionPattern + '"') -or
     $headerExports.Count -ne 60) {
     throw "Source, protocol, Python package and release versions are inconsistent"
 }
 
-Write-Host "v23.5 release verified: 2 artifacts, Easy Language ZIP members, Wheel metadata and source versions"
+Write-Host "v23.5 artifacts verified: 2 artifacts, original member hashes, Wheel metadata; source=$sourceVersion/$sourceDelivery/protocol$sourceProtocol"
 $artifacts | Select-Object kind,file,size,sha256 | Format-Table -AutoSize

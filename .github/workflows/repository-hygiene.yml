@@ -12,6 +12,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify v23.5 release, documentation and repository layout
+      - name: Verify current source, historical artifacts and documentation
         shell: pwsh
         run: ./scripts/check_repository_hygiene.ps1 -CheckWorkingTree -RequireClean

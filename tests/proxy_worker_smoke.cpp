@@ -116,7 +116,7 @@ static int32_t infer_json_count(
 }
 
 int main() {
-    assert(std::strcmp(AI_GetVersion(), "CQ_X86/0.14.5") == 0);
+    assert(std::strcmp(AI_GetVersion(), "CQ_X86/0.14.6") == 0);
     static_assert(sizeof(OCRTextResult) == 28, "OCRTextResult ABI must remain 28 bytes");
     bool directml_available = false;
 #if defined(AIENGINE_TEST_EMBED_OCR)
@@ -474,7 +474,7 @@ int main() {
     assert(yolo_json_utf8.find("\"label\":\"") != std::string::npos);
     assert(std::any_of(yolo_json_utf8.begin(), yolo_json_utf8.end(), [](unsigned char ch) { return ch >= 0x80; }));
     std::cout << "yolo_status=" << yolo_status << " json=" << baseline_yolo_json << "\n";
-    char runtime_status[1024]{};
+    char runtime_status[8192]{};
     assert(YOLO_GetRuntimeStatusJson(yolo1, runtime_status, sizeof(runtime_status)) == AI_OK);
     assert(std::strstr(runtime_status, "\"runtime_flavor\":\"core\"") != nullptr);
     assert(std::strstr(runtime_status, "\"ort_version\":\"1.24.4\"") != nullptr);
@@ -484,7 +484,7 @@ int main() {
     assert(std::strstr(runtime_status, "\"degraded\":false") != nullptr);
     assert(std::strstr(runtime_status, "\"input_width\":640") != nullptr);
     assert(std::strstr(runtime_status, "\"input_height\":640") != nullptr);
-    char runtime_status_2[1024]{};
+    char runtime_status_2[8192]{};
     assert(YOLO_GetRuntimeStatusJson(yolo2, runtime_status_2, sizeof(runtime_status_2)) == AI_OK);
     assert(std::strstr(runtime_status_2, "\"runtime_flavor\":\"core\"") != nullptr);
     assert(std::strstr(runtime_status_2, "\"requested\":\"auto\"") != nullptr);
@@ -554,7 +554,7 @@ int main() {
         return 8;
     }
     assert(YOLO_LoadModelFromPath(yolo3, yolo_model_path.c_str(), yolo_labels_path.c_str(), 0, auto_device, 0, 1) == AI_OK);
-    char runtime_status_3[1024]{};
+    char runtime_status_3[8192]{};
     assert(YOLO_GetRuntimeStatusJson(yolo3, runtime_status_3, sizeof(runtime_status_3)) == AI_OK);
     assert(std::strstr(runtime_status_3, "\"input_width\":640") != nullptr);
     assert(std::strstr(runtime_status_3, "\"input_height\":640") != nullptr);

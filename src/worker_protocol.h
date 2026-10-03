@@ -1,11 +1,13 @@
 #pragma once
 
 #include <stdint.h>
+#include "yolo_diagnostics.h"
 
 namespace ai_worker {
 
 static constexpr uint32_t kMagic = 0x4149574bu; // "KWIA" little-endian marker.
-static constexpr uint32_t kVersion = 25;
+static constexpr uint32_t kVersion = 26;
+static constexpr uint32_t kMaxPayload = 512u * 1024u * 1024u;
 
 enum class RuntimeFlavor : uint32_t {
     Core = 0
@@ -16,11 +18,11 @@ constexpr const char* runtime_flavor_name(RuntimeFlavor) {
 }
 
 constexpr const char* pipe_name(RuntimeFlavor) {
-    return R"(\\.\pipe\cq_ai_worker_v23_core_0145)";
+    return R"(\\.\pipe\cq_ai_worker_v26_core_0146)";
 }
 
 constexpr const char* singleton_name(RuntimeFlavor) {
-    return "Local\\cq_ai_worker_v23_core_0145_singleton";
+    return "Local\\cq_ai_worker_v26_core_0146_singleton";
 }
 
 static constexpr RuntimeFlavor kBuildFlavor = RuntimeFlavor::Core;
@@ -55,6 +57,7 @@ struct Header {
     uint32_t version;
     uint32_t command;
     uint32_t payload_size;
+    uint64_t request_id;
 };
 
 struct ResponseHeader {
@@ -62,7 +65,11 @@ struct ResponseHeader {
     uint32_t version;
     int32_t status;
     uint32_t payload_size;
+    uint64_t request_id;
+    ai::YoloTiming timing;
 };
 #pragma pack(pop)
+static_assert(sizeof(Header) == 24, "v26 request header layout");
+static_assert(sizeof(ResponseHeader) == 136, "v26 response header layout");
 
 } // namespace ai_worker
