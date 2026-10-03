@@ -2,6 +2,10 @@ param([string]$UvExe = 'uv')
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $lock = Get-Content -LiteralPath (Join-Path $project 'configs/governance-toolchain.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+foreach ($directory in @('input', 'output')) {
+    $dataPath = Join-Path $project $directory
+    if (!(Test-Path -LiteralPath $dataPath)) { New-Item -ItemType Directory -Path $dataPath | Out-Null }
+}
 $source = Join-Path $project '.cache/aios-source'
 function Invoke-Checked([string]$Command, [string[]]$Arguments) {
     & $Command @Arguments

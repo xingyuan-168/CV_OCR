@@ -53,9 +53,10 @@ function Remove-RegisteredTarget {
         # Delete verified files individually, then only empty directories.
         foreach ($file in $files) {
             if ($file.Attributes -band [IO.FileAttributes]::ReadOnly) { Set-ItemProperty -LiteralPath $file.FullName -Name IsReadOnly -Value $false }
+            $fileLength = [long]$file.Length
             $file.Attributes = $file.Attributes -band (-bnot ([IO.FileAttributes]::Hidden -bor [IO.FileAttributes]::ReadOnly))
             Remove-Item -LiteralPath $file.FullName -ErrorAction Stop
-            $removed += $file.Length
+            $removed += $fileLength
         }
         if ($item.PSIsContainer) {
             foreach ($directory in @(Get-ChildItem -LiteralPath $path -Directory -Force -Recurse | Sort-Object { $_.FullName.Length } -Descending)) {
