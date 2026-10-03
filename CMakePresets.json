@@ -43,8 +43,7 @@
       "cacheVariables": {"AIENGINE_WITH_OPENCV": "OFF", "AIENGINE_EMBED_OCR_ASSETS": "OFF", "AIENGINE_OPENCV_DIR": ""}
     },
     {
-      "name": "ci-worker", "inherits": "release-worker", "binaryDir": "${sourceDir}/build/ci-worker",
-      "cacheVariables": {"AIENGINE_EMBED_OCR_ASSETS": "OFF"}
+      "name": "ci-worker", "inherits": "release-worker", "binaryDir": "${sourceDir}/build/ci-worker"
     }
   ],
   "buildPresets": [

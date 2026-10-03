@@ -46,6 +46,7 @@ jobs:
     # Release presets use Visual Studio 17 2022; windows-latest now has VS2026.
     runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         profile: [ci-x86, ci-x64]
     steps:
