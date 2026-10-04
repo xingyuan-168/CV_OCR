@@ -22,7 +22,7 @@ class ModelToolTests(unittest.TestCase):
             with self.assertRaises(ValueError):tool.safe_destination(source,external/'input/new.onnx')
             (external/'.git').mkdir()
             with self.assertRaises(ValueError):tool.safe_destination(source,external/'output/new.onnx')
-            self.assertEqual(tool.safe_destination(source,external/'prepared/new.onnx'),external/'prepared/new.onnx')
+            self.assertEqual(tool.safe_destination(source,external/'prepared/new.onnx'),(external/'prepared/new.onnx').resolve())
 
     def test_metadata_only_copy_and_reference(self):
         try:
