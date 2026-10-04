@@ -37,5 +37,25 @@ and39,708 calls in a30-minute changing-frame soak. Errors were zero; local laten
 fluctuated and target20/30ms acceptance is still pending. A diagnostic model caused
 a retained allocation; the final10 minutes were stable. Retain this qualification.
 
-HTML structure/search/navigation checks passed; visual browser preview remains
-pending until explicitly inspected. Full timing: [delivery report](V23_6_DELIVERY_CN.md).
+Historical v23.6 HTML checks and timing remain in [its report](V23_6_DELIVERY_CN.md).
+New v23.7 evidence is independent: [delivery report](V23_7_DELIVERY_CN.md).
+
+## YOLO layout compatibility (REQ-YOLO-002)
+
+Run `ai_engine_yolo_model_test` on x86 and x64 for protobuf bounds, ambiguity,
+metadata, scalar score/class validation, threshold equality and NMS semantics.
+The offline preparation tests compare unchanged graph bytes and three raw tensor
+outputs, reject protected destinations and never mutate input.
+
+Pin ORT1.24.4 and exporter dependencies. `verify_yolo_compatibility.py` compares
+real v5, v11, v26 dense/end2end and dynamic v11 with an independent reference
+using identical nearest-neighbor preprocessing and class-agnostic NMS. Test
+path/memory loads, five concurrent callers, origin offsets, Chinese labels/paths
+and mixed model handles. Old valid model JSON must match0.14.6 exactly on the
+same CPU/DirectML backend. Freeze model and image hashes with every report.
+
+New paired x86 binaries run100 warmups/1000 samples per lane,3 rounds each in
+continuous and simultaneous modes. Compare old/new x64 under equal settings;
+repeatable P50/P95 regression above5% blocks promotion. Run30 minutes of changing
+frames with the user-provided V26 model; inspect the memory series as well as
+errors. No GPU compatibility or target-performance claim without NVIDIA evidence.

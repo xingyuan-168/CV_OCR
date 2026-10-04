@@ -1,6 +1,6 @@
-# 易语言调用入口（v23.5）
+# 易语言调用入口（v23.7）
 
-当前正式交付对应项目 `0.14.5`、交付 `v23.5`、Worker 协议 `25`。32 位易语言程序把 `CQ_X86.dll`、`CQ_AI_worker.exe` 和随包 `易语言_DLL_API_说明.html` 放在自身 EXE 同目录；运行时只依赖前两个二进制：
+当前可用交付对应项目 `0.14.7`、交付 `v23.7`、Worker 协议 `26`，目标机性能待验。32 位易语言程序把 `CQ_X86.dll`、`CQ_AI_worker.exe` 和随包 `易语言_DLL_API_说明.html` 放在自身 EXE 同目录；运行时只依赖前两个二进制：
 
 ```text
 CQ_X86.dll
@@ -15,17 +15,18 @@ CQ_AI_worker.exe
 AI_DEVICE_AUTO      ＝ 0
 AI_DEVICE_DIRECTML  ＝ 1
 AI_DEVICE_CPU       ＝ 2
+AI_DEVICE_TENSORRT  ＝ 3  （仅YOLO）
 ```
 
-- `AUTO`：分别用 CPU 与 DirectML 候选执行 2 次预热和 7 次采样；DirectML
-  中位耗时至少快 10% 才被选中，结果按模型和本机硬件缓存。
-- `DirectML`：必须成功使用 DirectML；失败不整体降级。
-- `CPU`：纯 CPU，不加载 DirectML。
+- YOLO `AUTO`：优先读取相同模型、设备和业务负载的校准记录；缺失时执行短基准，实际选择依据从运行状态查询。
+- `DirectML`：使用DXGI适配器序号；指定失败会返回错误。
+- `CPU`：设备值2、序号0。
+- YOLO `TensorRT`：设备值3、CUDA设备序号；需要配套ABI3模块和NVIDIA运行库。序号不等同DXGI序号。
 
-OCR 与 YOLO 使用相同的设备值。需要强制 CPU 时传 `2`。四个 OCR 识别/查找
+OCR设备仍为0..2，其AUTO独立校准CPU/DirectML。YOLO支持V5、V5u/V8/V11及V26普通头、原生端到端头；返回字段不变。四个 OCR 识别/查找
 命令的最后一个参数为可空滤色规则，空文本表示自动识别。
 
-`AI_Release()`只释放模型资源，不终止 Worker。程序正常结束前调用 `AI_ShutdownWorker()`；它会等待 Worker真正退出。宿主异常结束时 v23.5 Worker会自动回收。不要使用 `taskkill /IM CQ_AI_worker.exe`。
+`AI_Release()`只释放模型资源，不终止 Worker。程序正常结束前调用 `AI_ShutdownWorker()`；它会等待 Worker真正退出。宿主异常结束时 v23.7 Worker会自动回收。不要使用 `taskkill /IM CQ_AI_worker.exe`。
 
 ## 坐标原点
 

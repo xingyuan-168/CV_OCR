@@ -53,7 +53,14 @@ int wmain(int argc,wchar_t** argv) {
     try {
         std::map<std::wstring,std::filesystem::path> args;
         bool preserve_worker=false;
-        for(int i=1;i<argc;i+=2) { require(i+1<argc,"Every option needs a value"); if(std::wstring(argv[i])==L"--preserve-worker")preserve_worker=std::wstring(argv[i+1])==L"1";else args[argv[i]]=std::filesystem::absolute(argv[i+1]); }
+        int device=AI_DEVICE_CPU, input_size=0;
+        for(int i=1;i<argc;i+=2) {
+            require(i+1<argc,"Every option needs a value"); const std::wstring key=argv[i];
+            if(key==L"--preserve-worker")preserve_worker=std::wstring(argv[i+1])==L"1";
+            else if(key==L"--device")device=std::stoi(argv[i+1]);
+            else if(key==L"--input-size")input_size=std::stoi(argv[i+1]);
+            else args[key]=std::filesystem::absolute(argv[i+1]);
+        }
         for(const auto* key:{L"--dll",L"--header",L"--model",L"--image",L"--report"})require(args.count(key)!=0,"Required: --dll --header --model --image --report");
         const auto directory=args[L"--dll"].parent_path();
         Library library; library.value=LoadLibraryExW(args[L"--dll"].c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -86,7 +93,7 @@ int wmain(int argc,wchar_t** argv) {
         int32_t handle=0; require(create(&handle)==0,error());
         guard.handle=handle;
         const auto model=narrow(args[L"--model"].wstring(),CP_ACP);
-        require(load(handle,model.c_str(),nullptr,0,AI_DEVICE_CPU,0,5)==0,error());
+        require(load(handle,model.c_str(),nullptr,input_size,device,0,5)==0,error());
         char runtime[16384]{}; require(status(handle,runtime,sizeof(runtime))>=0,error());
         char worker_runtime[16384]{}; require(global_status(worker_runtime,sizeof(worker_runtime))>=0,error());
         const HANDLE pipe=CreateFileA(ai_worker::pipe_name(ai_worker::RuntimeFlavor::Core),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_EXISTING,0,nullptr);
@@ -109,7 +116,7 @@ int wmain(int argc,wchar_t** argv) {
         if(args.count(L"--expected-json")) {
             const auto expected_bytes=bytes(args[L"--expected-json"]); std::string expected(expected_bytes.begin(),expected_bytes.end());
             while(!expected.empty() &&std::isspace(static_cast<unsigned char>(expected.back())))expected.pop_back();
-            require(reference==expected,"CPU detections differ from frozen reference");
+            require(reference==expected,"Detections differ from frozen reference");
         }
         std::atomic<int> failures{0}; std::vector<std::thread> callers;
         for(int lane=0;lane<5;++lane)callers.emplace_back([&]{for(int n=0;n<25;++n){const char* result=infer(handle,frame.data(),static_cast<int32_t>(frame.size()),.5f,0,0);if(!result ||reference!=result)++failures;}});

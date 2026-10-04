@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "calls": 65313,
+  "elapsed_s": 1800.09095,
+  "memory": {
+    "client_private_mib": {
+      "min": 122.5234375,
+      "max": 122.671875,
+      "initial_mean": 122.5234375,
+      "final_mean": 122.5234375,
+      "growth": 0.0
+    },
+    "worker_private_mib": {
+      "min": 806.515625,
+      "max": 806.68359375,
+      "initial_mean": 806.52890625,
+      "final_mean": 806.65234375,
+      "growth": 0.12343750000002274
+    },
+    "continuous_growth_detected": false,
+    "samples_after_warmup": 1556
+  },
+  "dll_sha256": "bd6c05c35fd7ebf15fdfb20aa5035f86ed8939a63255697141cf856f90d0e0f7",
+  "worker_sha256": "b54bc8c2510a3cd4e1cfc8d7fc453031330f30551abb5006cb6d3ed26771e074"
+}

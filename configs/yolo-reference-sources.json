@@ -1,0 +1,22 @@
+{
+  "https://github.com/ultralytics/yolov5/archive/refs/tags/v7.0.zip": {
+    "url": "https://github.com/ultralytics/yolov5/archive/refs/tags/v7.0.zip",
+    "sha256": "a40568a7979c4b27195d198987e49610de86b038b044f2521f5515455571f852",
+    "size": 1042849
+  },
+  "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt": {
+    "url": "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt",
+    "sha256": "4f180cf23ba0717ada0badd6c685026d73d48f184d00fc159c2641284b2ac0a3",
+    "size": 4062133
+  },
+  "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt": {
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt",
+    "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+    "size": 5613764
+  },
+  "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt": {
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt",
+    "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "size": 5544453
+  }
+}

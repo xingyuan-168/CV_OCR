@@ -250,7 +250,9 @@ def main():
         copy(path, core / name)
     if {p.name for p in core.iterdir()} != CORE_NAMES:
         raise ValueError("Core stage must contain exactly the three delivery files")
-    run([args.x86 / "ai_engine_delivery_verify.exe", "--dll", core / "CQ_X86.dll", "--header", ROOT / "include/ai_engine.h", "--model", args.model, "--image", args.image, "--expected-json", args.validation / "frozen-detections.json", "--report", output / "delivery-staged.json", "--preserve-worker", "1"], output / "delivery-staged.log")
+    # This unique, newly created stage cannot be a user's running deployment.
+    # The verifier checks the Worker absolute path before claiming ownership.
+    run([args.x86 / "ai_engine_delivery_verify.exe", "--dll", core / "CQ_X86.dll", "--header", ROOT / "include/ai_engine.h", "--model", args.model, "--image", args.image, "--expected-json", args.validation / "frozen-detections.json", "--report", output / "delivery-staged.json", "--preserve-worker", "0"], output / "delivery-staged.log")
     artifacts = {}
     if not args.no_zip:
         base_zip = output / f"CQ_AI_e_language_{metadata['delivery_version']}.zip"
@@ -266,17 +268,21 @@ def main():
     for path in (ROOT / "third_party/runtime/ort-directml-1.24.4/licenses").glob("*.txt"):
         copy(path, tools / "x64/licenses" / path.name)
     copy(ROOT / "include/ai_engine.h", tools / "include/ai_engine.h")
+    copy(args.x64 / 'ai_engine_yolo_model_inspect.exe', tools / 'tools/ai_engine_yolo_model_inspect.exe')
+    copy(ROOT / 'tools/yolo_model_tool.py', tools / 'tools/yolo_model_tool.py')
+    copy(ROOT / 'configs/yolo-reference-sources.json', tools / 'tools/yolo-reference-sources.json')
     for name in ("calibrate_yolo.py", "summarize_yolo_trace.py", "summarize_yolo_acceptance.py", "verify_yolo_optional_dependencies.py", "monitor_yolo_benchmark.py", "run_yolo_acceptance.ps1"):
         copy(ROOT / "scripts" / name, tools / "tools" / name)
     for name in ("e_language_onnx_module.txt", "e_language_yolo_qpc.txt"):
         copy(ROOT / "examples" / name, tools / "examples" / name)
-    for name in ("YOLO_OPTIMIZATION_CN.md", "YOLO_VALIDATION_CN.md", "V23_6_DELIVERY_CN.md"):
+    delivery_doc = metadata.get('delivery_document', 'V23_6_DELIVERY_CN.md')
+    for name in ("YOLO_OPTIMIZATION_CN.md", "YOLO_VALIDATION_CN.md", "YOLO_MODEL_COMPATIBILITY_CN.md", delivery_doc):
         copy(ROOT / "docs" / name, tools / name)
     copy(args.model, tools / "validation/best.onnx")
     copy(args.image, tools / "validation" / args.image.name)
     for path in (ROOT / 'tests/fixtures/yolo').glob('*.bmp'):
         copy(path, tools / 'validation' / path.name)
-    (tools / "README.txt").write_text("Requires Windows x64 and Python3.9+. Run powershell -File tools/run_yolo_acceptance.ps1 -RuntimeDir D:/your/application -Model D:/models/best.onnx -ImagesDir D:/businessBMP. RuntimeDir supplies the three delivered files; reports/staging do not modify it. Read V23_6_DELIVERY_CN.md. Baseline fixtures alone cannot accept five real business windows.\n", encoding="utf-8")
+    (tools / "README.txt").write_text(f"Requires Windows x64 and Python3.9+. Run powershell -File tools/run_yolo_acceptance.ps1 -RuntimeDir D:/your/application -Model D:/models/best.onnx -ImagesDir D:/businessBMP. RuntimeDir supplies the three delivered files; reports/staging do not modify it. Read {delivery_doc} and YOLO_MODEL_COMPATIBILITY_CN.md. Inspect models using python tools/yolo_model_tool.py inspect model.onnx. Baseline fixtures alone cannot accept five real business windows.\n", encoding="utf-8")
     tools_zip = output / f"CQ_AI_YOLO_tools_{metadata['delivery_version']}.zip"
     zip_directory(tools, tools_zip); check_zip(tools_zip)
     artifacts["diagnostics_zip"] = dict(path=str(tools_zip), **info(tools_zip))

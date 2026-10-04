@@ -39,7 +39,7 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/prepare_governance.ps1
-          & .cache/aios-source/.venv/Scripts/codex-os.exe check . --change-class small_change --requirement-id REQ-GOV-001 --json
+          & .cache/aios-source/.venv/Scripts/codex-os.exe check . --change-class small_change --requirement-id REQ-YOLO-002 --json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   native-architectures:
@@ -78,5 +78,5 @@ jobs:
       - name: Test real CPU YOLO transport and OCR logic
         shell: pwsh
         run: |
-          ctest --test-dir build/${{ matrix.profile }} -C Release --output-on-failure -R 'ai_engine_(yolo_transport|ocr_color_filter|ocr_reading_order)_test'
+          ctest --test-dir build/${{ matrix.profile }} -C Release --output-on-failure -R 'ai_engine_(yolo_model|yolo_pipeline|yolo_transport|ocr_color_filter|ocr_reading_order)_test'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -33,6 +33,9 @@
 !release/v23.6/
 !release/v23.6/CQ_AI_e_language_v23.6.zip
 !release/v23.6/cq_ai_engine-0.14.6-py3-none-win_amd64.whl
+!release/v23.7/
+!release/v23.7/CQ_AI_e_language_v23.7.zip
+!release/v23.7/cq_ai_engine-0.14.7-py3-none-win_amd64.whl
 /release/.v23.5-stage-*/
 /release/.v23.5-backup-*/
 

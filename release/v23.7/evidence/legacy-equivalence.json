@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "cases": 4,
+  "old_dll_sha256": "d93843dceeed5530d97de7f83f0e8eb26dc263a28df67efc5b7bfcb54141a278",
+  "new_dll_sha256": "148f03a1307c2e133d49bf9dd66f3b23b22f026d69f6b173ec64028faf848444",
+  "comparison": "exact JSON strings, CPU and DirectML, path and memory"
+}

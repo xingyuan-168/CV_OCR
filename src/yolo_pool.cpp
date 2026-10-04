@@ -1,4 +1,5 @@
 #include "yolo_pool.h"
+#include "yolo_model.h"
 #include "sha256.h"
 #include "error.h"
 #include <dxgi1_2.h>
@@ -77,7 +78,7 @@ std::string runtime_fingerprint() {
     }();return fingerprint;
 }
 std::string calibration_key(const std::vector<uint8_t>& model,const YoloParameters& p) {
-    const auto value="yolo-business-v4/ort=1.24.4/trt=10.13.3.9/cuda=12.8.90/conf=0.5/nms=0.45/model="+
+    const auto value="yolo-business-v5/layout=1/ort=1.24.4/trt=10.13.3.9/cuda=12.8.90/conf=0.5/nms=0.45/model="+
         sha256(model.data(),model.size())+"/"+hardware_key()+"/input="+std::to_string(p.input_size)+
         "/slots="+std::to_string(p.session_count)+"/callers=5/workload="+p.workload_id+"/runtime="+runtime_fingerprint()+"/ordinal="+std::to_string(p.device_id);
     return sha256(value.data(),value.size());
@@ -231,6 +232,11 @@ std::shared_ptr<YoloPool> build_yolo_pool_shared(const std::shared_ptr<const std
             auto pool=create_pool(model,config,p,p.runtime_device,p.intra_op_threads?p.intra_op_threads:1,0,0,status,error);
             if(pool){pool->runtime.calibration_key=key;pool->runtime.selection_basis="configured_mock";}return pool;
         }
+        auto descriptor=std::make_shared<YoloModelDescriptor>();
+        if(!inspect_yolo_model(model->data(),model->size(),descriptor.get(),error)) {
+            *status=AI_ERR_CONFIG;return nullptr;
+        }
+        config.yolo_descriptor=std::move(descriptor);
         if(p.runtime_device!=AI_DEVICE_AUTO) {
             if((p.fp16 ||p.graph) &&p.runtime_device!=AI_DEVICE_TENSORRT) {
                 *status=AI_ERR_CONFIG;*error="FP16 and CUDA Graph are only supported by the TensorRT YOLO backend";return nullptr;

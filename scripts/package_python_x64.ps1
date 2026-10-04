@@ -4,6 +4,7 @@
     [string]$OpenCVDir = 'third_party/opencv-5.0.0-static-mt/x64',
     [string]$RuntimeDir = 'third_party/runtime/ort-directml-1.24.4',
     [string]$OutputDir = '',
+    [string]$Metadata = '',
     [switch]$SkipDependencyPreparation,
     [switch]$SkipNativeTests,
     [switch]$SkipNativeBuild,
@@ -24,7 +25,9 @@ $python=(Get-Command $PythonExe -ErrorAction Stop).Source
 $cmake=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
 $ctest=Join-Path (Split-Path -Parent $cmake) 'ctest.exe'
 $pointer=Get-Content -LiteralPath (Join-Path $project 'release/current.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$meta=Get-Content -LiteralPath (Join-Path (Join-Path $project 'release') $pointer.manifest) -Raw -Encoding UTF8 | ConvertFrom-Json
+if (!$Metadata) { $Metadata=Join-Path (Join-Path $project 'release') $pointer.manifest }
+$metadataPath=Resolve-ProjectPath $Metadata
+$meta=Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $stamp=Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 if (!$OutputDir) { $OutputDir="outpush/python-$($meta.delivery_version)-$stamp" }
 $output=Resolve-ProjectPath $OutputDir
@@ -48,7 +51,7 @@ if (!$SkipNativeTests) {
 $msvcRoot=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC'
 $dumpbin=Get-ChildItem -LiteralPath $msvcRoot -Directory | Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin/Hostx64/x64/dumpbin.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (!$dumpbin) { throw 'dumpbin.exe was not found' }
-& $python (Join-Path $PSScriptRoot 'package_delivery.py') --python-only --x64 (Join-Path $buildRoot 'Release') --out $output --dumpbin $dumpbin
+& $python (Join-Path $PSScriptRoot 'package_delivery.py') --python-only --x64 (Join-Path $buildRoot 'Release') --out $output --dumpbin $dumpbin --metadata $metadataPath
 if ($LASTEXITCODE -ne 0) { throw 'Wheel staging or content verification failed' }
 $wheel=Join-Path $output ("cq_ai_engine-$($meta.project_version)-py3-none-win_amd64.whl")
 $venv=Join-Path $output 'installed-venv'

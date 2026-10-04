@@ -1,8 +1,8 @@
 # API specification
 
 The authoritative declarations are `include/ai_engine.h`:60 public functions,
-existing signatures and x86 stdcall aliases. Current native version0.14.6,
-deliveryv23.6, Worker protocol26. Interface details are generated in
+existing signatures and x86 stdcall aliases. Current native version0.14.7,
+deliveryv23.7, Worker protocol26. Interface details are generated in
 [offline HTML](易语言_DLL_API_说明.html) and [module declarations](../examples/e_language_onnx_module.txt).
 
 | Parameter | Contract |
@@ -24,6 +24,11 @@ Choose slot count using the business calibration tool, not by increasing it blin
 Five caller threads may share one model handle. Release handles only after their
 users finish. Worker shutdown is a coordinated last-client operation; one host
 must not terminate a Worker still serving another business process.
+
+YOLO accepts classic v5 objectness, v5u/v8/11/26 dense, and native v26 end-to-end
+ONNX detection heads. Format is validated once at loading; ambiguity is an error.
+Returned fields, caller labels, threshold equality and legacy ordinary-head NMS
+remain unchanged. See [model compatibility](YOLO_MODEL_COMPATIBILITY_CN.md).
 
 See [易语言 examples](../examples/e_language.md) for loading, QPC full-call timing,
 runtime-state inspection and error handling. Governance does not add public APIs.

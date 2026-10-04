@@ -126,3 +126,15 @@ def verify_historical(root: Path) -> None:
     for artifact in manifest["artifacts"]:
         members = {m["file"]: m for m in artifact.get("members", [])} or None
         verify_archive(safe_member(base, artifact["file"]), artifact, members)
+    current_path, _ = current_manifest(root)
+    for path in (root / 'release').glob('*/manifest.json'):
+        if path.parent == base or path == current_path:
+            continue
+        historical = read_json(path)
+        if historical.get('schema') != 2:
+            raise ValueError('Unknown historical manifest schema: ' + str(path))
+        for kind, artifact in historical['artifacts'].items():
+            verify_archive(safe_member(path.parent, artifact['file']), artifact,
+                           historical['files'] if kind == 'easy_language_zip' else None)
+        for evidence in historical['evidence'].values():
+            verify_file(safe_member(path.parent, evidence['file']), evidence)

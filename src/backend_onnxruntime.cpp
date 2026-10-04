@@ -1198,13 +1198,19 @@ public:
     int32_t load_model(const char* model_path, const Config& config, std::string* error) override {
         config_ = config;
         model_path_ = first_non_empty(model_path, config_.get_string("yolo.model_path", ""));
-        session_.reset();
+        release_model();
 
         if (model_path_.empty()) {
             loaded_without_model_ = true;
             return AI_OK;
         }
 
+        descriptor_ = config_.yolo_descriptor;
+        if (!descriptor_) {
+            auto d = std::make_shared<YoloModelDescriptor>();
+            if (!inspect_yolo_file(model_path_.c_str(), d.get(), error)) return AI_ERR_CONFIG;
+            descriptor_ = std::move(d);
+        }
         session_ = create_session(model_path_, config_, error);
         loaded_without_model_ = false;
         if (!session_) {
@@ -1228,7 +1234,14 @@ public:
 
         config_ = config;
         model_path_.clear();
-        session_.reset();
+        release_model();
+
+        descriptor_ = config_.yolo_descriptor;
+        if (!descriptor_) {
+            auto d = std::make_shared<YoloModelDescriptor>();
+            if (!inspect_yolo_model(model_data, model_size, d.get(), error)) return AI_ERR_CONFIG;
+            descriptor_ = std::move(d);
+        }
 
         session_ = create_session_from_memory(model_data, model_size, config_, error);
         loaded_without_model_ = false;
@@ -1297,19 +1310,21 @@ public:
             return 0;
         }
 
-        // 5. 后处理：输出形状通常为 [1, 84, 8400]（YOLOv8 格式）。
+        // Validate the actual tensor against the immutable load-time descriptor.
         const auto& out_tensor = output_value_ ? output_value_ : output_values[0];
         const auto type_info = out_tensor.GetTensorTypeAndShapeInfo();
         const auto shape = type_info.GetShape();
 
-        // 期望形状为 [1, num_attrs, num_candidates]，其中 num_attrs = 4 + num_classes。
         if (shape.size() != 3 || shape[0] != 1 ||
-            type_info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+            type_info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT || !descriptor_ ||
+            !validate_yolo_output(*descriptor_, shape[0], shape[1], shape[2], type_info.GetElementCount())) {
+            set_last_error("YOLO output shape/type changed from its validated descriptor");
             return AI_ERR_RUNTIME;
         }
 
-        const int32_t result_count = yolo_decode(out_tensor.GetTensorData<float>(), shape[1], shape[2],
+        const int32_t result_count = yolo_decode(out_tensor.GetTensorData<float>(), *descriptor_, shape[1], shape[2], type_info.GetElementCount(),
             image, lbox, conf_threshold, nms_threshold, labels_, candidates_, output);
+        if (result_count < 0) set_last_error("YOLO output contains invalid scores, coordinates, classes or element count");
         yolo_timing.postprocess_us = elapsed_us(postprocess_start);
         return result_count;
     }
@@ -1319,6 +1334,7 @@ public:
         input_value_ = Ort::Value{nullptr};
         output_value_ = Ort::Value{nullptr};
         session_.reset();
+        descriptor_.reset();
         loaded_without_model_ = false;
         return AI_OK;
     }
@@ -1342,6 +1358,10 @@ private:
 
     // 从当前配置读取输入尺寸、阈值和标签元数据。
     bool read_yolo_config(std::string* error) {
+        if (session_->GetInputCount() != 1 || session_->GetOutputCount() != 1 || !descriptor_) {
+            if (error) *error = "YOLO requires one validated input and output";
+            return false;
+        }
         const std::vector<int64_t> shape = session_->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
         if (shape.size() != 4 || shape[1] != 3) {
             if (error != nullptr) *error = "YOLO input must be a four-dimensional NCHW tensor with three channels";
@@ -1432,6 +1452,7 @@ private:
     Config config_;
     std::string model_path_;
     std::unique_ptr<Ort::Session> session_;
+    std::shared_ptr<const YoloModelDescriptor> descriptor_;
     bool loaded_without_model_ = false;
 
     std::vector<std::string> input_names_cache_;

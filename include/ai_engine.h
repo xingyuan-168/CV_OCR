@@ -20,9 +20,9 @@
 
 #define AIENGINE_VERSION_MAJOR 0
 #define AIENGINE_VERSION_MINOR 14
-#define AIENGINE_VERSION_PATCH 6
-#define AIENGINE_VERSION_STRING "0.14.6"
-#define AIENGINE_DELIVERY_STRING "v23.6"
+#define AIENGINE_VERSION_PATCH 7
+#define AIENGINE_VERSION_STRING "0.14.7"
+#define AIENGINE_DELIVERY_STRING "v23.7"
 
 #define AIENGINE_MAX_LABEL 32
 #define AIENGINE_MAX_TEXT 512
@@ -544,6 +544,8 @@ AIENGINE_EXPORT int32_t AIENGINE_CALL YOLO_Create(int32_t* out_handle);
 
 // session_count 是正整数执行槽数量，不是 ORT 内部线程数。
 // TensorRT=3 需要可选 x64 模块；FP16/Graph 由验证过的业务记录启用。
+// 标准检测 ONNX 自动识别 v5 objectness、v5u/v8/11/26 普通头及 v26 原生端到端头。
+// 含糊格式须先用离线工具补充元数据；公开检测返回字段和标签回退语义不变。
 AIENGINE_EXPORT int32_t AIENGINE_CALL YOLO_LoadModelFromPath(
     int32_t handle,
     const char* model_path,

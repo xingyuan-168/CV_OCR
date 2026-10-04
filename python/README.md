@@ -1,17 +1,17 @@
 # CQ_AI Python x64 离线库
 
-> 当前可用版为 **0.14.6 / v23.6 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [交付说明](../docs/V23_6_DELIVERY_CN.md)。
+> 当前可用版为 **0.14.7 / v23.7 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [交付说明](../docs/V23_7_DELIVERY_CN.md)。
 
-`cq-ai-engine` 是 CQ_AI `0.14.6` 的 Windows x64 离线 Wheel。安装后由 64 位
+`cq-ai-engine` 是 CQ_AI `0.14.7` 的 Windows x64 离线 Wheel。安装后由 64 位
 Python 直接加载包内 `CQ_AI_x64.dll`，OCR、YOLO 和 ONNX Runtime 都在当前
 Python 进程内运行，不启动 `CQ_AI_worker.exe`。
 
 ## 离线安装
 
-把 `cq_ai_engine-0.14.6-py3-none-win_amd64.whl` 复制到目标机，然后执行：
+把 `cq_ai_engine-0.14.7-py3-none-win_amd64.whl` 复制到目标机，然后执行：
 
 ```powershell
-python -m pip install --no-index .\cq_ai_engine-0.14.6-py3-none-win_amd64.whl
+python -m pip install --no-index .\cq_ai_engine-0.14.7-py3-none-win_amd64.whl
 ```
 
 要求 Windows x64 和 64 位 Python 3.9 及以上。普通 BMP、CV、OCR、YOLO

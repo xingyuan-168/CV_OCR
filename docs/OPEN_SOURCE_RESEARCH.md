@@ -2,6 +2,44 @@
 
 ## Requirement
 
+requirement_id: REQ-YOLO-002
+summary: Support YOLOv5, YOLO11 and YOLO26 ONNX detection without public ABI or result-contract changes.
+scope: native model inspection/decoding, ORT/TensorRT adapters, offline tools, tests and delivery
+updated_at: 2026-10-04
+
+## Candidates
+
+### Ultralytics YOLOv5 v7.0 and Ultralytics8.4.28
+
+- URL: https://github.com/ultralytics/yolov5/tree/v7.0 and https://github.com/ultralytics/ultralytics/tree/v8.4.28
+- License: YOLOv5 v7.0 GPL-3.0; Ultralytics8.4.28 AGPL-3.0. Used as offline export/reference tools; their implementation is not copied into the DLL.
+- Solves: authoritative decoded detection tensor semantics and reproducible small reference models.
+- Direct reuse: offline exporters and model metadata; no runtime Python/PyTorch dependency.
+- Extension: export/validation scripts with fixed options and hashes.
+- Useful design: classic v5 [B,N,5+C] uses objectness*class probability; dense heads use [B,4+C,N]; native end-to-end [B,K,6] is xyxy/score/class and requires no second NMS.
+- Limits: export flags vary by release;8.4.28 uses end2end explicitly. Metadata tool versions are not model architectures. Official preprocessing/class-aware defaults differ from this library's legacy contract.
+
+### ONNX IR and existing inference adapters
+
+- URL: https://onnx.ai/onnx/repo-docs/IR.html ; https://github.com/microsoft/onnxruntime/tree/v1.24.4 ; https://github.com/NVIDIA/TensorRT
+- License: ONNX Apache-2.0, ORT MIT, TensorRT headers Apache-2.0 with separate NVIDIA runtime terms.
+- Solves: serialized model metadata, tensor declarations, CPU/DirectML and optional NVIDIA execution.
+- Direct reuse: existing ORT1.24.4/TensorRT10.13.3.9 infrastructure and Python ONNX tooling offline.
+- Extension: shared bounded read-only model descriptor reader, rejecting unsupported tasks/NMS and ambiguous layouts; private TensorRT ABI3.
+- Useful design: parse descriptors once, skip weights, validate runtime tensors against descriptors, preserve persistent buffers.
+- Limits: ORT metadata normally requires a Session; a separate probe Session would penalize TensorRT loading. A small bounded wire reader avoids that and adds no deployment dependency.
+
+## Decision
+
+decision: build
+reason: Independently implement a narrowly scoped descriptor reader and three shared decode paths, reuse the existing runtimes, and use pinned upstream exports only for offline validation. Keep legacy NMS/preprocessing/labels and all public contracts. Metadata-only prepared copies resolve ambiguity without changing user inputs or model tensor outputs.
+
+Evidence: input/yolov26/yolo26n.onnx SHA256355c4f26cc1d48e581aaeb4a7f837baf7d5993e6f83337d30d50d0476bc5b158 has FP32 [1,3,640,640] -> [1,300,6], task=detect and end2end=True. The0.14.6/ORT1.24.4 native CPU path loads it but emits score561.258/class156, proving a decode bug rather than an unsupported inference graph. Native end-to-end semantics are documented at https://docs.ultralytics.com/guides/end2end-detection/ .
+
+## Prior governance research — REQ-GOV-001
+
+### Requirement
+
 requirement_id: REQ-GOV-001
 summary: Register the delivered v23.6 source and integrate observable repository governance.
 scope: scripts, configs, docs, CI, release manifests, AIOS compatibility
