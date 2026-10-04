@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "dll_sha256": "148f03a1307c2e133d49bf9dd66f3b23b22f026d69f6b173ec64028faf848444",
+  "models": [
+    "legacy_best",
+    "yolov5n-fp32-320",
+    "yolo11n-fp32-320",
+    "yolo26n-fp32-320-dense",
+    "user_v26_end2end"
+  ],
+  "chinese_paths": true,
+  "chinese_caller_labels": true,
+  "concurrent_calls": 200,
+  "empty_results": true,
+  "threshold_equality": true,
+  "invalid_checks": [
+    "class",
+    "nan",
+    "ambiguous"
+  ]
+}

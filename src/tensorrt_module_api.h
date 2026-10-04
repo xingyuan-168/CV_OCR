@@ -3,16 +3,17 @@
 #include <cstddef>
 // Private C ABI. No STL objects or allocator ownership cross module boundaries.
 namespace ai_trt {
-constexpr uint32_t kAbi = 2;
+constexpr uint32_t kAbi = 3;
 struct Options {
     uint32_t abi = kAbi;
     int32_t device = 0, fp16 = 0, graph = 0;
+    int32_t format = 0, layout = 0, classes = 0;
     uint64_t workspace = 256ull * 1024 * 1024;
     const wchar_t* cache_directory = nullptr;
 };
 struct Info {
     uint32_t abi = kAbi;
-    int32_t width = 0, height = 0, attrs = 0, candidates = 0;
+    int32_t width = 0, height = 0, axis1 = 0, axis2 = 0;
     int32_t cache_hit = 0, fp16 = 0, graph = 0, driver_version = 0, cuda_version = 12080;
     int64_t build_us = 0;
     char gpu[256]{}, version[32]{}, cache_key[65]{};

@@ -1,12 +1,12 @@
-# CQ_AI v23.6
+# CQ_AI v23.7
 
-> 当前可用版为 **0.14.6 / v23.6 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [v23.6交付说明](docs/V23_6_DELIVERY_CN.md)。
+> 当前可用版为 **0.14.7 / v23.7 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [v23.7交付说明](docs/V23_7_DELIVERY_CN.md)。
 
 CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
 | 项目版本 | 交付版本 | Worker协议 | 公开函数 |
 | --- | --- | --- | --- |
-| `0.14.6` | `v23.6` | `26` | `60` |
+| `0.14.7` | `v23.7` | `26` | `60` |
 
 32位易语言使用 `CQ_X86.dll`；OCR/YOLO由同目录 `CQ_AI_worker.exe` 处理，CV在DLL内执行。Python x64直接加载 `CQ_AI_x64.dll`。
 
@@ -14,7 +14,7 @@ CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
 `output/` 固定只放 `CQ_X86.dll`、`CQ_AI_worker.exe`、`易语言_DLL_API_说明.html`。当前ZIP、Wheel及验证证据由 `release/current.json` 选择。NVIDIA大包仅在独立交付目录保留一份，诊断包及本机审计留在 `outpush/`。TensorRT/FP16/Graph及五窗口20/30ms性能必须由E5-2696 v4＋RTX2070实测。
 
-`release/v23.5/` 保留原来的ZIP、0.14.5 Wheel及manifest，成员和成品哈希不改变。
+`release/v23.5/`与`release/v23.6/`的原ZIP、Wheel、manifest及证据保持不变。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1 -AllowSourceCandidate
@@ -24,7 +24,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_relea
 
 - CV：普通/透明模板匹配、单图和多图查找、内存 ZIP 模板库、坐标原点偏移。
 - OCR：内置 PP-OCRv6 tiny、CPU/DirectML/AUTO、多行排序、滤色及鲁棒性回退。
-- YOLO：路径或内存加载 ONNX、多模型句柄、Session 池及运行状态查询。
+- YOLO：V5、V5u/V8/V11、V26普通头和原生端到端ONNX检测；路径或内存加载、多模型、Session池及运行状态查询。模型要求与准备见[兼容说明](docs/YOLO_MODEL_COMPATIBILITY_CN.md)。
 - 三个多目标易语言接口使用紧凑文本：CV 返回 `ID,x,y|...`，OCR 返回
   `ID,cx,cy|...`。
 
@@ -47,7 +47,7 @@ powershell -File scripts/build_delivery.ps1 -PythonExe python
 容量目标、归档、清理和缓存恢复见[仓库容量说明](docs/REPOSITORY_STORAGE_CN.md)。
 基础交付可通过`python scripts/package_delivery.py --reuse-current --out outpush/verified-copy`独立导出。
 
-生成交付前先完成 [v23.6验证步骤](docs/V23_6_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
+生成交付前先完成 [v23.7验证步骤](docs/V23_7_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1

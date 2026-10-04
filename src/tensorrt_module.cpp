@@ -188,7 +188,7 @@ std::shared_ptr<Engine> shared_engine(const void* model, size_t size, const ai_t
     std::strcpy(shared->info.driver_file_version,lib.driver_file_version.c_str());
     std::strcpy(shared->info.driver_binary_sha256,lib.driver_binary_sha256.c_str());
     std::strcpy(shared->info.version,"10.13.3.9");
-    const std::string metadata = "cq-yolo-engine-v3\nmodel=" + ai::sha256(model,size) + "\ngpu=" + shared->info.gpu +
+    const std::string metadata = "cq-yolo-engine-v4\nlayout=1\nformat=" + std::to_string(options.format) + "/" + std::to_string(options.layout) + "/" + std::to_string(options.classes) + "\nmodel=" + ai::sha256(model,size) + "\ngpu=" + shared->info.gpu +
         "\nuuid=" + ai::sha256(&uuid,sizeof(uuid)) + "\ncc=" + std::to_string(major*10+minor) +
         "\ndriver=" + std::to_string(shared->info.driver_version) + "\ndriver_file=" + lib.driver_file_version +
         "\ndriver_sha256=" + lib.driver_binary_sha256 + "\ncuda=12.8.90\ntrt=10.13.3.9\nfp16=" +
@@ -255,11 +255,13 @@ std::shared_ptr<Engine> shared_engine(const void* model, size_t size, const ai_t
     const auto in=shared->engine->getTensorShape(shared->input.c_str());
     const auto out=shared->engine->getTensorShape(shared->output.c_str());
     require(in.nbDims==4 && in.d[0]==1 && in.d[1]==3 && in.d[2]>0 && in.d[2]==in.d[3],"Only static square NCHW batch=1 YOLO is supported");
-    require(out.nbDims==3 && out.d[0]==1 && out.d[1]>4 && out.d[2]>0,"YOLO output must be [1,4+classes,candidates]");
-    require(in.d[2]<=4096 && out.d[1]<=65536 && out.d[2]<=1000000,"TensorRT YOLO tensor exceeds allocation limits");
+    require(out.nbDims==3 && out.d[0]==1 && out.d[1]>0 && out.d[2]>0,"YOLO output must be a static batch1 rank3 detection tensor");
+    require(options.format>=0 && options.format<=2 && options.layout>=0 && options.layout<=1 && options.classes>0 && options.classes<=65531,"Invalid YOLO descriptor in TensorRT ABI3 options");
+    require(out.d[options.layout==0?1:2]==(options.format==2?6:options.classes+(options.format==1?5:4)),"TensorRT output attributes differ from the YOLO descriptor");
+    require(in.d[2]<=4096 && out.d[1]<=1000000 && out.d[2]<=1000000,"TensorRT YOLO tensor exceeds allocation limits");
     require(static_cast<uint64_t>(out.d[1])*out.d[2]*sizeof(float)<=512ull*1024*1024,"TensorRT YOLO output exceeds 512 MiB allocation limit");
     shared->info.height=static_cast<int32_t>(in.d[2]); shared->info.width=static_cast<int32_t>(in.d[3]);
-    shared->info.attrs=static_cast<int32_t>(out.d[1]); shared->info.candidates=static_cast<int32_t>(out.d[2]);
+    shared->info.axis1=static_cast<int32_t>(out.d[1]); shared->info.axis2=static_cast<int32_t>(out.d[2]);
     engines[key]=shared; return shared;
 }
 struct Slot {
@@ -295,7 +297,7 @@ void* create(const void* model,size_t size,const ai_trt::Options* options,ai_trt
         require(slot->context!=nullptr,"TensorRT execution context allocation failed");
         check(lib.cuStreamCreate_fn(&slot->stream,CU_STREAM_NON_BLOCKING),"cuStreamCreate");
         slot->input_bytes=static_cast<size_t>(3)*slot->shared->info.width*slot->shared->info.height*sizeof(float);
-        slot->output_bytes=static_cast<size_t>(slot->shared->info.attrs)*slot->shared->info.candidates*sizeof(float);
+        slot->output_bytes=static_cast<size_t>(slot->shared->info.axis1)*slot->shared->info.axis2*sizeof(float);
         check(lib.cuMemHostAlloc_fn(reinterpret_cast<void**>(&slot->host_input),slot->input_bytes,0),"pinned input allocation");
         check(lib.cuMemHostAlloc_fn(reinterpret_cast<void**>(&slot->host_output),slot->output_bytes,0),"pinned output allocation");
         check(lib.cuMemAlloc_fn(&slot->device_input,slot->input_bytes),"device input allocation");

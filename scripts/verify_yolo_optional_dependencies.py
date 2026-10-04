@@ -13,6 +13,7 @@ def main():
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--legacy-module", type=Path, help="Optional previous ABI module for mismatch rejection")
     args = parser.parse_args()
     folder = args.output.resolve()
     folder.mkdir(parents=True, exist_ok=False)
@@ -24,10 +25,17 @@ def main():
     for path in source.glob("*.dll"):
         if path.name != "CQ_YOLO_TensorRT.dll":
             shutil.copy2(path, stage / path.name)
-    shutil.copy2(source / "yolo_benchmark_x64.exe", stage / "yolo_benchmark_x64.exe")
+    executable = source / "yolo_benchmark_x64.exe"
+    if not executable.exists(): executable = source / "ai_engine_yolo_benchmark.exe"
+    shutil.copy2(executable, stage / "yolo_benchmark_x64.exe")
     environment = dict(os.environ, CQ_AI_NVIDIA_DIR=str(empty), CQ_AI_YOLO_TRACE_PREFIX="", CQ_AI_ORT_PROFILE_PREFIX="")
     checks = {}
-    for name, device in (("missing-module", 3), ("missing-nvidia-runtime", 3), ("cpu-without-nvidia", 2)):
+    cases = [("missing-module", 3)]
+    if args.legacy_module: cases.append(("legacy-module-abi", 3))
+    cases += [("missing-nvidia-runtime", 3), ("cpu-without-nvidia", 2)]
+    for name, device in cases:
+        if name == "legacy-module-abi":
+            shutil.copy2(args.legacy_module, stage / "CQ_YOLO_TensorRT.dll")
         if name == "missing-nvidia-runtime":
             shutil.copy2(source / "CQ_YOLO_TensorRT.dll", stage / "CQ_YOLO_TensorRT.dll")
         command = [str(stage / "yolo_benchmark_x64.exe"), "--model", str(args.model.resolve()), "--image", str(args.image.resolve()),
@@ -39,6 +47,8 @@ def main():
             passed = result.returncode == 0 and json.loads((folder / (name + ".json")).read_text())["runtime"]["active"] == "cpu"
         elif name == "missing-module":
             passed = result.returncode != 0 and "Cannot load optional CQ_YOLO_TensorRT.dll" in log
+        elif name == "legacy-module-abi":
+            passed = result.returncode != 0 and "TensorRT module ABI mismatch" in log
         else:
             passed = result.returncode != 0 and ("nvcuda.dll is missing" in log or ("Cannot load" in log and "nvinfer_10.dll" in log))
         checks[name] = dict(passed=passed, exit_code=result.returncode, log=str(folder / (name + ".log")))

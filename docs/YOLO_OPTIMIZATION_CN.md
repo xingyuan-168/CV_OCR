@@ -1,6 +1,6 @@
-# YOLO v23.6：构建、校准与目标机验收
+# YOLO v23.7：构建、校准与目标机验收
 
-本版0.14.6保持 60 个公开函数及正整数 `session_count` 语义，新增 YOLO 设备 `3=TensorRT`，Worker 协议改为 26。正式 `release/v23.5` 成品仍为协议 25；本版按“先交付最新可用版”更新output三文件，E5-2696 v4 / RTX2070性能继续验收。目标是每路完整调用 P50≤20ms、P95≤30ms，加载和截图另列。
+本版0.14.7/v23.7兼容V5/V11/V26检测输出，保持60个公开函数、正整数`session_count`及协议26。设备3=TensorRT仅用于YOLO。模型要求见[兼容说明](YOLO_MODEL_COMPATIBILITY_CN.md)。目标E5-2696 v4 / RTX2070五路完整调用P50≤20ms、P95≤30ms仍须实机验证。
 
 ## 实现
 
@@ -78,6 +78,6 @@ DirectML 节点分配诊断使用 `CQ_AI_ORT_PROFILE_PREFIX`，分析 ORT 输出
 
 ## 打包
 
-统一入口 `scripts/package_e_language.ps1` 使用当前0.14.6/v23.6元数据，检查二进制、协议26、新版本五路报告和30分钟稳定性后打包并更新output。三文件ZIP、含CQ_YOLO_TensorRT.dll与nvidia运行库的可选NVIDIA ZIP、基准和校准工具ZIP分别交付。源码、构建、实际DLL/Worker、文件SHA及回滚记录保存在outpush。HTML在二进制编译与哈希后生成，HTML/ZIP哈希另外记录。
+统一入口 `scripts/package_e_language.ps1` 使用当前0.14.7/v23.7元数据，检查二进制、协议26、新版本五路报告和30分钟稳定性后打包并更新output。三文件ZIP、ABI3 TensorRT模块更新包（复用既有固定版本nvidia运行库）、基准和校准工具ZIP分别交付。源码、构建、实际DLL/Worker、文件SHA及回滚记录保存在outpush。HTML在二进制编译与哈希后生成，HTML/ZIP哈希另外记录。
 
-`package_delivery.py --nvidia-only` 可提前生成独立NVIDIA包，后续统一入口以 `-SkipNvidiaPacking` 复用其已验证哈希。`package_python_x64.ps1`构建并离线安装新版0.14.6 Wheel验收，使用独立新目录。历史release/v23.5及原始哈希不变；当前source metadata与历史manifest分别验证。旧候选验证记录见 [历史验证](YOLO_VALIDATION_CN.md)，本版交付和实测见 [v23.6交付说明](V23_6_DELIVERY_CN.md)。
+`package_delivery.py --nvidia-only` 可提前生成独立NVIDIA包，后续统一入口以 `-SkipNvidiaPacking` 复用其已验证哈希。`package_python_x64.ps1`构建并离线安装新版0.14.7 Wheel验收，使用独立新目录。历史release/v23.5及原始哈希不变；当前source metadata与历史manifest分别验证。旧候选验证记录见 [历史验证](YOLO_VALIDATION_CN.md)，本版交付和实测见 [v23.7交付说明](V23_7_DELIVERY_CN.md)。

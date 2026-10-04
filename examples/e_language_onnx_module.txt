@@ -1,4 +1,4 @@
-﻿' CQ_X86.dll 0.14.6（v23.6，Worker协议26）易语言 32 位封装模块（本文件保存为UTF-8）
+﻿' CQ_X86.dll 0.14.7（v23.7，Worker协议26）易语言 32 位封装模块（本文件保存为UTF-8）
 ' 易语言所有文本型输入均按Windows当前ACP传入；标准AI_*接口使用UTF-8；模型、标签、OCR字符表的内存或文件内容仍为UTF-8。
 ' 只把 CQ_X86.dll 和 CQ_AI_worker.exe 放在调用程序EXE同目录；ORT、DirectML、VC运行库和内置OCR模型均压缩嵌入Worker。
 .版本 2

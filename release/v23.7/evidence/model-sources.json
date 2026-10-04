@@ -1,0 +1,188 @@
+{
+  "models": [
+    {
+      "file": "yolov5n-fp32-320.onnx",
+      "checkpoint": {
+        "url": "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt",
+        "sha256": "4f180cf23ba0717ada0badd6c685026d73d48f184d00fc159c2641284b2ac0a3",
+        "size": 4062133
+      },
+      "export_source": {
+        "url": "https://github.com/ultralytics/yolov5/archive/refs/tags/v7.0.zip",
+        "sha256": "a40568a7979c4b27195d198987e49610de86b038b044f2521f5515455571f852",
+        "size": 1042849
+      },
+      "sha256": "f01bbf976872ba1a26e739442ed2f2f45fee06e49d2e203793a35481ba343314",
+      "export_args": [
+        "--weights",
+        "C:\\Users\\84700\\AppData\\Local\\Temp\\cq-yolo-v237-b5d847ebe52147e19ad794d0aef9d46a\\weights\\yolov5n.pt",
+        "--imgsz",
+        "320",
+        "--batch-size",
+        "1",
+        "--include",
+        "onnx",
+        "--opset",
+        "12",
+        "--device",
+        "cpu"
+      ]
+    },
+    {
+      "file": "yolo11n-fp32-320.onnx",
+      "checkpoint": {
+        "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt",
+        "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+        "size": 5613764
+      },
+      "exporter": "ultralytics8.4.28",
+      "export_args": {
+        "format": "onnx",
+        "imgsz": 320,
+        "batch": 1,
+        "half": false,
+        "dynamic": false,
+        "simplify": false,
+        "opset": 18,
+        "device": "cpu",
+        "nms": false
+      },
+      "sha256": "bcb74a223c6938ec96498b2895db073e421be8d7deca97795790929f5e21853d"
+    },
+    {
+      "file": "yolo26n-fp32-320-dense.onnx",
+      "checkpoint": {
+        "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt",
+        "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+        "size": 5544453
+      },
+      "exporter": "ultralytics8.4.28",
+      "export_args": {
+        "format": "onnx",
+        "imgsz": 320,
+        "batch": 1,
+        "half": false,
+        "dynamic": false,
+        "simplify": false,
+        "opset": 18,
+        "device": "cpu",
+        "nms": false,
+        "end2end": false
+      },
+      "sha256": "4649cfbf6b3d0b0ad5c7b0e1713f09177ef975351b0c2aea4638a831398200ce"
+    }
+  ],
+  "sources": {
+    "https://github.com/ultralytics/yolov5/archive/refs/tags/v7.0.zip": {
+      "url": "https://github.com/ultralytics/yolov5/archive/refs/tags/v7.0.zip",
+      "sha256": "a40568a7979c4b27195d198987e49610de86b038b044f2521f5515455571f852",
+      "size": 1042849
+    },
+    "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt": {
+      "url": "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt",
+      "sha256": "4f180cf23ba0717ada0badd6c685026d73d48f184d00fc159c2641284b2ac0a3",
+      "size": 4062133
+    },
+    "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt": {
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt",
+      "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+      "size": 5613764
+    },
+    "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt": {
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt",
+      "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+      "size": 5544453
+    }
+  },
+  "packages": {
+    "torch": "2.6.0+cpu",
+    "torchvision": "0.21.0+cpu",
+    "ultralytics": "8.4.28",
+    "onnx": "1.19.1",
+    "onnxruntime": "1.24.4",
+    "numpy": "2.2.6"
+  },
+  "extra_downloads": [
+    {
+      "file": "yolov5n.onnx",
+      "url": "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.onnx",
+      "sha256": "04f0e55c26f58d17145b36045780fe1250d5bd2187543e11568e5141d05b3262",
+      "size": 3981910,
+      "metadata": {
+        "stride": "32",
+        "names": "{0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus', 6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light', 10: 'fire hydrant', 11: 'stop sign', 12: 'parking meter', 13: 'bench', 14: 'bird', 15: 'cat', 16: 'dog', 17: 'horse', 18: 'sheep', 19: 'cow', 20: 'elephant', 21: 'bear', 22: 'zebra', 23: 'giraffe', 24: 'backpack', 25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee', 30: 'skis', 31: 'snowboard', 32: 'sports ball', 33: 'kite', 34: 'baseball bat', 35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket', 39: 'bottle', 40: 'wine glass', 41: 'cup', 42: 'fork', 43: 'knife', 44: 'spoon', 45: 'bowl', 46: 'banana', 47: 'apple', 48: 'sandwich', 49: 'orange', 50: 'broccoli', 51: 'carrot', 52: 'hot dog', 53: 'pizza', 54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant', 59: 'bed', 60: 'dining table', 61: 'toilet', 62: 'tv', 63: 'laptop', 64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave', 69: 'oven', 70: 'toaster', 71: 'sink', 72: 'refrigerator', 73: 'book', 74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier', 79: 'toothbrush'}"
+      },
+      "inputs": [
+        [
+          "images",
+          10,
+          [
+            1,
+            3,
+            640,
+            640
+          ]
+        ]
+      ],
+      "outputs": [
+        [
+          "output0",
+          10,
+          [
+            1,
+            25200,
+            85
+          ]
+        ]
+      ]
+    },
+    {
+      "file": "yolo11n.onnx",
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.onnx",
+      "sha256": "634279b40c07c6391472c51ad45b81ebc48706a9a1fe72dd3396322acd0c053b",
+      "size": 10930182,
+      "metadata": {
+        "description": "Ultralytics YOLO11n model trained on /usr/src/ultralytics/ultralytics/cfg/datasets/coco.yaml",
+        "author": "Ultralytics",
+        "date": "2025-12-12T19:47:40.765629",
+        "version": "8.3.237",
+        "license": "AGPL-3.0 License (https://ultralytics.com/license)",
+        "docs": "https://docs.ultralytics.com",
+        "stride": "32",
+        "task": "detect",
+        "batch": "1",
+        "imgsz": "[640, 640]",
+        "names": "{0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus', 6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light', 10: 'fire hydrant', 11: 'stop sign', 12: 'parking meter', 13: 'bench', 14: 'bird', 15: 'cat', 16: 'dog', 17: 'horse', 18: 'sheep', 19: 'cow', 20: 'elephant', 21: 'bear', 22: 'zebra', 23: 'giraffe', 24: 'backpack', 25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee', 30: 'skis', 31: 'snowboard', 32: 'sports ball', 33: 'kite', 34: 'baseball bat', 35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket', 39: 'bottle', 40: 'wine glass', 41: 'cup', 42: 'fork', 43: 'knife', 44: 'spoon', 45: 'bowl', 46: 'banana', 47: 'apple', 48: 'sandwich', 49: 'orange', 50: 'broccoli', 51: 'carrot', 52: 'hot dog', 53: 'pizza', 54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant', 59: 'bed', 60: 'dining table', 61: 'toilet', 62: 'tv', 63: 'laptop', 64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave', 69: 'oven', 70: 'toaster', 71: 'sink', 72: 'refrigerator', 73: 'book', 74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier', 79: 'toothbrush'}",
+        "args": "{'batch': 1, 'half': False, 'dynamic': True, 'simplify': True, 'opset': None, 'nms': False}",
+        "channels": "3"
+      },
+      "inputs": [
+        [
+          "images",
+          1,
+          [
+            "batch",
+            3,
+            "height",
+            "width"
+          ]
+        ]
+      ],
+      "outputs": [
+        [
+          "output0",
+          1,
+          [
+            "batch",
+            84,
+            "anchors"
+          ]
+        ]
+      ]
+    }
+  ],
+  "user_v26": {
+    "model_sha256": "355c4f26cc1d48e581aaeb4a7f837baf7d5993e6f83337d30d50d0476bc5b158",
+    "image_sha256": "33b198a1d2839bb9ac4c65d61f9e852196793cae9a0781360859425f6022b69c"
+  }
+}

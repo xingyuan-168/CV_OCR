@@ -1,8 +1,16 @@
 # Scope
 
-This task changes repository governance, build/packaging tools, CI and affected
-documentation. It registers the existing v23.6 delivery and its actual evidence.
-Native inference sources and the delivered DLL/Worker/HTML remain the baseline.
+This task implements REQ-YOLO-002 from the registered v23.6 source: validated ONNX
+detection descriptors, v5/v11/v26 decode paths, ORT/TensorRT integration, offline
+model tools, regression tests and the0.14.7/v23.7 paired DLL/Worker/HTML delivery.
+Public ABI, result contracts and protocol26 remain compatible. Native TensorRT
+private ABI becomes3; version-specific Worker names prevent mixed deliveries.
+
+Standard batch1 square FP32 detection exports are covered. Additional tasks,
+embedded traditional NMS, TensorRT dynamic shapes, INT8 and batch inference are
+outside this task. Existing ORT dynamic-input behavior remains supported. New
+model fixtures/export environments are temporary or hash-pinned; no heavy new
+runtime dependency is shipped. v23.6 and older registered artifacts remain frozen.
 
 The AIOS directory-preservation compatibility patch is isolated from the user's
 AI-OS working directory and is recorded with its upstream revision and patch hash.

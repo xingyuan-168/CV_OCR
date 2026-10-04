@@ -25,7 +25,13 @@ def hygiene(working_tree: bool, clean: bool) -> None:
     tracked = git("ls-files", "-z").split("\0")
     current_path, current = current_manifest(ROOT)
     approved = {"release/v23.5/" + a["file"] for a in json.loads((ROOT / "release/v23.5/manifest.json").read_text(encoding="utf-8-sig"))["artifacts"]}
-    approved |= {a.relative_to(ROOT).as_posix() for a in (current_path.parent / x["file"] for x in current["artifacts"].values())}
+    # Every registered cohort remains immutable and valid after current moves.
+    from release_manifest import safe_member
+    for manifest_path in (ROOT / 'release').glob('*/manifest.json'):
+        historical = json.loads(manifest_path.read_text(encoding='utf-8-sig'))
+        if historical.get('schema') == 2:
+            approved |= {safe_member(manifest_path.parent, x['file']).relative_to(ROOT).as_posix()
+                         for x in historical['artifacts'].values()}
     for name in filter(None, tracked):
         if name.split("/", 1)[0] not in ROOTS:
             raise ValueError(f"Unregistered tracked root: {name}")
@@ -81,7 +87,7 @@ def main() -> None:
     if len(parse_exports(ROOT / "include/ai_engine.h")) != manifest["public_exports"]:
         raise ValueError("Header declaration count differs")
     if args.all:
-        for pattern in ("test_governance.py", "test_repository_storage.py", "test_packaging.py", "test_yolo_calibration.py", "python_wrapper_test.py"):
+        for pattern in ("test_governance.py", "test_repository_storage.py", "test_packaging.py", "test_yolo_calibration.py", "test_yolo_model_tool.py", "python_wrapper_test.py"):
             subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "tests"), "-p", pattern], cwd=ROOT, check=True)
     print(json.dumps(dict(passed=True, **result), ensure_ascii=False))
 

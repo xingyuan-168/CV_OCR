@@ -116,7 +116,7 @@ static int32_t infer_json_count(
 }
 
 int main() {
-    assert(std::strcmp(AI_GetVersion(), "CQ_X86/0.14.6") == 0);
+    assert(std::strcmp(AI_GetVersion(), "CQ_X86/" AIENGINE_VERSION_STRING) == 0);
     static_assert(sizeof(OCRTextResult) == 28, "OCRTextResult ABI must remain 28 bytes");
     bool directml_available = false;
 #if defined(AIENGINE_TEST_EMBED_OCR)

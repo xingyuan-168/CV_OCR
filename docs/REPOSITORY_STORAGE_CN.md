@@ -65,4 +65,8 @@ Python轮子与诊断staging成功后自动移除，`--keep-stage`仅用于排�
 
 注册新交付使用promote_release.ps1的PackageDir、PythonWheel和SelectCurrent参数。
 已注册版本不能替换。配套加载、原生回归及候选加载须串行执行，避免同协议Worker共享实例影响目录核验。
-已交付三文件仍为0.14.6/v23.6/协议26；目标RTX2070五路20/30ms、FP16和Graph验收继续待验。
+当前三文件版本以release/current.json为准；v23.7仅新增小型ABI3模块更新包，复用唯一外部NVIDIA依赖归档，禁止在仓库再次展开完整SDK；目标RTX2070五路20/30ms、FP16和Graph验收继续待验。
+
+v23.7交付后清理了本轮五个构建目录、测试运行库副本、诊断staging和已归档参考模型，共663.154MiB；清理后、提交前仓库含Git为1.402GiB。新交付、旧回滚、全部验证记录和可选包均保留，提交后容量另存`outpush/v23.7-validation/storage-final.json`并继续检查1.5GiB上限。原input及历史交付的25项保护指纹与原output回滚副本一致。
+
+隔离导出环境、权重和缓存数据已删除；外部临时目录仅保留44字节的uv标记文件。AIOS将其中的空`.git`标记判为不可读Git引用并拒绝删除父目录，未绕过此限制。该保留项单列在`external-temp-cleanup.json`，不属于仓库或NVIDIA交付归档。临时环境文件字节统计可能含硬链接，不用它声称释放了等量物理磁盘块。

@@ -23,6 +23,12 @@ public:
     int32_t load_model_from_memory(const void* model, size_t length, const Config& config, std::string* error) override {
         release_model();
         if (!model || !length) return AI_ERR_INVALID_ARGUMENT;
+        descriptor_ = config.yolo_descriptor;
+        if (!descriptor_) {
+            auto descriptor = std::make_shared<YoloModelDescriptor>();
+            if (!inspect_yolo_model(model, length, descriptor.get(), error)) return AI_ERR_CONFIG;
+            descriptor_ = std::move(descriptor);
+        }
         if ((config.get_string("yolo.precision","fp32")=="fp16" ||config.get_int("yolo.cuda_graph",0)) &&
             !config.get_int("yolo.validation_authorized",0))
             return fail(error,"FP16/CUDA Graph requires the validated YOLO pool selector",AI_ERR_CONFIG);
@@ -38,6 +44,9 @@ public:
         if (!api_ || api_->abi != ai_trt::kAbi) return fail(error, "TensorRT module ABI mismatch", AI_ERR_RUNTIME);
         ai_trt::Options options;
         options.device = config.get_int("runtime.device_id", 0);
+        options.format = static_cast<int32_t>(descriptor_->format);
+        options.layout = static_cast<int32_t>(descriptor_->layout);
+        options.classes = descriptor_->classes;
         options.fp16 = config.get_string("yolo.precision", "fp32") == "fp16";
         options.graph = config.get_int("yolo.cuda_graph", 0);
         // The shared selector only sets fp16/graph from validated business records,
@@ -47,6 +56,9 @@ public:
         char detail[4096]{};
         context_ = api_->create(model, length, &options, &info_, detail, sizeof(detail));
         if (!context_) return fail(error, detail, AI_ERR_RUNTIME);
+        if (!validate_yolo_output(*descriptor_, 1, info_.axis1, info_.axis2,
+                static_cast<size_t>(info_.axis1) * info_.axis2))
+            return fail(error, "TensorRT output differs from the validated ONNX descriptor", AI_ERR_RUNTIME);
         const int configured = config.get_int("yolo.input_width", 0);
         if (configured && (configured != info_.width || configured != info_.height))
             return fail(error, "TensorRT input shape does not match configured input_size", AI_ERR_INVALID_ARGUMENT);
@@ -85,14 +97,17 @@ public:
         yolo_timing.h2d_us = timing.h2d_us; yolo_timing.gpu_us = timing.gpu_us; yolo_timing.d2h_us = timing.d2h_us;
         if (status < 0) { set_last_error(error); return AI_ERR_RUNTIME; }
         start = YoloClock::now();
-        const auto result = yolo_decode(api_->output(context_), info_.attrs, info_.candidates,
+        const auto result = yolo_decode(api_->output(context_), *descriptor_, info_.axis1, info_.axis2,
+            static_cast<size_t>(info_.axis1) * info_.axis2,
             image, letterbox, conf, nms, labels_, candidates_, output);
+        if (result < 0) set_last_error("YOLO output contains invalid scores, coordinates, classes or element count");
         yolo_timing.postprocess_us = elapsed_us(start);
         return result;
     }
     int32_t release_model() override {
         if (context_ && api_) api_->destroy(context_);
         context_ = nullptr; api_ = nullptr;
+        descriptor_.reset();
         if (module_) FreeLibrary(module_);
         module_ = nullptr; return AI_OK;
     }
@@ -106,6 +121,7 @@ private:
     const ai_trt::Api* api_ = nullptr;
     void* context_ = nullptr;
     ai_trt::Info info_;
+    std::shared_ptr<const YoloModelDescriptor> descriptor_;
     std::vector<int> columns_;
     std::vector<std::string> labels_;
     std::vector<RawDetection> candidates_;

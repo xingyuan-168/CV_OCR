@@ -8,8 +8,8 @@ Prepare the pinned AIOS runtime with `scripts/prepare_governance.ps1`. Use its
 returned `codex-os.exe` path (or the configured plugin MCP) for the actual gates:
 
 ```powershell
-& $AIOSExe check . --change-class new_integration --requirement-id REQ-GOV-001 --json
-& $AIOSExe finish . --change-class new_integration --requirement-id REQ-GOV-001 --test-command "python scripts/check_governance.py --all --working-tree" --memory-written --json
+& $AIOSExe check . --change-class major_feature --requirement-id REQ-YOLO-002 --json
+& $AIOSExe finish . --change-class major_feature --requirement-id REQ-YOLO-002 --test-command "python scripts/check_governance.py --all --working-tree" --memory-written --json
 ```
 
 `AIOSExe` is a task variable supplied by the preparation script. The Finish

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def register(package, wheel, select=False):
-    m = json.loads((package / 'manifest.json').read_text(encoding='utf-8'))
+    m = json.loads((package / 'manifest.json').read_text(encoding='utf-8-sig'))
     version = m['delivery_version']
     import re
     if not re.fullmatch(r'v\d+\.\d+(?:\.\d+)?', version): raise ValueError('Invalid delivery version')
@@ -41,6 +41,17 @@ def register(package, wheel, select=False):
         m['evidence']={}
         for name in ['delivery-build.json','continuous.json','simultaneous.json','soak-30min.json','summary.json','frozen-detections.json','html-interactions.json']:
             dest=stage/'evidence'/name; copy(validation/name,dest)
+            m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
+        # Retain feature-specific evidence alongside the mandatory binary checks.
+        for name in ['compatibility-x64.json','compatibility-x86.json','mixed-models.json',
+                     'legacy-equivalence.json','performance-comparison.json','model-sources.json',
+                     'native-regression.json','python-acceptance.json','stability-summary.json',
+                     'delivery-unicode-v26.json']:
+            if (validation/name).is_file():
+                dest=stage/'evidence'/name; copy(validation/name,dest)
+                m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
+        for name in ['delivery-staged.json','delivery-output.json']:
+            dest=stage/'evidence'/name; copy(package/name,dest)
             m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
         m['formal_release']=m['target_performance_validation']=='passed'
         (stage/'manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2),encoding='utf-8')

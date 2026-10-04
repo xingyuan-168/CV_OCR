@@ -1,5 +1,15 @@
 # Changelog
 
+## v23.7 / native0.14.7 / protocol26
+
+- Validate ONNX detection descriptors once per pool; support v5 objectness,
+  v5u/v8/11/v26 dense, and native v26 end-to-end outputs on the shared decoder.
+- Reject ambiguous six-column outputs, unsupported tasks and malformed tensors.
+  Preserve public signatures, return contracts, preprocessing and legacy NMS.
+- Add metadata-only model preparation, pinned export/reference tools and tests.
+- Upgrade optional TensorRT private ABI to3 and invalidate old engine/calibration
+  keys. GPU execution and target-machine performance remain pending.
+
 ## Repository storage governance
 
 - Register v23.6/source provenance and canonical CV_OCR governance.

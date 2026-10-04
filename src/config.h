@@ -4,8 +4,10 @@
 
 #include <string>
 #include <unordered_map>
+#include <memory>
 
 namespace ai {
+struct YoloModelDescriptor;
 
 // 运行时使用的轻量 INI 风格键值存储。
 //
@@ -25,6 +27,10 @@ public:
     int32_t get_int(const std::string& key, int32_t fallback) const;
     float get_float(const std::string& key, float fallback) const;
     bool get_bool(const std::string& key, bool fallback) const;
+
+    // Internal, immutable and shared by the sessions in a model pool. It is
+    // never serialized into a public config file or the Worker protocol.
+    std::shared_ptr<const YoloModelDescriptor> yolo_descriptor;
 
 private:
     std::unordered_map<std::string, std::string> values_;

@@ -317,12 +317,33 @@ def resource_text(name: str) -> str:
     return "调用方不得在函数执行期间释放输入或输出内存。每个 YOLO 句柄拥有独立 Session 池；同一模型并发超过 session_count 时等待空闲 Session，不同模型的锁和队列互不阻塞。CV 句柄隔离模板集，OCR 使用独立共享池。释放句柄后新调用失败，已开始的调用通过共享所有权安全完成。"
 
 
+def yolo_compatibility_section():
+    return """<section id='yolo_compatibility' class='doc-section'><h1 class='func-title'>YOLOv5／YOLO11／YOLO26 模型兼容</h1>
+<p>无需增加模型版本参数。加载时读取ONNX图、输入输出及格式元数据，各后端共用识别与解码逻辑。Ultralytics的8.4.28是导出工具版本，不代表模型架构为YOLOv8。标准模型使用现有路径或内存接口。</p>
+<table class='error-table'><tr><th>检测模型</th><th>典型输出</th><th>内部处理</th></tr>
+<tr><td>原版YOLOv5</td><td>[1,N,5+C]</td><td>objectness × 类别概率；xywh坐标还原；跨类别NMS0.45</td></tr>
+<tr><td>YOLOv5u／v8／11／26普通头</td><td>[1,4+C,N]</td><td>类别概率；xywh坐标还原；跨类别NMS0.45</td></tr>
+<tr><td>YOLO26原生端到端头</td><td>[1,K,6]</td><td>xyxy、分数、类别；置信度过滤和坐标还原；不重复NMS</td></tr></table>
+<p>共同基线为FP32输入输出、batch=1、三通道方形NCHW。明确元数据支持普通头转置布局；歧义返回现有错误码和原因。分割、姿态、旋转框、多输出未解码检测头、内嵌传统NMS不属于直接支持范围。TensorRT使用静态尺寸；ORT动态尺寸须通过现有input_size指定320或640。</p>
+<h2>原有调用与返回值</h2><p>60个公开签名和stdcall别名不变。JSON仍为x1、y1、x2、y2、cx、cy、score、class_id、label；无检测为[]，失败为空文本并查询AI_GetLastError。保留最近邻缩放、padding114、坐标起点、文本编码和线程内返回缓冲区。标签仍取调用方传入内容；不传标签时JSON的label为类别数字字符串，模型names不会覆盖它。</p>
+<p>配套yolo26n.onnx样本输入640×640，input_size填写0或640，conf可继续填写0.5。图片仍通过BMP字节传入；离线测试把bus.jpg在内存转成BMP。端到端最大候选数由导出图决定，DLL不额外截断，也不能恢复图中已经丢弃的框。</p>
+<h2>检查与生成兼容副本</h2><pre>python tools/yolo_model_tool.py inspect D:/models/best.onnx
+python tools/yolo_model_tool.py prepare D:/models/custom.onnx --output D:/models/custom-compatible.onnx --format objectness --classes 6 --layout BNC</pre>
+<p>工具包提供匹配的ai_engine_yolo_model_inspect.exe。inspect使用DLL相同的原生解析器；prepare额外需要离线Python ONNX/numpy/ORT，创建只改元数据的新文件，验证非元数据字段及三组输出张量完全一致，保留原模型。业务运行无需Python。元数据不能把内嵌NMS或其他任务改成普通检测头，这类模型需从原始权重重新导出。</p>
+<h2>固定导出参数</h2><p>原版YOLOv5使用官方v7.0：python export.py --weights best.pt --imgsz 320 --batch-size 1 --include onnx --opset 12 --device cpu。YOLO11／26使用Ultralytics8.4.28，明确指定FP32、batch1和静态尺寸。该版本YOLO26普通头填end2end=False，原生端到端填end2end=True，两者均填nms=False。导出后检查实际张量。</p>
+<pre>from ultralytics import YOLO
+YOLO("best.pt").export(format="onnx", imgsz=640, batch=1, half=False,
+                       dynamic=False, opset=18, simplify=False,
+                       nms=False, end2end=True)  # YOLO26原生端到端</pre>
+<h2>验证范围与配套模块</h2><p>具体模型哈希、后端、结果和并发记录见同版验证报告。CPU／DirectML和NVIDIA分别列明执行证据；TensorRT编译通过不代表GPU执行通过。可选TensorRT模块私有ABI为3，须与本版Worker配套。旧模型性能回归与E5＋RTX2070五窗口20/30ms目标独立报告。</p></section>"""
+
+
 def html_page(exports, project_version: str, delivery_version: str, worker_protocol: int, metadata=None):
     metadata = metadata or {}
     groups = {}
     for item in exports:
         groups.setdefault(group(item[1]), []).append(item)
-    nav = ["<h3>概览</h3><a class='nav-item' href='#intro' onclick=\"show('intro')\">使用与错误码</a><a class='nav-item' href='#yolo_delivery' onclick=\"show('yolo_delivery')\">YOLO部署与五路调用</a>"]
+    nav = ["<h3>概览</h3><a class='nav-item' href='#intro' onclick=\"show('intro')\">使用与错误码</a><a class='nav-item' href='#yolo_compatibility' onclick=\"show('yolo_compatibility')\">YOLOv5／11／26模型兼容</a><a class='nav-item' href='#yolo_delivery' onclick=\"show('yolo_delivery')\">YOLO部署与五路调用</a>"]
     for title, items in groups.items():
         nav.append(f"<h3>{html.escape(title)}</h3>")
         nav.extend(f"<a class='nav-item' href='#{name}' onclick=\"show('{name}')\">{html.escape(name)}</a>" for _, name, _ in items)
@@ -352,8 +373,9 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
 <tr><td>运行设备</td><td>0=AUTO，1=DirectML，2=CPU，3=TensorRT。AUTO业务校准优先，未命中时短基准暂定；显式后端失败返回错误。</td></tr>
 <tr><td>GPU 设备序号</td><td>从0开始且不能为负数。DirectML使用DXGI序号，TensorRT使用CUDA序号；混合显卡机器上两者可能不同。CPU仍填写0。</td></tr>
 <tr><td>Session 数</td><td>必须大于0，表示同一模型执行槽数量，传20会建立20个槽；业务调用线程数与ORT内部线程数分别配置。CPU按物理核预算配置内部线程，也可用CQ_AI_YOLO_CPU_THREADS指定1..8；离线工具扫描预算内的1/2/4/6/8线程。每个DirectML Session串行执行；TensorRT各槽独立context/stream/buffer，多槽会增加内存及显存占用。</td></tr></table>
-<p>路径加载示例：YOLO_LoadModelFromPath(句柄, best路径, 空标签, 0, AI_DEVICE_AUTO, 0, 并发数)；另一个句柄加载 smc.onnx 时也可填写 0 自动识别。内存加载使用相同四项运行参数。NMS 由 worker 内部统一处理，调用方不传。加载失败后立即调用 AI_GetLastError 获取具体原因，成功后调用 YOLO_GetRuntimeStatusJson 核对实际尺寸、provider、设备序号、Session 数和内部线程数。</p>
+<p>路径加载示例：YOLO_LoadModelFromPath(句柄, best路径, 空标签, 0, AI_DEVICE_AUTO, 0, 并发数)；另一个句柄加载 smc.onnx 时也可填写0自动识别。内存加载使用相同四项运行参数。普通检测头内部执行跨类别NMS0.45，原生端到端头不重复NMS，调用方均不传NMS参数。加载失败后立即调用AI_GetLastError获取原因，成功后通过YOLO_GetRuntimeStatusJson核对尺寸、provider、设备序号、Session数和内部线程数。</p>
 <h2>通用错误码</h2><table class='error-table'><tr><th>值</th><th>含义</th></tr><tr><td>-1</td><td>参数错误</td></tr><tr><td>-2</td><td>未初始化</td></tr><tr><td>-3</td><td>后端或模型未配置</td></tr><tr><td>-4</td><td>图像格式错误</td></tr><tr><td>-5</td><td>输出缓冲区不足</td></tr><tr><td>-6</td><td>配置或模型创建失败</td></tr><tr><td>-7</td><td>模型或实例句柄无效</td></tr><tr><td>-8</td><td>YOLO 句柄已经成功加载模型</td></tr><tr><td>-9</td><td>模型正在加载或资源忙</td></tr><tr><td>-100</td><td>运行时或 worker 错误</td></tr></table></section>"""]
+    sections.append(yolo_compatibility_section())
     fingerprints = metadata.get("binary_fingerprints", {})
     hashes = "".join(f"<tr><td>{html.escape(name)}</td><td><code>{html.escape(fact['sha256'])}</code></td></tr>" for name, fact in sorted(fingerprints.items()))
     summary = html.escape(metadata.get("validation_summary", "本版功能测试正在执行；目标机GPU性能待验。"))
@@ -362,7 +384,7 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
     sections.append(f"""<section id='yolo_delivery' class='doc-section'><h1 class='func-title'>YOLO部署与五路调用</h1>
 <p><b>本次交付：</b>{project_version} / {delivery_version} / Worker协议{worker_protocol}。功能验证状态：{html.escape(metadata.get('functional_validation', 'pending'))}；E5-2696 v4、128GB、RTX2070五窗口完整调用每路P50≤20ms、P95≤30ms仍须目标机实测。</p>
 <h2>三个核心文件</h2><p>将CQ_X86.dll、CQ_AI_worker.exe及本HTML一起放入业务目录，业务EXE加载32位DLL，DLL自动启动同目录64位Worker。Windows须为64位。模型路径由调用方传入，接口签名及现有CV/OCR功能保留。停止本程序的调用后成套替换文件，重建旧YOLO句柄。</p>
-<h2>启用NVIDIA TensorRT</h2><p>解压独立NVIDIA包，将其根目录CQ_YOLO_TensorRT.dll和nvidia/目录合并到Worker旁；模块为x64，由Worker加载。也可设置CQ_AI_NVIDIA_DIR为nvidia目录绝对路径。基础CPU/DirectML无需NVIDIA包。GPU初始化失败时使用AI_GetLastError读取具体原因；设备3显式失败会返回错误。</p>
+<h2>启用NVIDIA TensorRT</h2><p>将本版ABI3模块CQ_YOLO_TensorRT.dll放到Worker旁，固定NVIDIA运行库的nvidia/目录也放到Worker旁。既有v23.6外部NVIDIA归档的nvidia/依赖可复用，但旧模块须换为本版ABI3模块。也可设置CQ_AI_NVIDIA_DIR为nvidia目录绝对路径。模块为x64，由Worker加载。基础CPU/DirectML无需NVIDIA包。GPU初始化失败时使用AI_GetLastError读取具体原因；设备3显式失败会返回错误。</p>
 <p>固定依赖为传统TensorRT10.13.3.9、CUDA runtime12.8.90、NVRTC12.8.93、cuBLAS12.8.4.1。驱动须暴露CUDA Driver API≥12.8，GPU算力≥7.5；RTX2070兼容性及显存以目标机记录为准。nvcuda.dll由系统驱动提供，包内不携带。TensorRT/CUDA/VC许可随NVIDIA包保存在nvidia/licenses/。</p>
 <h2>首次加载与缓存</h2><p>首次加载在加载阶段构建engine，耗时另列；后续复用本机TensorRT缓存。缓存绑定模型SHA、GPU、实际驱动文件版本及SHA、TensorRT/CUDA、精度和构建参数，损坏或不匹配时重建。冷启动、模型加载、截图与稳定完整推理调用分别计时。</p>
 <h2>五线程调用示例</h2><pre>{qpc_example}</pre><p>最后一个加载参数是正整数执行槽数，推荐值由业务校准产生。状态文本建议分配至少8192字节，调用YOLO_GetRuntimeStatusJson检查active、precision、session_count、intra_op_threads、execution_slots、selection_basis、engine_cache_hit、engine_build_us、cuda_graph和驱动信息。</p>

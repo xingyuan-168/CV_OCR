@@ -1,0 +1,120 @@
+{
+  "passed": true,
+  "binary_fingerprints": {
+    "CQ_X86.dll": {
+      "size": 9857024,
+      "sha256": "bd6c05c35fd7ebf15fdfb20aa5035f86ed8939a63255697141cf856f90d0e0f7"
+    },
+    "CQ_AI_worker.exe": {
+      "size": 24557056,
+      "sha256": "b54bc8c2510a3cd4e1cfc8d7fc453031330f30551abb5006cb6d3ed26771e074"
+    }
+  },
+  "phases": {
+    "x64_full": {
+      "selected": 16,
+      "initial_passed": 15,
+      "initial_failure": "ai_engine_smoke still asserted0.14.6; test assertion corrected to header version",
+      "recheck_passed": 1,
+      "logs": [
+        "ctest-x64.log",
+        "ctest-x64-smoke-recheck.log"
+      ]
+    },
+    "x86_full": {
+      "selected": 20,
+      "passed": 20,
+      "logs": [
+        "ctest-x86.log"
+      ]
+    },
+    "final_classifier_x64": {
+      "selected": 4,
+      "passed": 4,
+      "logs": [
+        "native-final-x64.log"
+      ]
+    },
+    "final_classifier_x86": {
+      "selected": 3,
+      "passed": 3,
+      "logs": [
+        "native-final-x86.log"
+      ]
+    },
+    "clean_ci_x64": {
+      "selected": 4,
+      "passed": 4,
+      "logs": [
+        "ci-x64-build.log",
+        "ci-x64-tests.log"
+      ]
+    },
+    "model_tool": {
+      "selected": 2,
+      "passed": 2,
+      "logs": [
+        "model-tool-tests.log"
+      ]
+    },
+    "script_regression": {
+      "logs": [
+        "test-governance.log",
+        "test-storage.log",
+        "test-calibration.log",
+        "test-wrapper.log"
+      ]
+    }
+  },
+  "note": "Full native suites precede final six-column ambiguity tightening; final affected tests and real-model matrix use final DLL/Worker.",
+  "log_fingerprints": {
+    "ctest-x64.log": {
+      "size": 2564,
+      "sha256": "994caa2698f192201aa426e164176000f90e7fa43b3c5d86469dacfbff45edac"
+    },
+    "ctest-x64-smoke-recheck.log": {
+      "size": 326,
+      "sha256": "91ce1af8ba36bf7df92978c9f689a3848249f325a330c642c4e0a15425f061d2"
+    },
+    "ctest-x86.log": {
+      "size": 2834,
+      "sha256": "132e4844206c25192af4ebcdd05f87151428e0af93e20b4b2cdd002f257bf50f"
+    },
+    "native-final-x64.log": {
+      "size": 655,
+      "sha256": "e0b2dba772f2c793b405bdd0578c0e159db03c3434846c999d0be3d1f6bdf4b6"
+    },
+    "native-final-x86.log": {
+      "size": 563,
+      "sha256": "52c8d2dccd7ffbdcadf693f88eef31ddc842ec29505fa17a95053dedac4ada32"
+    },
+    "ci-x64-build.log": {
+      "size": 7412,
+      "sha256": "fc08be66437ee428f8d6b3e3684e8ebda212e29623ab128627c8c1a7084ae40a"
+    },
+    "ci-x64-tests.log": {
+      "size": 680,
+      "sha256": "9a1a645391c155d5258ae595f43f0b7c275bb88085b1512ef9a849b148d48618"
+    },
+    "model-tool-tests.log": {
+      "size": 105,
+      "sha256": "f17239d7ae7c68e5751d3b6aa1610ff50283d9eba6bf03102beccafa39ec6a45"
+    },
+    "test-governance.log": {
+      "size": 109,
+      "sha256": "6704cb5add1d647380bef83c5b33761f3e7dac956ee4a0f00048e01be361554c"
+    },
+    "test-storage.log": {
+      "size": 107,
+      "sha256": "4e46efc222d89ecc78126b9c01657b9c55b8765357f9bac751403f7a28d8fd88"
+    },
+    "test-calibration.log": {
+      "size": 109,
+      "sha256": "59753171660350c6735ee4b12925f50e7f8606c102caf33752e5551608bad819"
+    },
+    "test-wrapper.log": {
+      "size": 108,
+      "sha256": "46a59d823d772c3809446eba836399e2612ba33924b6c71abe8e15b736b8f4b7"
+    }
+  }
+}

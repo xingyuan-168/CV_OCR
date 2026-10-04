@@ -1,5 +1,6 @@
 #pragma once
 #include "yolo_preprocess.h"
+#include "yolo_model.h"
 #include <numeric>
 #include <cstring>
 #include <limits>
@@ -61,50 +62,56 @@ inline std::vector<int> nms_greedy(const std::vector<RawDetection>& dets, float 
 }
 
 
-inline int32_t yolo_decode(const float* raw_output, int64_t attrs, int64_t count,
+inline int32_t yolo_decode(const float* raw_output, const YoloModelDescriptor& descriptor,
+    int64_t axis1, int64_t axis2, size_t elements,
     const AIImage& image, const YoloLetterbox& lbox, float conf_threshold, float nms_threshold,
     const std::vector<std::string>& labels, std::vector<RawDetection>& candidates, std::vector<AIDetectBox>* output) {
-        const int64_t num_attrs = attrs;      // e.g. 84 = 4 + 80
-        const int64_t num_candidates = count; // e.g. 8400
-        if (!raw_output || num_attrs <= 4 || num_attrs > std::numeric_limits<int32_t>::max()) {
-            return AI_ERR_RUNTIME;
-        }
-        const int num_classes = static_cast<int>(num_attrs - 4);
-        // 按候选框遍历 [1, 84, 8400] 输出。
-        // raw_output 布局为 attr_i * num_candidates + candidate_j。
-        if (num_candidates < 0 || static_cast<uint64_t>(num_candidates) > static_cast<uint64_t>(std::numeric_limits<int32_t>::max())) {
-            return AI_ERR_RUNTIME;
-        }
+        output->clear();
+        if ((!raw_output && elements) || !validate_yolo_output(descriptor, 1, axis1, axis2, elements)) return AI_ERR_RUNTIME;
+        const bool bcn = descriptor.layout == YoloLayout::BCN;
+        const bool end2end = descriptor.format == YoloFormat::EndToEnd;
+        const bool objectness = descriptor.format == YoloFormat::Objectness;
+        const int64_t num_attrs = bcn ? axis1 : axis2;
+        const int64_t num_candidates = bcn ? axis2 : axis1;
+        const int num_classes = descriptor.classes;
+        const int64_t attr_stride = bcn ? num_candidates : 1, candidate_stride = bcn ? 1 : num_attrs;
+        const auto value = [&](int64_t a, int64_t j) { return raw_output[a * attr_stride + j * candidate_stride]; };
+        const auto probability = [](float p) { return std::isfinite(p) && p >= 0 && p <= 1; };
         candidates.clear();
         candidates.reserve(static_cast<size_t>(num_candidates));
 
         for (int64_t j = 0; j < num_candidates; ++j) {
-            // 查找最佳类别分数。
             float max_score = 0.0f;
             int best_class = 0;
-            for (int c = 0; c < num_classes; ++c) {
-                const float s = raw_output[(4 + c) * num_candidates + j];
-                if (s > max_score) {
-                    max_score = s;
-                    best_class = c;
+            if (end2end) {
+                max_score = value(4, j);
+                const float id = value(5, j);
+                if (!probability(max_score) || !std::isfinite(id) || id < 0 || id >= num_classes || std::floor(id) != id) return AI_ERR_RUNTIME;
+                best_class = static_cast<int>(id);
+            } else {
+                const float obj = objectness ? value(4, j) : 1.0f;
+                if (!probability(obj)) return AI_ERR_RUNTIME;
+                for (int c = 0; c < num_classes; ++c) {
+                    const float s = value((objectness ? 5 : 4) + c, j);
+                    if (!probability(s)) return AI_ERR_RUNTIME;
+                    if (s > max_score) { max_score = s; best_class = c; }
                 }
+                if (objectness) max_score *= obj;
             }
 
             if (max_score < conf_threshold) {
                 continue;
             }
 
-            // 输入空间中的 cx、cy、w、h（例如带 letterbox 的 640x640）。
-            const float cx = raw_output[0 * num_candidates + j];
-            const float cy = raw_output[1 * num_candidates + j];
-            const float w  = raw_output[2 * num_candidates + j];
-            const float h  = raw_output[3 * num_candidates + j];
+            const float cx = value(0, j), cy = value(1, j), w = value(2, j), h = value(3, j);
+            if (!std::isfinite(cx) || !std::isfinite(cy) || !std::isfinite(w) || !std::isfinite(h) ||
+                (end2end ? (w < cx || h < cy) : (w < 0 || h < 0))) return AI_ERR_RUNTIME;
 
             // 转换为输入空间中的 x1,y1,x2,y2。
-            float x1 = cx - w * 0.5f;
-            float y1 = cy - h * 0.5f;
-            float x2 = cx + w * 0.5f;
-            float y2 = cy + h * 0.5f;
+            float x1 = end2end ? cx : cx - w * 0.5f;
+            float y1 = end2end ? cy : cy - h * 0.5f;
+            float x2 = end2end ? w : cx + w * 0.5f;
+            float y2 = end2end ? h : cy + h * 0.5f;
 
             // 映射回原图坐标。
             x1 = (x1 - lbox.pad_x) / lbox.scale;
@@ -126,7 +133,11 @@ inline int32_t yolo_decode(const float* raw_output, int64_t attrs, int64_t count
         }
 
         // 6. NMS。
-        const std::vector<int> keep = nms_greedy(candidates, nms_threshold);
+        std::vector<int> keep;
+        if (end2end) {
+            keep.resize(candidates.size()); std::iota(keep.begin(), keep.end(), 0);
+            std::stable_sort(keep.begin(), keep.end(), [&](int a, int b) { return candidates[a].score > candidates[b].score; });
+        } else keep = nms_greedy(candidates, nms_threshold);
 
         // 7. 填充全部输出；调用层通过线程局部 vector 暴露结果，不再截断。
         if (keep.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {

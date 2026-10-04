@@ -21,6 +21,13 @@ Each DirectML Session serializes Run; each TensorRT slot owns its context, strea
 and buffers. BMP views, reusable workspaces and request IDs cover the common path.
 OCR retains devices0..2 and ORT. CV runs in the host DLL.
 
+At load time `yolo_model.h` reads bounded ONNX metadata and graph descriptors,
+skipping weights. A model pool shares the immutable descriptor with every slot.
+The decoder handles dense, objectness and native end-to-end outputs through
+strided views without transposing tensors. Native end-to-end skips a second NMS;
+ordinary heads retain the existing class-agnostic NMS. TensorRT private ABI3
+carries this descriptor; public ABI and Worker protocol26 remain unchanged.
+
 The core Worker embeds its fixed ORT/DirectML runtime and OCR assets; optional
 NVIDIA dependencies remain a separate package. A model pool owns the backend and
 leases slots with RAII. Runtime status identifies the actual backend/device.

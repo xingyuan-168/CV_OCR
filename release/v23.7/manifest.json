@@ -1,0 +1,405 @@
+{
+  "project_version": "0.14.7",
+  "delivery_version": "v23.7",
+  "worker_protocol": 26,
+  "public_exports": 60,
+  "formal_release": false,
+  "functional_validation": "passed",
+  "target_performance_validation": "pending",
+  "target_acceptance_required": "E5-2696 v4 / RTX2070 / five business windows",
+  "binary_fingerprints": {
+    "CQ_X86.dll": {
+      "size": 9857024,
+      "sha256": "bd6c05c35fd7ebf15fdfb20aa5035f86ed8939a63255697141cf856f90d0e0f7"
+    },
+    "CQ_AI_worker.exe": {
+      "size": 24557056,
+      "sha256": "b54bc8c2510a3cd4e1cfc8d7fc453031330f30551abb5006cb6d3ed26771e074"
+    }
+  },
+  "functional_validation_scope": "x86/x64 CPU/DirectML, classic v5/dense/native v26 heads, path/memory and concurrent calls, OCR/CV, installed Python Wheel; TensorRT build and missing-dependency behavior only",
+  "nvidia_execution_validation": "pending",
+  "source_revision": "eced21b49a1e9db396f202b37a98fae7819bc075 + recorded working-tree native source snapshot",
+  "build_base_revision": "eced21b49a1e9db396f202b37a98fae7819bc075",
+  "build_working_tree_modified": true,
+  "native_source_sha256": {
+    "CMakeLists.txt": "39b06d5b4504e4811b8ca7e5355337f2022ddb51e96f978cceeffd9b1a53fdbc",
+    "include/ai_engine.h": "74ccdb0d7d8bcc9dd5cd650ab3e4e438fcb425d8954fe0477fd79b43ff1294cb",
+    "src/ai_engine.cpp": "afafa860647d8b2a4b58328f97221880eebaee1d3feb5488432e93b3eaba64e4",
+    "src/backend_onnxruntime.cpp": "ad918dd0df22f6266c1c0142e61ec9dd258fd0419fb00104020fd82bcd4535b5",
+    "src/backend_onnxruntime.h": "ad10c182248ca167b050593a99769794d0432c1a754b27750fc6272c674da908",
+    "src/backend_tensorrt.cpp": "bd825f1d40fac89240194df930c2316b2383c4ff2fac526b505b69cc63c60d33",
+    "src/backend_tensorrt.h": "2259f258080e454f90c69b7a65b275c6bd2029cbd282150c1fed72830bb5714b",
+    "src/backends.cpp": "21702cc9de8ac3c37b336138b47a14150ca1d55cfded8c21608eb583ed6eb041",
+    "src/backends.h": "e90c0d2a80dc6388780c5994c127d27e2b3e53d0307ec2ba1e6c44a9ba82d2ad",
+    "src/bmp_view.h": "e1f9f78713ac2e935831507f6473f34e795b38cca3c5b9fabf8cc2b83ed82b72",
+    "src/compact_result_format.h": "fa4e8b2716d4ec3b0407398551795f4eef215b0ff8381208659c2ce9dda668bb",
+    "src/config.cpp": "47b95304840c893ac89614b8f86abc51d24b2539e4750c3aee311dea77f6935f",
+    "src/config.h": "5e16fe693ef4b212e1db995fad3bd75ec493fb62bad065f08b1a6e7c4a03ba74",
+    "src/coordinate_offset.h": "4b4545f8f63522c639f308a97f1b766e81f650b50803d1f031c2832adcbe68fd",
+    "src/cv_correlation.cpp": "605b301d31af5b1f6c7c3eb66807614cb41d97ec1a33a4986404093bcbc6a1e8",
+    "src/cv_correlation.h": "919f7310124f4a8a7801f3f59bd6175123b04b4d0d2d9c01d9ef268f2e87160c",
+    "src/cv_fast.cpp": "294a7e10bd7e1f441a2ce7620e7c6173d12b2fe4741f8c981112c17b8f54fa2d",
+    "src/cv_fast.h": "344011bdabf37936ff72afca300a72af10607625304e87019789975027c76c9e",
+    "src/cv_masked_score_avx2.cpp": "df73b42f3b876d0fec97418ac17680eb2ae93856455b0878dae3e1003207f3c0",
+    "src/cv_masked_score_avx2.h": "fa4a0e30eb9af31fba75aaa646db2a9b1819e5272bbf326b3615e6721dc2cb49",
+    "src/cv_normalize.h": "9a88f42466f38ce34342162b7b9fb459f4baea3717a99253661ca91159f21316",
+    "src/cv_normalize_avx2.cpp": "03ae0a6ac06e44ca2e9d4ef0805000d94befd7b778d8e7e4adfefcb681bb94bc",
+    "src/cv_test_hooks.h": "3ac04647f8b51fadfae3490d324c1c6bcc915146bf76a989b02970448552a3c0",
+    "src/embedded_assets.cpp": "dabda5c8442357f44e05ebaea0a8cdd3689e22eccbeb300f236e6fb89ec035b6",
+    "src/embedded_assets.h": "0dc91bf57dc1513bc16e42ef7ce315207e6e2b64d998ef4028dab4d34d3841dc",
+    "src/embedded_assets.rc.in": "b0ae5ffb388b200d7be875c5b439e5f3a9b7b78f1c1e3529c0cf00adf17f7208",
+    "src/embedded_ocr_assets.rc.in": "3f125e284665cb508166cfacfa1e8b93f2517b50430231463648e1d82e58b090",
+    "src/embedded_runtime.rc.in": "51ef0a54dd6cdce65ecbda5ed0ca1f4f9e82aae3cdea126a429ee8d968782cb8",
+    "src/engine.cpp": "8bc35b2de0ea6d1f9464f6961b23270889f390de82dc627eacc1648c619abb4c",
+    "src/engine.h": "39d0eefee467b875618274846422df10ac59424fd790b9ff7a790bb5f94f14ca",
+    "src/error.cpp": "16dadbb4d8aafbd3598d179ffe97d4044da6c92b592befb36c7ae3d0f7a06ee7",
+    "src/error.h": "79d9b49fd2e122887e389460dec97f580028962327fa4739fc29720512884e4e",
+    "src/image_view.h": "828d8d935e3e0b99b0e7af90d9d0f0e3aceb57ffdc8f119e4fe5c876d9158fb5",
+    "src/memory_zip.cpp": "f3ad17b66aefd8422982f8b4686f2ae5c903dac373b68ffb404dd7e8561859ab",
+    "src/memory_zip.h": "8ba3fce192de12eb14e554811cbbcdb9069b54c3f5b16dc80d02a9a929789e66",
+    "src/ocr_color_filter.cpp": "7bb0b5f9af0ed2231da04a9a1ad99a758d724c9325e3ca48a3a28cc2786e201d",
+    "src/ocr_color_filter.h": "a895490494776e0b0897008a11514254b3f8a68661988009bddf2e3bea1f81ce",
+    "src/ocr_reading_order.cpp": "7e0f4da1f1b5d31de30fb72f4e01aff76fe28a5b0703d4c1be05186de3684d4c",
+    "src/ocr_reading_order.h": "d9ca8231eab8180686d7eac4869388fe895db32451aea4c69ce2c015c24b3a0e",
+    "src/pipe_io.h": "663b0c0b4e948a63198f67586f136ca57002f79b39a3776794796ea844cc0514",
+    "src/runtime_bundle_format.h": "f727c6d7e8231c04e232206d6d8f95ef7f64c6925afe2eb03d729a82e48490bc",
+    "src/runtime_bundle_loader.cpp": "6e43a917d344eb8dcc43fd87c076317cb908e4e924ae578025fd3db1a79f3170",
+    "src/runtime_bundle_loader.h": "cd34080497df35791ca4e08a0bafff3130838a459675512415693a760a2528fe",
+    "src/runtime_status.cpp": "53cbfc3c81a68db9c0d570ed9e282d347d6c3ec32ccfae01d88e8015e281c0ea",
+    "src/runtime_status.h": "a3900b225261f21bdf8c10f84a34aee64d9822dde6e680ffb78e6ec0bb747df1",
+    "src/sha256.h": "89d537dbbe03df1d8ca75bda63627f24a031556e7b76c102c5e5629019b0d0e4",
+    "src/tensorrt_module.cpp": "916de5a7688c8331b95f8d0420ed0fd97d69cc4d8dc0de13bdfb8d60f7e71737",
+    "src/tensorrt_module_api.h": "7f004a7d3b35adeca4dbb39c8d96e677bd19f2a31daff4d359ba123e4b26d4d0",
+    "src/timer.h": "ba950622e084c5d3c04ded99ce4fd06e74f0e65d76afb05ba28925c8f5427505",
+    "src/worker_main.cpp": "48ba2506e8d9234bd64ee38e9d469217346d8847300b4965a47ef1b67a7e1a7b",
+    "src/worker_protocol.h": "0b2bb605e349ccf97dd3cd59501fb8581c2638fe3efffb318918c113df84cd86",
+    "src/yolo_decode.h": "880352c1d4aacb9797b9d9d4d1445d10de32d704838dfaf88e3683c3f703de54",
+    "src/yolo_diagnostics.h": "9380d8b8fab5e7f68dbb01e30ab0479d629b5ac6c004a34a661d2d8b929ff1fe",
+    "src/yolo_model.h": "113d9e86fa9bb0ab77cfc85d23d021088ec7b62eb64a1bb7437edbb7a13490ce",
+    "src/yolo_pool.cpp": "92573ebdc09c38830b165578fa0f19807719fbe0b620ef21e5af9bd52a7eff62",
+    "src/yolo_pool.h": "1ab4438b9271fed0d9617283362ce65189a554de95da8ed33e5dd8094bcc46c2",
+    "src/yolo_preprocess.h": "26c3663e492b27cc2160f5fdca3c452a53975ddfbc6488ec4e828ee937c68603"
+  },
+  "git_source_sha256": {
+    "CMakeLists.txt": "3f15df79db607d480823a089db356b1bd47e80be17f90be771a1904a9e1fe761",
+    "include/ai_engine.h": "0852db06075d759899a228cf0b8ca4523d18e73123bf0ca56092a4b725ea82ff",
+    "src/ai_engine.cpp": "9f20cd0148b15d994a9f92bd43beae0010af4aadb6059c95c15b518295a8e1ed",
+    "src/backend_onnxruntime.cpp": "2ce013ff325a9fedbd6111161d7b07cec0f320dbd738da22d28c46f2767a386f",
+    "src/backend_onnxruntime.h": "ad10c182248ca167b050593a99769794d0432c1a754b27750fc6272c674da908",
+    "src/backend_tensorrt.cpp": "bd825f1d40fac89240194df930c2316b2383c4ff2fac526b505b69cc63c60d33",
+    "src/backend_tensorrt.h": "2259f258080e454f90c69b7a65b275c6bd2029cbd282150c1fed72830bb5714b",
+    "src/backends.cpp": "e9deb3d1ff61f68522981751bad8b95a8a68877ebf42e456a75e7f1ac2f296d1",
+    "src/backends.h": "e90c0d2a80dc6388780c5994c127d27e2b3e53d0307ec2ba1e6c44a9ba82d2ad",
+    "src/bmp_view.h": "e1f9f78713ac2e935831507f6473f34e795b38cca3c5b9fabf8cc2b83ed82b72",
+    "src/compact_result_format.h": "fa4e8b2716d4ec3b0407398551795f4eef215b0ff8381208659c2ce9dda668bb",
+    "src/config.cpp": "47b95304840c893ac89614b8f86abc51d24b2539e4750c3aee311dea77f6935f",
+    "src/config.h": "5e16fe693ef4b212e1db995fad3bd75ec493fb62bad065f08b1a6e7c4a03ba74",
+    "src/coordinate_offset.h": "4b4545f8f63522c639f308a97f1b766e81f650b50803d1f031c2832adcbe68fd",
+    "src/cv_correlation.cpp": "605b301d31af5b1f6c7c3eb66807614cb41d97ec1a33a4986404093bcbc6a1e8",
+    "src/cv_correlation.h": "919f7310124f4a8a7801f3f59bd6175123b04b4d0d2d9c01d9ef268f2e87160c",
+    "src/cv_fast.cpp": "294a7e10bd7e1f441a2ce7620e7c6173d12b2fe4741f8c981112c17b8f54fa2d",
+    "src/cv_fast.h": "344011bdabf37936ff72afca300a72af10607625304e87019789975027c76c9e",
+    "src/cv_masked_score_avx2.cpp": "df73b42f3b876d0fec97418ac17680eb2ae93856455b0878dae3e1003207f3c0",
+    "src/cv_masked_score_avx2.h": "fa4a0e30eb9af31fba75aaa646db2a9b1819e5272bbf326b3615e6721dc2cb49",
+    "src/cv_normalize.h": "9a88f42466f38ce34342162b7b9fb459f4baea3717a99253661ca91159f21316",
+    "src/cv_normalize_avx2.cpp": "03ae0a6ac06e44ca2e9d4ef0805000d94befd7b778d8e7e4adfefcb681bb94bc",
+    "src/cv_test_hooks.h": "3ac04647f8b51fadfae3490d324c1c6bcc915146bf76a989b02970448552a3c0",
+    "src/embedded_assets.cpp": "dabda5c8442357f44e05ebaea0a8cdd3689e22eccbeb300f236e6fb89ec035b6",
+    "src/embedded_assets.h": "0dc91bf57dc1513bc16e42ef7ce315207e6e2b64d998ef4028dab4d34d3841dc",
+    "src/embedded_assets.rc.in": "b0ae5ffb388b200d7be875c5b439e5f3a9b7b78f1c1e3529c0cf00adf17f7208",
+    "src/embedded_ocr_assets.rc.in": "3f125e284665cb508166cfacfa1e8b93f2517b50430231463648e1d82e58b090",
+    "src/embedded_runtime.rc.in": "51ef0a54dd6cdce65ecbda5ed0ca1f4f9e82aae3cdea126a429ee8d968782cb8",
+    "src/engine.cpp": "07b00c7c8cdbb487ee63ddbed77a4ccf52e23238d3cc9d42aad49e01799e2db5",
+    "src/engine.h": "39d0eefee467b875618274846422df10ac59424fd790b9ff7a790bb5f94f14ca",
+    "src/error.cpp": "16dadbb4d8aafbd3598d179ffe97d4044da6c92b592befb36c7ae3d0f7a06ee7",
+    "src/error.h": "8fe708c8ace13e6604219ff8e1bb545d29316d70b6940cfc122e4192c40cd85d",
+    "src/image_view.h": "828d8d935e3e0b99b0e7af90d9d0f0e3aceb57ffdc8f119e4fe5c876d9158fb5",
+    "src/memory_zip.cpp": "f3ad17b66aefd8422982f8b4686f2ae5c903dac373b68ffb404dd7e8561859ab",
+    "src/memory_zip.h": "8ba3fce192de12eb14e554811cbbcdb9069b54c3f5b16dc80d02a9a929789e66",
+    "src/ocr_color_filter.cpp": "7bb0b5f9af0ed2231da04a9a1ad99a758d724c9325e3ca48a3a28cc2786e201d",
+    "src/ocr_color_filter.h": "a895490494776e0b0897008a11514254b3f8a68661988009bddf2e3bea1f81ce",
+    "src/ocr_reading_order.cpp": "7e0f4da1f1b5d31de30fb72f4e01aff76fe28a5b0703d4c1be05186de3684d4c",
+    "src/ocr_reading_order.h": "d9ca8231eab8180686d7eac4869388fe895db32451aea4c69ce2c015c24b3a0e",
+    "src/pipe_io.h": "663b0c0b4e948a63198f67586f136ca57002f79b39a3776794796ea844cc0514",
+    "src/runtime_bundle_format.h": "f727c6d7e8231c04e232206d6d8f95ef7f64c6925afe2eb03d729a82e48490bc",
+    "src/runtime_bundle_loader.cpp": "6e43a917d344eb8dcc43fd87c076317cb908e4e924ae578025fd3db1a79f3170",
+    "src/runtime_bundle_loader.h": "cd34080497df35791ca4e08a0bafff3130838a459675512415693a760a2528fe",
+    "src/runtime_status.cpp": "53cbfc3c81a68db9c0d570ed9e282d347d6c3ec32ccfae01d88e8015e281c0ea",
+    "src/runtime_status.h": "a3900b225261f21bdf8c10f84a34aee64d9822dde6e680ffb78e6ec0bb747df1",
+    "src/sha256.h": "89ab813a40bd176de05178adeb3367fd6a53d5b1526175a82120d004ea14b968",
+    "src/tensorrt_module.cpp": "916de5a7688c8331b95f8d0420ed0fd97d69cc4d8dc0de13bdfb8d60f7e71737",
+    "src/tensorrt_module_api.h": "7f004a7d3b35adeca4dbb39c8d96e677bd19f2a31daff4d359ba123e4b26d4d0",
+    "src/timer.h": "ba950622e084c5d3c04ded99ce4fd06e74f0e65d76afb05ba28925c8f5427505",
+    "src/worker_main.cpp": "d13739b481f4895380395446ce1d370ec6dcf9c0bf083e8a90c5ee1547542a2f",
+    "src/worker_protocol.h": "0b2bb605e349ccf97dd3cd59501fb8581c2638fe3efffb318918c113df84cd86",
+    "src/yolo_decode.h": "2c6a2eee37753086657f635f0b575b702df31497a8e35e1754f74a47e3dd13be",
+    "src/yolo_diagnostics.h": "9380d8b8fab5e7f68dbb01e30ab0479d629b5ac6c004a34a661d2d8b929ff1fe",
+    "src/yolo_model.h": "113d9e86fa9bb0ab77cfc85d23d021088ec7b62eb64a1bb7437edbb7a13490ce",
+    "src/yolo_pool.cpp": "281bec575b77ea8639d29e62ea1cb63666480a33020497bc96dc7ab388656037",
+    "src/yolo_pool.h": "1ab4438b9271fed0d9617283362ce65189a554de95da8ed33e5dd8094bcc46c2",
+    "src/yolo_preprocess.h": "26c3663e492b27cc2160f5fdca3c452a53975ddfbc6488ec4e828ee937c68603"
+  },
+  "delivery_document": "V23_7_DELIVERY_CN.md",
+  "tensorrt_private_abi": 3,
+  "validation_summary": "x86/x64 CPU与DirectML各14组真实模型验证通过；旧模型JSON与0.14.6完全一致，五路完整调用相对回退未超过5%。V26变化帧运行1800.091秒、65,313次调用零错误，未发现持续内存增长。60个公开函数及stdcall别名、协议26保持兼容。TensorRT模块构建及缺依赖检查通过；GPU执行、FP16/Graph和E5＋RTX2070五窗口20/30ms仍待实机验证。",
+  "source_committed_revision": "eced21b49a1e9db396f202b37a98fae7819bc075",
+  "source_snapshot_verified": true,
+  "created_utc": "2026-10-04T22:26:38.317064+08:00",
+  "core_directory": "D:\\Projects-tools\\OpenCV\\outpush\\v23.7-delivery\\core-stage",
+  "output_directory": "D:\\Projects-tools\\OpenCV\\output",
+  "output_promotion": "verified",
+  "files": {
+    "CQ_AI_worker.exe": {
+      "size": 24557056,
+      "sha256": "b54bc8c2510a3cd4e1cfc8d7fc453031330f30551abb5006cb6d3ed26771e074"
+    },
+    "CQ_X86.dll": {
+      "size": 9857024,
+      "sha256": "bd6c05c35fd7ebf15fdfb20aa5035f86ed8939a63255697141cf856f90d0e0f7"
+    },
+    "易语言_DLL_API_说明.html": {
+      "size": 154752,
+      "sha256": "881b00010b797f9dba93d4df446e038b18661919354712121bfb567af297f3ea"
+    }
+  },
+  "worker_probe": {
+    "runtime_flavor": "core",
+    "ort_version": "1.24.4",
+    "ort_path": "C:\\Users\\84700\\AppData\\Local\\CQ_AI\\runtime\\v23.7\\ort-dml-1.24.4-66a048ab19662e757b5bdf24b5ab2ef23d43870139c0d9097fe0b8b5f429dd47\\onnxruntime.dll",
+    "available_providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "requested": "probe",
+    "active": "none",
+    "degraded": false,
+    "mixed_cpu_fallback": false,
+    "device_id": 0,
+    "adapter_name": "",
+    "selection_basis": "",
+    "calibration_key": "",
+    "cpu_calibration_ms": -1.0,
+    "directml_calibration_ms": -1.0,
+    "active_requests": 0,
+    "live_connections": 0,
+    "precision": "fp32",
+    "tensorrt_version": "",
+    "cuda_version": 0,
+    "driver_version": 0,
+    "driver_file_version": "",
+    "driver_binary_sha256": "",
+    "execution_slots": 0,
+    "engine_cache_hit": false,
+    "cuda_graph": false,
+    "engine_build_us": 0,
+    "engine_cache_key": "",
+    "reason": "",
+    "worker_protocol": 26,
+    "runtime_cache": "C:\\Users\\84700\\AppData\\Local\\CQ_AI\\runtime\\v23.7\\ort-dml-1.24.4-66a048ab19662e757b5bdf24b5ab2ef23d43870139c0d9097fe0b8b5f429dd47",
+    "runtime_bundle_sha256": "66a048ab19662e757b5bdf24b5ab2ef23d43870139c0d9097fe0b8b5f429dd47",
+    "directml_cached": true
+  },
+  "validation_reports": {
+    "delivery-build.json": {
+      "path": "D:\\Projects-tools\\OpenCV\\outpush\\v23.7-validation\\delivery-build.json",
+      "size": 2437,
+      "sha256": "a8657978e369d5ac18bac26fed12777b2a7e976a2ddfbd32343d15159a9d367f"
+    },
+    "continuous.json": {
+      "path": "D:\\Projects-tools\\OpenCV\\outpush\\v23.7-validation\\continuous.json",
+      "size": 3743,
+      "sha256": "975439000993f6c07a1c17238f5f311dbe784b0bcad93edb79f31319540abc7f"
+    },
+    "simultaneous.json": {
+      "path": "D:\\Projects-tools\\OpenCV\\outpush\\v23.7-validation\\simultaneous.json",
+      "size": 3735,
+      "sha256": "06efc369c57951c9b2ba06daa1fbf058abb5ab1f323208fbe5332c7d91229939"
+    },
+    "soak-30min.json": {
+      "path": "D:\\Projects-tools\\OpenCV\\outpush\\v23.7-validation\\soak-30min.json",
+      "size": 2484,
+      "sha256": "9d4f96761d2c07b39586cf1bd3a6990136c38de82f843519d459a4e672eb1131"
+    }
+  },
+  "build_configuration": {
+    "x86": {
+      "AIENGINE_BUILD_TENSORRT_MODULE:BOOL": "OFF",
+      "AIENGINE_BUILD_TESTS:BOOL": "ON",
+      "AIENGINE_BUILD_WORKER:BOOL": "OFF",
+      "AIENGINE_BUILD_X64_DLL:BOOL": "OFF",
+      "AIENGINE_CUDA_INCLUDE_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include",
+      "AIENGINE_CV_TEST_HOOKS:BOOL": "OFF",
+      "AIENGINE_EMBED_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_CHARSET:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/ppocrv6_tiny_dict.txt",
+      "AIENGINE_EMBED_OCR_DET_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/det.fp32.onnx",
+      "AIENGINE_EMBED_OCR_REC_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/rec.fp32.onnx",
+      "AIENGINE_EMBED_YOLO_LABELS:FILEPATH": "D:/Projects-tools/OpenCV/models/yolo/smc.txt",
+      "AIENGINE_EMBED_YOLO_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/yolo/smc.onnx",
+      "AIENGINE_ONNXRUNTIME_DIR:PATH": "",
+      "AIENGINE_OPENCV_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/opencv-5.0.0-static-mt/x86",
+      "AIENGINE_TENSORRT_INCLUDE_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/nvidia-headers",
+      "AIENGINE_WITH_ONNXRUNTIME:BOOL": "OFF",
+      "AIENGINE_WITH_OPENCV:BOOL": "ON",
+      "CMAKE_GENERATOR:INTERNAL": "Visual Studio 17 2022",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": "Win32"
+    },
+    "worker": {
+      "AIENGINE_BUILD_TENSORRT_MODULE:BOOL": "OFF",
+      "AIENGINE_BUILD_TESTS:BOOL": "OFF",
+      "AIENGINE_BUILD_WORKER:BOOL": "ON",
+      "AIENGINE_BUILD_X64_DLL:BOOL": "OFF",
+      "AIENGINE_CUDA_INCLUDE_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include",
+      "AIENGINE_CV_TEST_HOOKS:BOOL": "OFF",
+      "AIENGINE_EMBED_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_ASSETS:BOOL": "ON",
+      "AIENGINE_EMBED_OCR_CHARSET:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/ppocrv6_tiny_dict.txt",
+      "AIENGINE_EMBED_OCR_DET_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/det.fp32.onnx",
+      "AIENGINE_EMBED_OCR_REC_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/rec.fp32.onnx",
+      "AIENGINE_EMBED_YOLO_LABELS:FILEPATH": "D:/Projects-tools/OpenCV/models/yolo/smc.txt",
+      "AIENGINE_EMBED_YOLO_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/yolo/smc.onnx",
+      "AIENGINE_ONNXRUNTIME_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/runtime/ort-directml-1.24.4",
+      "AIENGINE_OPENCV_DIR:PATH": "",
+      "AIENGINE_TENSORRT_INCLUDE_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/nvidia-headers",
+      "AIENGINE_WITH_ONNXRUNTIME:BOOL": "ON",
+      "AIENGINE_WITH_OPENCV:BOOL": "OFF",
+      "CMAKE_GENERATOR:INTERNAL": "Visual Studio 17 2022",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": "x64"
+    },
+    "x64": {
+      "AIENGINE_BUILD_TENSORRT_MODULE:BOOL": "OFF",
+      "AIENGINE_BUILD_TESTS:BOOL": "ON",
+      "AIENGINE_BUILD_WORKER:BOOL": "OFF",
+      "AIENGINE_BUILD_X64_DLL:BOOL": "ON",
+      "AIENGINE_CUDA_INCLUDE_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include",
+      "AIENGINE_CV_TEST_HOOKS:BOOL": "OFF",
+      "AIENGINE_EMBED_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_ASSETS:BOOL": "ON",
+      "AIENGINE_EMBED_OCR_CHARSET:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/ppocrv6_tiny_dict.txt",
+      "AIENGINE_EMBED_OCR_DET_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/det.fp32.onnx",
+      "AIENGINE_EMBED_OCR_REC_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/ocr_ppocrv6/rec.fp32.onnx",
+      "AIENGINE_EMBED_YOLO_LABELS:FILEPATH": "D:/Projects-tools/OpenCV/models/yolo/smc.txt",
+      "AIENGINE_EMBED_YOLO_MODEL:FILEPATH": "D:/Projects-tools/OpenCV/models/yolo/smc.onnx",
+      "AIENGINE_ONNXRUNTIME_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/runtime/ort-directml-1.24.4",
+      "AIENGINE_OPENCV_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/opencv-5.0.0-static-mt/x64",
+      "AIENGINE_TENSORRT_INCLUDE_DIR:PATH": "D:/Projects-tools/OpenCV/third_party/nvidia-headers",
+      "AIENGINE_WITH_ONNXRUNTIME:BOOL": "ON",
+      "AIENGINE_WITH_OPENCV:BOOL": "ON",
+      "CMAKE_GENERATOR:INTERNAL": "Visual Studio 17 2022",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": "x64"
+    }
+  },
+  "artifacts": {
+    "easy_language_zip": {
+      "file": "CQ_AI_e_language_v23.7.zip",
+      "size": 27492146,
+      "sha256": "68bf2cd69efde5b66b6d9db952a59ef1c12150148dbc935e6522a65dc02b9e21"
+    },
+    "python_wheel": {
+      "file": "cq_ai_engine-0.14.7-py3-none-win_amd64.whl",
+      "size": 27470358,
+      "sha256": "5bbd429316acee6286385ab3563b5d9a1507151ca03cdd1ec9ad2dc7de458e10"
+    }
+  },
+  "historical_release": "release/v23.5 retained unchanged",
+  "rollback_directory": "D:\\Projects-tools\\OpenCV\\outpush\\rollback\\before-v23.7-20261004-222638-407",
+  "schema": 2,
+  "evidence": {
+    "delivery-build.json": {
+      "file": "evidence/delivery-build.json",
+      "size": 2437,
+      "sha256": "a8657978e369d5ac18bac26fed12777b2a7e976a2ddfbd32343d15159a9d367f"
+    },
+    "continuous.json": {
+      "file": "evidence/continuous.json",
+      "size": 3743,
+      "sha256": "975439000993f6c07a1c17238f5f311dbe784b0bcad93edb79f31319540abc7f"
+    },
+    "simultaneous.json": {
+      "file": "evidence/simultaneous.json",
+      "size": 3735,
+      "sha256": "06efc369c57951c9b2ba06daa1fbf058abb5ab1f323208fbe5332c7d91229939"
+    },
+    "soak-30min.json": {
+      "file": "evidence/soak-30min.json",
+      "size": 2484,
+      "sha256": "9d4f96761d2c07b39586cf1bd3a6990136c38de82f843519d459a4e672eb1131"
+    },
+    "summary.json": {
+      "file": "evidence/summary.json",
+      "size": 6366,
+      "sha256": "3698f6b966da659310b10f6efe41a6330cf0b5945e8750a36c2fbb526634cd89"
+    },
+    "frozen-detections.json": {
+      "file": "evidence/frozen-detections.json",
+      "size": 123,
+      "sha256": "05d6ae23db550aa279bd520067c14eba1c915c598bfc59ab94b8f820294c432a"
+    },
+    "html-interactions.json": {
+      "file": "evidence/html-interactions.json",
+      "size": 403,
+      "sha256": "908bc9dacb9fa14c729f40b1840175673d7d7368384202e6285329d669b024be"
+    },
+    "compatibility-x64.json": {
+      "file": "evidence/compatibility-x64.json",
+      "size": 36261,
+      "sha256": "3a57f30942f8e31445614bb28422ad67bfcf547a8b7a58250ee8d2f53dafeed4"
+    },
+    "compatibility-x86.json": {
+      "file": "evidence/compatibility-x86.json",
+      "size": 35483,
+      "sha256": "8331d383d2abdc1777edb2fde35af6e6b4925695f643821f718f7e58a3d00145"
+    },
+    "mixed-models.json": {
+      "file": "evidence/mixed-models.json",
+      "size": 470,
+      "sha256": "485c5ce22e460f61f4d8739d58160de590010a3b181c291470e0ef45f0d786b2"
+    },
+    "legacy-equivalence.json": {
+      "file": "evidence/legacy-equivalence.json",
+      "size": 289,
+      "sha256": "4b8e9fe643eb9c1f5f130e293b0171b97d0a43f934a5cd845d21b8cb3575ac8b"
+    },
+    "performance-comparison.json": {
+      "file": "evidence/performance-comparison.json",
+      "size": 4051,
+      "sha256": "3d63a91d5561a6a45fad43f67cc8a9303077f4402d41170c9961033da3d07260"
+    },
+    "model-sources.json": {
+      "file": "evidence/model-sources.json",
+      "size": 8227,
+      "sha256": "33f0d38bc55b3bbb16ef2b72a8233ba38350dd13d8c53d493cc724b93f7b3e25"
+    },
+    "native-regression.json": {
+      "file": "evidence/native-regression.json",
+      "size": 3403,
+      "sha256": "04e23c8def990fb6b3c18bc664f2a28fed06dfab507b68a45baaff6910702490"
+    },
+    "python-acceptance.json": {
+      "file": "evidence/python-acceptance.json",
+      "size": 4104,
+      "sha256": "6e5f628a2a5ee12c12efd5c785e886c26bdccf3bedc15891d4716566cbc92d0e"
+    },
+    "stability-summary.json": {
+      "file": "evidence/stability-summary.json",
+      "size": 720,
+      "sha256": "a12221e7710f73ac3d0b56a9e011c2b55b6d415298e15f684c7b18c767794747"
+    },
+    "delivery-unicode-v26.json": {
+      "file": "evidence/delivery-unicode-v26.json",
+      "size": 2948,
+      "sha256": "7dd9f8846d2e97ec232e40e343aec648a3fba5b06cbfde57b2104f4156133e12"
+    },
+    "delivery-staged.json": {
+      "file": "evidence/delivery-staged.json",
+      "size": 2453,
+      "sha256": "d014144a728b2ce6cb1a0206b927ff4b4a9464565aff7c92f5903502071338fb"
+    },
+    "delivery-output.json": {
+      "file": "evidence/delivery-output.json",
+      "size": 2395,
+      "sha256": "7bb3a622ea03a07e8e8f1e4fbbc99f4988113d01856586e54c0ccb11675fab53"
+    }
+  }
+}

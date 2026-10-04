@@ -1,5 +1,29 @@
 # Requirements
 
+## REQ-YOLO-002 — Compatible YOLO detection layouts
+
+Deliver 0.14.7 / v23.7 with unchanged 60 public signatures, result structures,
+JSON/encoding/error contracts and Worker protocol26. Support classic YOLOv5
+objectness outputs, YOLOv5u/v8/11/26 dense outputs and native YOLO26 end-to-end
+outputs through one validated model descriptor and shared decoder. Preserve
+legacy preprocessing, class-agnostic NMS0.45, labels and valid-model results.
+
+Accept standard batch1 square FP32 ONNX detection models from paths and memory;
+retain existing ORT dynamic-input behavior. Reject ambiguous, embedded-NMS,
+segmentation/pose/OBB and undecoded outputs with existing errors. An offline
+inspection/preparation tool may write validated metadata-only copies outside
+input/. No Python runtime dependency is added to the delivered binaries.
+
+Acceptance: the user's input/yolov26/yolo26n.onnx and bus.jpg produce valid
+end-to-end results (initial CPU reference at confidence0.5: four people and one
+bus); pinned v5/v11 reference models, synthetic layout/error cases, old-result
+equivalence, x86/x64 CPU/DirectML regressions, paired delivery checks, five-lane
+100 warmups +1000 samples x3 rounds and 30-minute changing-frame stability.
+Repeatable old-model P50/P95 regression above5% blocks promotion. TensorRT GPU
+execution/FP16 and the E5/RTX2070 performance target remain explicitly pending
+until hardware evidence exists. Historical deliveries/input remain immutable;
+promote verified candidates transactionally and retain the1.5GiB storage budget.
+
 ## REQ-GOV-001 — Govern the delivered v23.6 source
 
 Use the delivered 0.14.6 / v23.6 / Worker protocol26 files and source commit

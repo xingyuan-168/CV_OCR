@@ -1,0 +1,217 @@
+{
+  "functional_passed": true,
+  "memory_growth_detected": false,
+  "project_version": "0.14.7",
+  "delivery_version": "v23.7",
+  "worker_protocol": 26,
+  "binary_fingerprints": {
+    "CQ_X86.dll": {
+      "size": 9857024,
+      "sha256": "bd6c05c35fd7ebf15fdfb20aa5035f86ed8939a63255697141cf856f90d0e0f7"
+    },
+    "CQ_AI_worker.exe": {
+      "size": 24557056,
+      "sha256": "b54bc8c2510a3cd4e1cfc8d7fc453031330f30551abb5006cb6d3ed26771e074"
+    }
+  },
+  "real_models": {
+    "x64_cases": 14,
+    "x86_cases": 14,
+    "backends": [
+      "cpu",
+      "directml"
+    ]
+  },
+  "old_model_exact_json_equal": true,
+  "performance_regression": {
+    "affinity_mask": "0xfff",
+    "method": "alternating five-lane x64 processes, same CPU set; no concurrent timed test",
+    "old_version": "CQ_AI_x64/0.14.6",
+    "new_version": "CQ_AI_x64/0.14.7",
+    "old_dll_sha256": "d93843dceeed5530d97de7f83f0e8eb26dc263a28df67efc5b7bfcb54141a278",
+    "new_dll_sha256": "148f03a1307c2e133d49bf9dd66f3b23b22f026d69f6b173ec64028faf848444",
+    "rounds": [
+      {
+        "mode": "continuous",
+        "repeat": 0,
+        "ratios": {
+          "p50_ms": 1.0109884602943924,
+          "p95_ms": 1.0337126859203272,
+          "worst_lane_p50_ms": 1.010986759429581,
+          "worst_lane_p95_ms": 1.036108754739193
+        },
+        "old": {
+          "count": 5000,
+          "p50_ms": 21.9503,
+          "p95_ms": 23.0744,
+          "p99_ms": 25.5681
+        },
+        "new": {
+          "count": 5000,
+          "p50_ms": 22.1915,
+          "p95_ms": 23.8523,
+          "p99_ms": 27.332
+        }
+      },
+      {
+        "mode": "continuous",
+        "repeat": 1,
+        "ratios": {
+          "p50_ms": 0.9898132560169598,
+          "p95_ms": 0.8938570351699607,
+          "worst_lane_p50_ms": 0.9908809855699967,
+          "worst_lane_p95_ms": 0.8813268655985104
+        },
+        "old": {
+          "count": 5000,
+          "p50_ms": 25.6608,
+          "p95_ms": 33.9608,
+          "p99_ms": 38.0988
+        },
+        "new": {
+          "count": 5000,
+          "p50_ms": 25.3994,
+          "p95_ms": 30.3561,
+          "p99_ms": 34.7882
+        }
+      },
+      {
+        "mode": "continuous",
+        "repeat": 2,
+        "ratios": {
+          "p50_ms": 0.9883499488542361,
+          "p95_ms": 0.8105744472166567,
+          "worst_lane_p50_ms": 0.9838174720425794,
+          "worst_lane_p95_ms": 0.7419783246708531
+        },
+        "old": {
+          "count": 5000,
+          "p50_ms": 30.4033,
+          "p95_ms": 50.0603,
+          "p99_ms": 84.0786
+        },
+        "new": {
+          "count": 5000,
+          "p50_ms": 30.0491,
+          "p95_ms": 40.5776,
+          "p99_ms": 47.8122
+        }
+      },
+      {
+        "mode": "simultaneous",
+        "repeat": 0,
+        "ratios": {
+          "p50_ms": 0.9674389640835913,
+          "p95_ms": 1.0008690542463041,
+          "worst_lane_p50_ms": 0.9708595166108049,
+          "worst_lane_p95_ms": 1.0079635215368674
+        },
+        "old": {
+          "count": 5000,
+          "p50_ms": 27.2995,
+          "p95_ms": 32.334,
+          "p99_ms": 35.9127
+        },
+        "new": {
+          "count": 5000,
+          "p50_ms": 26.4106,
+          "p95_ms": 32.3621,
+          "p99_ms": 35.1548
+        }
+      },
+      {
+        "mode": "simultaneous",
+        "repeat": 1,
+        "ratios": {
+          "p50_ms": 0.9865131826034702,
+          "p95_ms": 1.0026918524333295,
+          "worst_lane_p50_ms": 0.9857638888888889,
+          "worst_lane_p95_ms": 0.9978417749340627
+        },
+        "old": {
+          "count": 5000,
+          "p50_ms": 26.626,
+          "p95_ms": 32.3569,
+          "p99_ms": 35.8759
+        },
+        "new": {
+          "count": 5000,
+          "p50_ms": 26.2669,
+          "p95_ms": 32.444,
+          "p99_ms": 35.4143
+        }
+      },
+      {
+        "mode": "simultaneous",
+        "repeat": 2,
+        "ratios": {
+          "p50_ms": 0.998284902609668,
+          "p95_ms": 0.9650223504712339,
+          "worst_lane_p50_ms": 0.9957447768263252,
+          "worst_lane_p95_ms": 0.9636327347723797
+        },
+        "old": {
+          "count": 5000,
+          "p50_ms": 26.4708,
+          "p95_ms": 32.8181,
+          "p99_ms": 36.0246
+        },
+        "new": {
+          "count": 5000,
+          "p50_ms": 26.4254,
+          "p95_ms": 31.6702,
+          "p99_ms": 34.3721
+        }
+      }
+    ],
+    "median_ratios": {
+      "continuous": {
+        "p50_ms": 0.9898132560169598,
+        "p95_ms": 0.8938570351699607,
+        "worst_lane_p50_ms": 0.9908809855699967,
+        "worst_lane_p95_ms": 0.8813268655985104
+      },
+      "simultaneous": {
+        "p50_ms": 0.9865131826034702,
+        "p95_ms": 1.0008690542463041,
+        "worst_lane_p50_ms": 0.9857638888888889,
+        "worst_lane_p95_ms": 0.9978417749340627
+      }
+    },
+    "passed": true
+  },
+  "soak": {
+    "passed": true,
+    "calls": 65313,
+    "elapsed_s": 1800.09095,
+    "memory": {
+      "client_private_mib": {
+        "min": 122.5234375,
+        "max": 122.671875,
+        "initial_mean": 122.5234375,
+        "final_mean": 122.5234375,
+        "growth": 0.0
+      },
+      "worker_private_mib": {
+        "min": 806.515625,
+        "max": 806.68359375,
+        "initial_mean": 806.52890625,
+        "final_mean": 806.65234375,
+        "growth": 0.12343750000002274
+      },
+      "continuous_growth_detected": false,
+      "samples_after_warmup": 1556
+    },
+    "dll_sha256": "bd6c05c35fd7ebf15fdfb20aa5035f86ed8939a63255697141cf856f90d0e0f7",
+    "worker_sha256": "b54bc8c2510a3cd4e1cfc8d7fc453031330f30551abb5006cb6d3ed26771e074"
+  },
+  "formal_x86_calls": 30000,
+  "html_visual_preview": "unverified: local URL preview denied by browser security policy; offline/navigation/search JavaScript tested",
+  "nvidia_execution_validation": "pending",
+  "target_performance_validation": "pending",
+  "excluded_performance_evidence": {
+    "old-x64-continuous.json": "accidentally used0.14.5; not0.14.6 baseline",
+    "old-x64-simultaneous.json": "same historical0.14.5 baseline",
+    "controlled-comparison/comparison.json": "same historical0.14.5 baseline; preserved for audit"
+  }
+}
