@@ -1,0 +1,299 @@
+{
+  "schema": 1,
+  "phase": "after_cleanup_before_final_release_commit",
+  "budget_gib": 1.5,
+  "inventory_before_bytes": 3081813302,
+  "inventory_after_bytes": 1539161268,
+  "inventory_after_gib": 1.4334556348621845,
+  "deleted_file_bytes_first_pass_from_actual_tool_stdout": 1351530218,
+  "deleted_file_bytes_additional_from_checked_cleanup_results": 92153015,
+  "deleted_file_bytes_total": 1443683233,
+  "physical_disk_reclaimed_bytes": null,
+  "git_repack": {
+    "refs_unchanged": true,
+    "history_shallow": false,
+    "force_push": false
+  },
+  "protection": {
+    "passed": true,
+    "checks": [
+      {
+        "path": "input/best.onnx",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/CV_123.bmp",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/CV_大图.bmp",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/xyq.bmp",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/yolo测试图.bmp",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/yolov26/bus.jpg",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/yolov26/yolo26n.onnx",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/报错提示/内存报错.png",
+        "state": "unchanged"
+      },
+      {
+        "path": "input/报错提示/运行库报错.png",
+        "state": "unchanged"
+      },
+      {
+        "path": "output/CQ_AI_worker.exe",
+        "state": "rollback_preserved"
+      },
+      {
+        "path": "output/CQ_X86.dll",
+        "state": "rollback_preserved"
+      },
+      {
+        "path": "output/易语言_DLL_API_说明.html",
+        "state": "rollback_preserved"
+      },
+      {
+        "path": "release/current.json",
+        "state": "authorized_pointer_advance"
+      },
+      {
+        "path": "release/v23.5/cq_ai_engine-0.14.5-py3-none-win_amd64.whl",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.5/CQ_AI_e_language_v23.5.zip",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.5/manifest.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/cq_ai_engine-0.14.6-py3-none-win_amd64.whl",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/CQ_AI_e_language_v23.6.zip",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/manifest.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/.gitattributes",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/cq_ai_engine-0.14.7-py3-none-win_amd64.whl",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/CQ_AI_e_language_v23.7.zip",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/manifest.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/continuous.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/delivery-build.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/frozen-detections.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/html-interactions.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/simultaneous.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/soak-30min.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.6/evidence/summary.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/compatibility-x64.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/compatibility-x86.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/continuous.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/delivery-build.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/delivery-output.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/delivery-staged.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/delivery-unicode-v26.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/frozen-detections.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/html-interactions.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/legacy-equivalence.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/mixed-models.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/model-sources.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/native-regression.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/performance-comparison.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/python-acceptance.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/simultaneous.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/soak-30min.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/stability-summary.json",
+        "state": "unchanged"
+      },
+      {
+        "path": "release/v23.7/evidence/summary.json",
+        "state": "unchanged"
+      }
+    ],
+    "output_names": [
+      "CQ_AI_worker.exe",
+      "CQ_X86.dll",
+      "易语言_DLL_API_说明.html"
+    ]
+  },
+  "external_retention": {
+    "raw_benchmarks_and_build": {
+      "path": "D:\\codex-delivery\\CV_OCR\\v23.8\\YOLO_v23.8_raw_benchmarks_and_build.zip",
+      "size": 428917018,
+      "sha256": "a0958fc306f887bee011b81acc29c7a238c228209d2d40f8deb20e683cdfe859",
+      "files": 1076,
+      "source_bytes": 800261989,
+      "crc_verified": true
+    },
+    "tools": {
+      "path": "D:\\codex-delivery\\CV_OCR\\v23.8\\CQ_AI_YOLO_tools_v23.8.zip",
+      "size": 42639952,
+      "sha256": "e184fbc943734772c1004a037ad41a93c17edccadca9dce3453eceafaf30d113",
+      "crc_verified": true
+    },
+    "tail_telemetry": {
+      "path": "D:\\codex-delivery\\CV_OCR\\v23.8\\YOLO_v23.8_tail_telemetry_final.zip",
+      "size": 377891,
+      "sha256": "e5e2420aa57da6495944b9a6c0832ee0dec98573dd0037349b5926ff2a47c127",
+      "crc_verified": true,
+      "files": [
+        "outpush/yolo26-15ms-implementation/calibration/reference-cpu.gpu.csv",
+        "outpush/yolo26-15ms-implementation/calibration-final/d3-s1-t1-fp32-continuous.gpu.csv"
+      ]
+    }
+  },
+  "external_aios": {
+    "path": "D:/codex-toolchains/CV_OCR/aios-venv",
+    "files_sha256_compared": 2568,
+    "doctor": {
+      "data": {
+        "checks": [
+          {
+            "detail": "3.12.15",
+            "name": "python",
+            "ok": true,
+            "required": true
+          },
+          {
+            "detail": "git version 2.53.0.windows.2",
+            "name": "git",
+            "ok": true,
+            "required": true
+          },
+          {
+            "detail": "codex-cli 0.162.0-alpha.2",
+            "name": "codex",
+            "ok": true,
+            "required": false
+          },
+          {
+            "detail": "3.53.1",
+            "name": "sqlite-fts5",
+            "ok": true,
+            "required": true
+          },
+          {
+            "detail": "{\"code\":null,\"records\":[]}",
+            "name": "path-encoding",
+            "ok": true,
+            "required": true
+          },
+          {
+            "detail": "plugin hooks manifest not found; Codex host manages plugin registration",
+            "name": "plugin-hooks",
+            "ok": true,
+            "required": false
+          }
+        ]
+      },
+      "ok": true
+    }
+  },
+  "cleanup_rule": "Only this task-owned exact registered paths; source input/output/release/models/tests/Git and all rollback paths excluded.",
+  "raw_csv_archive_rule": "Each deleted raw CSV matched SHA256 in the raw archive or the final tail telemetry archive; no failed measurement discarded.",
+  "post_commit_inventory": "outpush/yolo26-15ms-implementation/storage-after-cleanup-actual.json"
+}

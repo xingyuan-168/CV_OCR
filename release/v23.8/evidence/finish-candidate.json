@@ -1,0 +1,249 @@
+{
+  "data": {
+    "allowed": true,
+    "blocked_by": [],
+    "findings": [
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "CMakeLists.txt"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "configs/storage-policy.json"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs//346/230/223/350/257/255/350/250/200_DLL_API_/350/257/264/346/230/216.html"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/GOVERNANCE_RULES.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/OPEN_SOURCE_RESEARCH.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/REQUIREMENTS.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/SCOPE.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/V23_8_DELIVERY_CN.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/YOLO26_LOCAL_20MS_CN.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/YOLO_CANDIDATE_METADATA.json"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/YOLO_OPTIMIZATION_CN.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/evidence/"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "docs/memory/memory.jsonl"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "include/ai_engine.h"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "python/README.md"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "python/cq_ai_engine/__init__.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "python/pyproject.toml"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/calibrate_yolo.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/check_governance.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/generate_e_language_api_doc.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/package_delivery.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/package_e_language.ps1"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/package_python_x64.ps1"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/register_release.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/release_manifest.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/run_yolo_acceptance.ps1"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/summarize_yolo_acceptance.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "scripts/verify_yolo_calibration_restart.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "src/runtime_bundle_loader.cpp"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "src/tensorrt_module.cpp"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "src/worker_protocol.h"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "src/yolo_pool.cpp"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "src/yolo_preprocess.h"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/python_x64_wheel_acceptance.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/test_governance.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/test_packaging.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/test_yolo_acceptance.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/test_yolo_calibration.py"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/yolo_benchmark.cpp"
+      },
+      {
+        "blocking": false,
+        "code": "UNCOMMITTED_WORK",
+        "message": "uncommitted user work is present and stays untouched by the gate",
+        "path": "tests/yolo_pipeline_test.cpp"
+      }
+    ]
+  },
+  "ok": true
+}

@@ -86,11 +86,11 @@ python scripts/calibrate_yolo.py --benchmark build/portable-x86/Release/ai_engin
 
 第一轮最终AUTO、FP16、2槽完成1800.015秒、667,007次调用，零错误。最差单路P95 17.640ms、P99 33.287ms、最大104.295ms，整体超20ms比例3.920%。客户端和Worker前后60样本均值分别增加0.012和0.362MiB，未触发2MiB增长门槛；整卡显存均值从1379.167增至1420.850MiB，增加41.683MiB，触发16MiB稳定性门槛。因此该轮`local_benchmark_accepted=false`，没有晋升。
 
-原始文件和失败汇总保留于`outpush/yolo26-15ms-implementation/cohort-b-20ms/soak-observation-1/`。观察窗口内Worker进程级Dedicated/Shared/Committed读数保持158,912,512/83,886,080/242,798,592字节，模型释放后提交读数下降到741,376字节；这是辅助诊断，不能替代完整稳定性验收。
+原始文件和失败汇总按`outpush/yolo26-15ms-implementation/cohort-b-20ms/soak-observation-1/`相对路径保存在独立原始证据ZIP中，已登记的小型汇总保留在`release/v23.8/evidence/`。观察窗口内Worker进程级Dedicated/Shared/Committed读数保持158,912,512/83,886,080/242,798,592字节，模型释放后提交读数下降到741,376字节；这是辅助诊断，不能替代完整稳定性验收。
 
 [NVIDIA NVML说明](https://docs.nvidia.com/deploy/nvml-api/latest/api/structnvmlProcessInfo__t.html)指出WDDM的进程显存值不可用；[Microsoft说明](https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/gpu-process-memory-counters-report-wrong-value)也记录了进程计数器可能误报的情形。本轮仍保留整卡增长门槛，没有据此自动放宽通过条件。
 
-第二轮同核心二进制、同模型、100预热完成1800.011秒，621,628次调用零错误；最差单路P95 27.099ms、P99 40.154ms、最大113.414ms，整体超20ms比例7.573%。CPU内存和整卡显存增长检查通过，但延迟失败，仍未晋升。证据保留于`outpush/yolo26-15ms-implementation/cohort-b-20ms/`，第一轮在该目录的`soak-observation-1/`。不能只取第一轮较低的P95宣称稳定达标。
+第二轮同核心二进制、同模型、100预热完成1800.011秒，621,628次调用零错误；最差单路P95 27.099ms、P99 40.154ms、最大113.414ms，整体超20ms比例7.573%。CPU内存和整卡显存增长检查通过，但延迟失败，该候选没有晋升。证据按`outpush/yolo26-15ms-implementation/cohort-b-20ms/`相对路径保存在独立原始证据ZIP，第一轮在其中的`soak-observation-1/`。不能只取第一轮较低的P95宣称稳定达标。
 
 两轮按单路累计调用时长分分钟检查，前约13-15分钟P95约14-16ms，随后尾延迟明显升高。由于原始CSV不含绝对调用时间，这个分段仅用于定位，不能精确归因于某个后台事件。目前未确认根因。
 
@@ -102,4 +102,6 @@ AUTO持续调用1800.008秒，841,787次，错误0；最差单路P95 16.503ms。
 
 只有完整通过时才晋升；本次实际状态和Finish gate在交付状态中记录。P95不能保证每次调用都小于20ms。
 
-本轮最差单路P99 24.641ms、最大78.648ms；整体超15ms 7.3985%、超20ms 2.2767%。客户端/Worker增长分别0.099/0.250MiB；整卡显存前后均值1357.750/1357.000MiB，增长−0.750MiB，峰值1362MiB。原15ms完整长期标准仍未达到。真实候选Finish gate返回`ok=true, allowed=true`，实际执行受影响测试命令，并未晋升输出。
+2026-10-08：实际output配对加载器125次并发调用零错误后，已事务晋升并登记v23.8；旧整套回滚保留。当前选择与证据为`release/current.json`和`release/v23.8/`。独立NVIDIA包、Wheel及配置位置见[v23.8交付说明](V23_8_DELIVERY_CN.md)。
+
+本轮最差单路P99 24.641ms、最大78.648ms；整体超15ms 7.3985%、超20ms 2.2767%。客户端/Worker增长分别0.099/0.250MiB；整卡显存前后均值1357.750/1357.000MiB，增长−0.750MiB，峰值1362MiB。原15ms完整长期标准仍未达到。真实候选Finish gate和晋升后的默认严格Finish gate均返回`ok=true, allowed=true`，实际执行受影响测试命令。原始CSV及构建记录已校验归档，位置见[v23.8交付说明](V23_8_DELIVERY_CN.md)；清理缓存后重测须复建基准程序或使用归档工具。

@@ -1,0 +1,10 @@
+{
+  "affected_final_passed": true,
+  "logs": [
+    "identity-native-x86.log",
+    "identity-native-x64.log"
+  ],
+  "broader_initial_x86": "15/17; two existing CV5ms deadlines fail",
+  "broader_initial_x64": "16 passed; excludes2 CV deadlines and unaffected OCR business soak",
+  "cv_same_host_old_new": "Both versions fail absolute5ms; preserved3 paired logs"
+}

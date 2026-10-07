@@ -1,0 +1,8 @@
+{
+  "functional_passed": true,
+  "memory_growth_detected": false,
+  "local_benchmark_accepted": true,
+  "target_performance_accepted": false,
+  "p95_limit_ms": 20,
+  "scope": "Affected native and installed-wheel functional checks; fixed bus5 callers; two pre-existing CV5ms deadlines fail on old/new E5 binaries"
+}

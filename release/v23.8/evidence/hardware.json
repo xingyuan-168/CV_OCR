@@ -1,0 +1,28 @@
+{
+  "time": "2026-10-07T19:54:49.9723937+08:00",
+  "cpu": [
+    {
+      "Name": "Intel(R) Xeon(R) CPU E5-2696 v4 @ 2.20GHz",
+      "NumberOfCores": 22,
+      "NumberOfLogicalProcessors": 44
+    }
+  ],
+  "system": {
+    "TotalPhysicalMemory": 137270235136
+  },
+  "gpu": [
+    {
+      "Name": "Todesk Virtual Display Adapter",
+      "DriverVersion": "16.44.2.509"
+    },
+    {
+      "Name": "NVIDIA GeForce RTX 2070",
+      "DriverVersion": "32.0.15.9621"
+    }
+  ],
+  "baseline_only": false,
+  "business_windows_active": false,
+  "runtime_directory": "D:/codex-project/OpenCV/build/portable-x86/Release",
+  "scope": "YOLO26 640x640, bus.jpg decoded to BMP, confidence0.5, five callers",
+  "preexisting_yolo_service": []
+}

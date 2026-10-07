@@ -1,5 +1,15 @@
 # 仓库容量与依赖恢复
 
+2026-10-08 v23.8交付后，按登记路径清理本轮构建、重复包、隔离运行库和采样CSV。清理后、最终交付提交前，含`.git`实测1.433GiB；提交后继续核对1.5GiB上限，实际记录在`outpush/yolo26-15ms-implementation/storage-after-cleanup-actual.json`。49项input、历史release及旧output回滚保护记录通过；没有删除原有用户交付和回滚。
+
+原始证据和构建ZIP保留在`D:/codex-delivery/CV_OCR/v23.8/`，通过CRC与CSV逐文件SHA验证，失败尝试也保留。目录及哈希见[v23.8说明](V23_8_DELIVERY_CN.md)与[本轮存储审计](evidence/STORAGE_V23_8_SUMMARY.json)。工程检查虚拟环境逐文件核对后移至`D:/codex-toolchains/CV_OCR/aios-venv`，源码留在`.cache/aios-source`，可通过下式运行真实AIOS检查：
+
+```powershell
+& 'D:/codex-toolchains/CV_OCR/aios-venv/Scripts/python.exe' -c 'from codex_ai_os.cli.app import main; main()' doctor . --json
+```
+
+清理函数修正了空目录文件集合和零字节统计，实际空目录回归通过。删除审计按文件长度统计，不把外部保留量或Git重打包减少量等同于物理磁盘释放量。
+
 项目源码、交付、依赖和临时构建分别管理。原目录约19.79GiB，其中outpush
 11.96GiB、third_party6.71GiB；原生src约0.73MiB，Git历史约0.21GiB。
 重复运行库、候选及构建缓存导致了目录膨胀，源码不需要这些重复副本。

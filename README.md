@@ -1,12 +1,12 @@
-# CQ_AI v23.7
+# CQ_AI v23.8
 
-> 当前可用版为 **0.14.7 / v23.7 / Worker协议26**，交付状态为“功能验证通过、目标机性能待验”。最新三文件位于 `output/`，完整记录见 [v23.7交付说明](docs/V23_7_DELIVERY_CN.md)。
+> 当前可用版为 **0.14.8 / v23.8 / Worker协议26**。本机固定bus及V8图片的五线程P95≤20ms已通过；YOLO26连续30分钟最差单路P95为16.503ms，五业务窗口仍待验。最新三文件位于 `output/`，参数及范围见 [v23.8交付说明](docs/V23_8_DELIVERY_CN.md)和[本机测速报告](docs/YOLO26_LOCAL_20MS_CN.md)。
 
 CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
 | 项目版本 | 交付版本 | Worker协议 | 公开函数 |
 | --- | --- | --- | --- |
-| `0.14.7` | `v23.7` | `26` | `60` |
+| `0.14.8` | `v23.8` | `26` | `60` |
 
 32位易语言使用 `CQ_X86.dll`；OCR/YOLO由同目录 `CQ_AI_worker.exe` 处理，CV在DLL内执行。Python x64直接加载 `CQ_AI_x64.dll`。
 
@@ -14,7 +14,7 @@ CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
 `output/` 固定只放 `CQ_X86.dll`、`CQ_AI_worker.exe`、`易语言_DLL_API_说明.html`。当前ZIP、Wheel及验证证据由 `release/current.json` 选择。NVIDIA大包仅在独立交付目录保留一份，诊断包及本机审计留在 `outpush/`。TensorRT/FP16/Graph及五窗口20/30ms性能必须由E5-2696 v4＋RTX2070实测。
 
-`release/v23.5/`与`release/v23.6/`的原ZIP、Wheel、manifest及证据保持不变。
+`release/v23.5/`、`release/v23.6/`与`release/v23.7/`的原ZIP、Wheel、manifest及证据保持不变。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1 -AllowSourceCandidate
@@ -47,7 +47,7 @@ powershell -File scripts/build_delivery.ps1 -PythonExe python
 容量目标、归档、清理和缓存恢复见[仓库容量说明](docs/REPOSITORY_STORAGE_CN.md)。
 基础交付可通过`python scripts/package_delivery.py --reuse-current --out outpush/verified-copy`独立导出。
 
-生成交付前先完成 [v23.7验证步骤](docs/V23_7_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
+生成交付前先完成 [v23.8验证步骤](docs/V23_8_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1

@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "keys": {
+    "cold-cpu": "7e700645d5a3e1cddee78caea341c053842cd8e98ec5b89ef8f64697e5a4a9f1",
+    "extract-directml": "7e700645d5a3e1cddee78caea341c053842cd8e98ec5b89ef8f64697e5a4a9f1",
+    "restarted-cpu": "7e700645d5a3e1cddee78caea341c053842cd8e98ec5b89ef8f64697e5a4a9f1"
+  },
+  "directml_cached": {
+    "cold-cpu": false,
+    "extract-directml": true,
+    "restarted-cpu": true
+  },
+  "worker_pids": [
+    12820,
+    24560,
+    24284
+  ],
+  "fresh_worker_pids": true,
+  "scope": "Owned LOCALAPPDATA; cold CPU, DirectML extraction, fresh CPU benchmark/Worker",
+  "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+  "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37"
+}

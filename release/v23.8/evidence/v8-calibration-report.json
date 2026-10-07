@@ -1,0 +1,2539 @@
+{
+  "schema": 1,
+  "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+  "physical_cores": 22,
+  "reference": {
+    "schema": 1,
+    "qpc_frequency": 10000000,
+    "api_version": "CQ_X86/0.14.8",
+    "benchmark_protocol": 26,
+    "worker_protocol": 26,
+    "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+    "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+    "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+    "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+    "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+    "callers": 5,
+    "mode": "continuous",
+    "confidence": 0.5,
+    "nms": 0.45,
+    "p95_limit_ms": 20,
+    "warmup_per_lane": 2,
+    "samples_per_lane": 5,
+    "cold_create_ms": 0.014,
+    "load_ms": 332.1758,
+    "runtime": {
+      "handle": 12,
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "mixed_cpu_fallback": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "selection_basis": "offline_validation",
+      "calibration_key": "c957c58db4f9d168bad235521b7e92f880f4c399fdfae53ae0c86f7239f746e2",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "active_requests": 1,
+      "live_connections": 1,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 1,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": "",
+      "session_count": 1,
+      "intra_op_threads": 1,
+      "input_width": 320,
+      "input_height": 320
+    },
+    "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+    "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+    "worker_pid": 28764,
+    "rounds": [
+      {
+        "round": 0,
+        "errors": 0,
+        "elapsed_s": 1.4657342,
+        "lanes": [
+          {
+            "count": 5,
+            "p50_ms": 298.9021,
+            "p95_ms": 300.0074,
+            "p99_ms": 300.0074,
+            "max_ms": 300.0074,
+            "over_limit_count": 5,
+            "over_limit_fraction": 1
+          },
+          {
+            "count": 5,
+            "p50_ms": 296.6842,
+            "p95_ms": 299.8879,
+            "p99_ms": 299.8879,
+            "max_ms": 299.8879,
+            "over_limit_count": 5,
+            "over_limit_fraction": 1
+          },
+          {
+            "count": 5,
+            "p50_ms": 297.914,
+            "p95_ms": 300.3326,
+            "p99_ms": 300.3326,
+            "max_ms": 300.3326,
+            "over_limit_count": 5,
+            "over_limit_fraction": 1
+          },
+          {
+            "count": 5,
+            "p50_ms": 298.5859,
+            "p95_ms": 301.3189,
+            "p99_ms": 301.3189,
+            "max_ms": 301.3189,
+            "over_limit_count": 5,
+            "over_limit_fraction": 1
+          },
+          {
+            "count": 5,
+            "p50_ms": 298.7187,
+            "p95_ms": 300.9268,
+            "p99_ms": 300.9268,
+            "max_ms": 300.9268,
+            "over_limit_count": 5,
+            "over_limit_fraction": 1
+          }
+        ],
+        "overall": {
+          "count": 25,
+          "p50_ms": 298.5859,
+          "p95_ms": 300.9268,
+          "p99_ms": 301.3189,
+          "max_ms": 301.3189,
+          "over_limit_count": 25,
+          "over_limit_fraction": 1
+        },
+        "throughput_per_s": 17.0562985,
+        "client_cpu_core_equivalents": 0.0213203731,
+        "worker_cpu_core_equivalents": 0.991397349,
+        "client_private_peak": 46731264,
+        "worker_private_peak": 295161856
+      }
+    ]
+  },
+  "candidates": [
+    {
+      "name": "d1-s3-t1-fp32",
+      "device": 1,
+      "sessions": 3,
+      "threads": 1,
+      "precision": "fp32",
+      "graph": 0,
+      "p50": 8.9558,
+      "p95": 16.1401,
+      "reports": [
+        {
+          "schema": 1,
+          "qpc_frequency": 10000000,
+          "api_version": "CQ_X86/0.14.8",
+          "benchmark_protocol": 26,
+          "worker_protocol": 26,
+          "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+          "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+          "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+          "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+          "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+          "callers": 5,
+          "mode": "continuous",
+          "confidence": 0.5,
+          "nms": 0.45,
+          "p95_limit_ms": 20,
+          "warmup_per_lane": 100,
+          "samples_per_lane": 1000,
+          "cold_create_ms": 0.0116,
+          "load_ms": 2079.4063,
+          "runtime": {
+            "handle": 13,
+            "runtime_flavor": "core",
+            "ort_version": "1.24.4",
+            "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+            "available_providers": [
+              "DmlExecutionProvider",
+              "CPUExecutionProvider"
+            ],
+            "requested": "directml",
+            "active": "directml",
+            "degraded": false,
+            "mixed_cpu_fallback": true,
+            "device_id": 0,
+            "adapter_name": "NVIDIA GeForce RTX 2070",
+            "selection_basis": "offline_validation",
+            "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+            "cpu_calibration_ms": -1.0,
+            "directml_calibration_ms": -1.0,
+            "active_requests": 1,
+            "live_connections": 1,
+            "precision": "fp32",
+            "tensorrt_version": "",
+            "cuda_version": 0,
+            "driver_version": 0,
+            "driver_file_version": "",
+            "driver_binary_sha256": "",
+            "execution_slots": 3,
+            "engine_cache_hit": false,
+            "cuda_graph": false,
+            "engine_build_us": 0,
+            "engine_cache_key": "",
+            "reason": "",
+            "session_count": 3,
+            "intra_op_threads": 0,
+            "input_width": 320,
+            "input_height": 320
+          },
+          "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+          "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+          "worker_pid": 28764,
+          "rounds": [
+            {
+              "round": 0,
+              "errors": 0,
+              "elapsed_s": 8.9232269,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.3094,
+                  "p95_ms": 16.0922,
+                  "p99_ms": 16.4179,
+                  "max_ms": 19.665,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.266,
+                  "p95_ms": 16.1049,
+                  "p99_ms": 16.5267,
+                  "max_ms": 18.0698,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.2855,
+                  "p95_ms": 16.1401,
+                  "p99_ms": 16.4509,
+                  "max_ms": 20.1406,
+                  "over_limit_count": 1,
+                  "over_limit_fraction": 0.001
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.2934,
+                  "p95_ms": 16.0812,
+                  "p99_ms": 16.3866,
+                  "max_ms": 17.6485,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.3077,
+                  "p95_ms": 16.097,
+                  "p99_ms": 16.3529,
+                  "max_ms": 17.6074,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2954,
+                "p95_ms": 16.102,
+                "p99_ms": 16.4473,
+                "max_ms": 20.1406,
+                "over_limit_count": 1,
+                "over_limit_fraction": 0.0002
+              },
+              "throughput_per_s": 560.33541,
+              "client_cpu_core_equivalents": 0.351960679,
+              "worker_cpu_core_equivalents": 0.693415069,
+              "client_private_peak": 46813184,
+              "worker_private_peak": 548483072
+            },
+            {
+              "round": 1,
+              "errors": 0,
+              "elapsed_s": 9.2022577,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.4977,
+                  "p95_ms": 13.283,
+                  "p99_ms": 16.8304,
+                  "max_ms": 17.283,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5225,
+                  "p95_ms": 13.2426,
+                  "p99_ms": 16.804,
+                  "max_ms": 17.3249,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5037,
+                  "p95_ms": 13.3267,
+                  "p99_ms": 16.7994,
+                  "max_ms": 17.5496,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.4997,
+                  "p95_ms": 13.3165,
+                  "p99_ms": 16.6956,
+                  "max_ms": 19.0815,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5094,
+                  "p95_ms": 13.2655,
+                  "p99_ms": 16.8006,
+                  "max_ms": 17.4292,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.5062,
+                "p95_ms": 13.3003,
+                "p99_ms": 16.804,
+                "max_ms": 19.0815,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 543.344923,
+              "client_cpu_core_equivalents": 0.363361917,
+              "worker_cpu_core_equivalents": 0.643524143,
+              "client_private_peak": 46813184,
+              "worker_private_peak": 548487168
+            },
+            {
+              "round": 2,
+              "errors": 0,
+              "elapsed_s": 9.2547179,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5453,
+                  "p95_ms": 13.3305,
+                  "p99_ms": 13.664,
+                  "max_ms": 15.808,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5516,
+                  "p95_ms": 13.2738,
+                  "p99_ms": 13.56,
+                  "max_ms": 14.1804,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5557,
+                  "p95_ms": 13.3196,
+                  "p99_ms": 13.6271,
+                  "max_ms": 14.1355,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5487,
+                  "p95_ms": 13.2898,
+                  "p99_ms": 13.5687,
+                  "max_ms": 14.0182,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5572,
+                  "p95_ms": 13.3154,
+                  "p99_ms": 13.5906,
+                  "max_ms": 13.854,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.5518,
+                "p95_ms": 13.306,
+                "p99_ms": 13.6163,
+                "max_ms": 15.808,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 540.264982,
+              "client_cpu_core_equivalents": 0.292080756,
+              "worker_cpu_core_equivalents": 0.633123026,
+              "client_private_peak": 46727168,
+              "worker_private_peak": 547721216
+            }
+          ]
+        },
+        {
+          "schema": 1,
+          "qpc_frequency": 10000000,
+          "api_version": "CQ_X86/0.14.8",
+          "benchmark_protocol": 26,
+          "worker_protocol": 26,
+          "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+          "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+          "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+          "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+          "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+          "callers": 5,
+          "mode": "simultaneous",
+          "confidence": 0.5,
+          "nms": 0.45,
+          "p95_limit_ms": 20,
+          "warmup_per_lane": 100,
+          "samples_per_lane": 1000,
+          "cold_create_ms": 0.0149,
+          "load_ms": 2066.4184,
+          "runtime": {
+            "handle": 14,
+            "runtime_flavor": "core",
+            "ort_version": "1.24.4",
+            "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+            "available_providers": [
+              "DmlExecutionProvider",
+              "CPUExecutionProvider"
+            ],
+            "requested": "directml",
+            "active": "directml",
+            "degraded": false,
+            "mixed_cpu_fallback": true,
+            "device_id": 0,
+            "adapter_name": "NVIDIA GeForce RTX 2070",
+            "selection_basis": "offline_validation",
+            "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+            "cpu_calibration_ms": -1.0,
+            "directml_calibration_ms": -1.0,
+            "active_requests": 1,
+            "live_connections": 1,
+            "precision": "fp32",
+            "tensorrt_version": "",
+            "cuda_version": 0,
+            "driver_version": 0,
+            "driver_file_version": "",
+            "driver_binary_sha256": "",
+            "execution_slots": 3,
+            "engine_cache_hit": false,
+            "cuda_graph": false,
+            "engine_build_us": 0,
+            "engine_cache_key": "",
+            "reason": "",
+            "session_count": 3,
+            "intra_op_threads": 0,
+            "input_width": 320,
+            "input_height": 320
+          },
+          "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+          "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+          "worker_pid": 28764,
+          "rounds": [
+            {
+              "round": 0,
+              "errors": 0,
+              "elapsed_s": 10.885261,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 8.3912,
+                  "p95_ms": 11.0601,
+                  "p99_ms": 11.6407,
+                  "max_ms": 13.1253,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0856,
+                  "p95_ms": 10.9322,
+                  "p99_ms": 11.4776,
+                  "max_ms": 12.2534,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.8963,
+                  "p95_ms": 11.1446,
+                  "p99_ms": 11.4921,
+                  "max_ms": 12.3085,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.1101,
+                  "p95_ms": 11.0697,
+                  "p99_ms": 11.455,
+                  "max_ms": 12.3084,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0431,
+                  "p95_ms": 10.9968,
+                  "p99_ms": 11.4106,
+                  "max_ms": 13.3606,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2799,
+                "p95_ms": 11.0413,
+                "p99_ms": 11.488,
+                "max_ms": 13.3606,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 459.336712,
+              "client_cpu_core_equivalents": 0.297133436,
+              "worker_cpu_core_equivalents": 0.551204055,
+              "client_private_peak": 46800896,
+              "worker_private_peak": 584765440
+            },
+            {
+              "round": 1,
+              "errors": 0,
+              "elapsed_s": 10.8839639,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0048,
+                  "p95_ms": 11.089,
+                  "p99_ms": 11.7098,
+                  "max_ms": 13.2412,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 6.8518,
+                  "p95_ms": 10.9536,
+                  "p99_ms": 11.4253,
+                  "max_ms": 13.013,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.3933,
+                  "p95_ms": 11.299,
+                  "p99_ms": 11.7664,
+                  "max_ms": 13.1233,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.5881,
+                  "p95_ms": 11.0876,
+                  "p99_ms": 11.6071,
+                  "max_ms": 13.0971,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.8056,
+                  "p95_ms": 11.0848,
+                  "p99_ms": 11.5664,
+                  "max_ms": 12.0867,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2557,
+                "p95_ms": 11.0897,
+                "p99_ms": 11.6715,
+                "max_ms": 13.2412,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 459.391454,
+              "client_cpu_core_equivalents": 0.315831625,
+              "worker_cpu_core_equivalents": 0.65606842,
+              "client_private_peak": 46813184,
+              "worker_private_peak": 540692480
+            },
+            {
+              "round": 2,
+              "errors": 0,
+              "elapsed_s": 10.9900302,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0226,
+                  "p95_ms": 11.065,
+                  "p99_ms": 11.8177,
+                  "max_ms": 12.9807,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.2584,
+                  "p95_ms": 11.2864,
+                  "p99_ms": 12.0933,
+                  "max_ms": 12.9222,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 5.3548,
+                  "p95_ms": 10.861,
+                  "p99_ms": 11.3435,
+                  "max_ms": 12.2153,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.8233,
+                  "p95_ms": 11.4228,
+                  "p99_ms": 11.998,
+                  "max_ms": 12.6631,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.9558,
+                  "p95_ms": 11.2515,
+                  "p99_ms": 12.2513,
+                  "max_ms": 13.1971,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2524,
+                "p95_ms": 11.1708,
+                "p99_ms": 11.9855,
+                "max_ms": 13.1971,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 454.957803,
+              "client_cpu_core_equivalents": 0.253070278,
+              "worker_cpu_core_equivalents": 0.663954044,
+              "client_private_peak": 46821376,
+              "worker_private_peak": 539840512
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "selected": [
+    {
+      "name": "d1-s3-t1-fp32",
+      "device": 1,
+      "sessions": 3,
+      "threads": 1,
+      "precision": "fp32",
+      "graph": 0,
+      "p50": 8.9558,
+      "p95": 16.1401,
+      "reports": [
+        {
+          "schema": 1,
+          "qpc_frequency": 10000000,
+          "api_version": "CQ_X86/0.14.8",
+          "benchmark_protocol": 26,
+          "worker_protocol": 26,
+          "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+          "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+          "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+          "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+          "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+          "callers": 5,
+          "mode": "continuous",
+          "confidence": 0.5,
+          "nms": 0.45,
+          "p95_limit_ms": 20,
+          "warmup_per_lane": 100,
+          "samples_per_lane": 1000,
+          "cold_create_ms": 0.0116,
+          "load_ms": 2079.4063,
+          "runtime": {
+            "handle": 13,
+            "runtime_flavor": "core",
+            "ort_version": "1.24.4",
+            "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+            "available_providers": [
+              "DmlExecutionProvider",
+              "CPUExecutionProvider"
+            ],
+            "requested": "directml",
+            "active": "directml",
+            "degraded": false,
+            "mixed_cpu_fallback": true,
+            "device_id": 0,
+            "adapter_name": "NVIDIA GeForce RTX 2070",
+            "selection_basis": "offline_validation",
+            "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+            "cpu_calibration_ms": -1.0,
+            "directml_calibration_ms": -1.0,
+            "active_requests": 1,
+            "live_connections": 1,
+            "precision": "fp32",
+            "tensorrt_version": "",
+            "cuda_version": 0,
+            "driver_version": 0,
+            "driver_file_version": "",
+            "driver_binary_sha256": "",
+            "execution_slots": 3,
+            "engine_cache_hit": false,
+            "cuda_graph": false,
+            "engine_build_us": 0,
+            "engine_cache_key": "",
+            "reason": "",
+            "session_count": 3,
+            "intra_op_threads": 0,
+            "input_width": 320,
+            "input_height": 320
+          },
+          "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+          "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+          "worker_pid": 28764,
+          "rounds": [
+            {
+              "round": 0,
+              "errors": 0,
+              "elapsed_s": 8.9232269,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.3094,
+                  "p95_ms": 16.0922,
+                  "p99_ms": 16.4179,
+                  "max_ms": 19.665,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.266,
+                  "p95_ms": 16.1049,
+                  "p99_ms": 16.5267,
+                  "max_ms": 18.0698,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.2855,
+                  "p95_ms": 16.1401,
+                  "p99_ms": 16.4509,
+                  "max_ms": 20.1406,
+                  "over_limit_count": 1,
+                  "over_limit_fraction": 0.001
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.2934,
+                  "p95_ms": 16.0812,
+                  "p99_ms": 16.3866,
+                  "max_ms": 17.6485,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.3077,
+                  "p95_ms": 16.097,
+                  "p99_ms": 16.3529,
+                  "max_ms": 17.6074,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2954,
+                "p95_ms": 16.102,
+                "p99_ms": 16.4473,
+                "max_ms": 20.1406,
+                "over_limit_count": 1,
+                "over_limit_fraction": 0.0002
+              },
+              "throughput_per_s": 560.33541,
+              "client_cpu_core_equivalents": 0.351960679,
+              "worker_cpu_core_equivalents": 0.693415069,
+              "client_private_peak": 46813184,
+              "worker_private_peak": 548483072
+            },
+            {
+              "round": 1,
+              "errors": 0,
+              "elapsed_s": 9.2022577,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.4977,
+                  "p95_ms": 13.283,
+                  "p99_ms": 16.8304,
+                  "max_ms": 17.283,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5225,
+                  "p95_ms": 13.2426,
+                  "p99_ms": 16.804,
+                  "max_ms": 17.3249,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5037,
+                  "p95_ms": 13.3267,
+                  "p99_ms": 16.7994,
+                  "max_ms": 17.5496,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.4997,
+                  "p95_ms": 13.3165,
+                  "p99_ms": 16.6956,
+                  "max_ms": 19.0815,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5094,
+                  "p95_ms": 13.2655,
+                  "p99_ms": 16.8006,
+                  "max_ms": 17.4292,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.5062,
+                "p95_ms": 13.3003,
+                "p99_ms": 16.804,
+                "max_ms": 19.0815,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 543.344923,
+              "client_cpu_core_equivalents": 0.363361917,
+              "worker_cpu_core_equivalents": 0.643524143,
+              "client_private_peak": 46813184,
+              "worker_private_peak": 548487168
+            },
+            {
+              "round": 2,
+              "errors": 0,
+              "elapsed_s": 9.2547179,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5453,
+                  "p95_ms": 13.3305,
+                  "p99_ms": 13.664,
+                  "max_ms": 15.808,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5516,
+                  "p95_ms": 13.2738,
+                  "p99_ms": 13.56,
+                  "max_ms": 14.1804,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5557,
+                  "p95_ms": 13.3196,
+                  "p99_ms": 13.6271,
+                  "max_ms": 14.1355,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5487,
+                  "p95_ms": 13.2898,
+                  "p99_ms": 13.5687,
+                  "max_ms": 14.0182,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.5572,
+                  "p95_ms": 13.3154,
+                  "p99_ms": 13.5906,
+                  "max_ms": 13.854,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.5518,
+                "p95_ms": 13.306,
+                "p99_ms": 13.6163,
+                "max_ms": 15.808,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 540.264982,
+              "client_cpu_core_equivalents": 0.292080756,
+              "worker_cpu_core_equivalents": 0.633123026,
+              "client_private_peak": 46727168,
+              "worker_private_peak": 547721216
+            }
+          ]
+        },
+        {
+          "schema": 1,
+          "qpc_frequency": 10000000,
+          "api_version": "CQ_X86/0.14.8",
+          "benchmark_protocol": 26,
+          "worker_protocol": 26,
+          "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+          "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+          "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+          "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+          "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+          "callers": 5,
+          "mode": "simultaneous",
+          "confidence": 0.5,
+          "nms": 0.45,
+          "p95_limit_ms": 20,
+          "warmup_per_lane": 100,
+          "samples_per_lane": 1000,
+          "cold_create_ms": 0.0149,
+          "load_ms": 2066.4184,
+          "runtime": {
+            "handle": 14,
+            "runtime_flavor": "core",
+            "ort_version": "1.24.4",
+            "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+            "available_providers": [
+              "DmlExecutionProvider",
+              "CPUExecutionProvider"
+            ],
+            "requested": "directml",
+            "active": "directml",
+            "degraded": false,
+            "mixed_cpu_fallback": true,
+            "device_id": 0,
+            "adapter_name": "NVIDIA GeForce RTX 2070",
+            "selection_basis": "offline_validation",
+            "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+            "cpu_calibration_ms": -1.0,
+            "directml_calibration_ms": -1.0,
+            "active_requests": 1,
+            "live_connections": 1,
+            "precision": "fp32",
+            "tensorrt_version": "",
+            "cuda_version": 0,
+            "driver_version": 0,
+            "driver_file_version": "",
+            "driver_binary_sha256": "",
+            "execution_slots": 3,
+            "engine_cache_hit": false,
+            "cuda_graph": false,
+            "engine_build_us": 0,
+            "engine_cache_key": "",
+            "reason": "",
+            "session_count": 3,
+            "intra_op_threads": 0,
+            "input_width": 320,
+            "input_height": 320
+          },
+          "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+          "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+          "worker_pid": 28764,
+          "rounds": [
+            {
+              "round": 0,
+              "errors": 0,
+              "elapsed_s": 10.885261,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 8.3912,
+                  "p95_ms": 11.0601,
+                  "p99_ms": 11.6407,
+                  "max_ms": 13.1253,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0856,
+                  "p95_ms": 10.9322,
+                  "p99_ms": 11.4776,
+                  "max_ms": 12.2534,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.8963,
+                  "p95_ms": 11.1446,
+                  "p99_ms": 11.4921,
+                  "max_ms": 12.3085,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.1101,
+                  "p95_ms": 11.0697,
+                  "p99_ms": 11.455,
+                  "max_ms": 12.3084,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0431,
+                  "p95_ms": 10.9968,
+                  "p99_ms": 11.4106,
+                  "max_ms": 13.3606,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2799,
+                "p95_ms": 11.0413,
+                "p99_ms": 11.488,
+                "max_ms": 13.3606,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 459.336712,
+              "client_cpu_core_equivalents": 0.297133436,
+              "worker_cpu_core_equivalents": 0.551204055,
+              "client_private_peak": 46800896,
+              "worker_private_peak": 584765440
+            },
+            {
+              "round": 1,
+              "errors": 0,
+              "elapsed_s": 10.8839639,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0048,
+                  "p95_ms": 11.089,
+                  "p99_ms": 11.7098,
+                  "max_ms": 13.2412,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 6.8518,
+                  "p95_ms": 10.9536,
+                  "p99_ms": 11.4253,
+                  "max_ms": 13.013,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.3933,
+                  "p95_ms": 11.299,
+                  "p99_ms": 11.7664,
+                  "max_ms": 13.1233,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.5881,
+                  "p95_ms": 11.0876,
+                  "p99_ms": 11.6071,
+                  "max_ms": 13.0971,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.8056,
+                  "p95_ms": 11.0848,
+                  "p99_ms": 11.5664,
+                  "max_ms": 12.0867,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2557,
+                "p95_ms": 11.0897,
+                "p99_ms": 11.6715,
+                "max_ms": 13.2412,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 459.391454,
+              "client_cpu_core_equivalents": 0.315831625,
+              "worker_cpu_core_equivalents": 0.65606842,
+              "client_private_peak": 46813184,
+              "worker_private_peak": 540692480
+            },
+            {
+              "round": 2,
+              "errors": 0,
+              "elapsed_s": 10.9900302,
+              "lanes": [
+                {
+                  "count": 1000,
+                  "p50_ms": 7.0226,
+                  "p95_ms": 11.065,
+                  "p99_ms": 11.8177,
+                  "max_ms": 12.9807,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 7.2584,
+                  "p95_ms": 11.2864,
+                  "p99_ms": 12.0933,
+                  "max_ms": 12.9222,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 5.3548,
+                  "p95_ms": 10.861,
+                  "p99_ms": 11.3435,
+                  "max_ms": 12.2153,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.8233,
+                  "p95_ms": 11.4228,
+                  "p99_ms": 11.998,
+                  "max_ms": 12.6631,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                },
+                {
+                  "count": 1000,
+                  "p50_ms": 8.9558,
+                  "p95_ms": 11.2515,
+                  "p99_ms": 12.2513,
+                  "max_ms": 13.1971,
+                  "over_limit_count": 0,
+                  "over_limit_fraction": 0
+                }
+              ],
+              "overall": {
+                "count": 5000,
+                "p50_ms": 7.2524,
+                "p95_ms": 11.1708,
+                "p99_ms": 11.9855,
+                "max_ms": 13.1971,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              "throughput_per_s": 454.957803,
+              "client_cpu_core_equivalents": 0.253070278,
+              "worker_cpu_core_equivalents": 0.663954044,
+              "client_private_peak": 46821376,
+              "worker_private_peak": 539840512
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "best": {
+    "name": "d1-s3-t1-fp32",
+    "device": 1,
+    "sessions": 3,
+    "threads": 1,
+    "precision": "fp32",
+    "graph": 0,
+    "p50": 8.9558,
+    "p95": 16.1401,
+    "reports": [
+      {
+        "schema": 1,
+        "qpc_frequency": 10000000,
+        "api_version": "CQ_X86/0.14.8",
+        "benchmark_protocol": 26,
+        "worker_protocol": 26,
+        "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+        "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+        "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+        "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+        "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+        "callers": 5,
+        "mode": "continuous",
+        "confidence": 0.5,
+        "nms": 0.45,
+        "p95_limit_ms": 20,
+        "warmup_per_lane": 100,
+        "samples_per_lane": 1000,
+        "cold_create_ms": 0.0116,
+        "load_ms": 2079.4063,
+        "runtime": {
+          "handle": 13,
+          "runtime_flavor": "core",
+          "ort_version": "1.24.4",
+          "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+          "available_providers": [
+            "DmlExecutionProvider",
+            "CPUExecutionProvider"
+          ],
+          "requested": "directml",
+          "active": "directml",
+          "degraded": false,
+          "mixed_cpu_fallback": true,
+          "device_id": 0,
+          "adapter_name": "NVIDIA GeForce RTX 2070",
+          "selection_basis": "offline_validation",
+          "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+          "cpu_calibration_ms": -1.0,
+          "directml_calibration_ms": -1.0,
+          "active_requests": 1,
+          "live_connections": 1,
+          "precision": "fp32",
+          "tensorrt_version": "",
+          "cuda_version": 0,
+          "driver_version": 0,
+          "driver_file_version": "",
+          "driver_binary_sha256": "",
+          "execution_slots": 3,
+          "engine_cache_hit": false,
+          "cuda_graph": false,
+          "engine_build_us": 0,
+          "engine_cache_key": "",
+          "reason": "",
+          "session_count": 3,
+          "intra_op_threads": 0,
+          "input_width": 320,
+          "input_height": 320
+        },
+        "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+        "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+        "worker_pid": 28764,
+        "rounds": [
+          {
+            "round": 0,
+            "errors": 0,
+            "elapsed_s": 8.9232269,
+            "lanes": [
+              {
+                "count": 1000,
+                "p50_ms": 7.3094,
+                "p95_ms": 16.0922,
+                "p99_ms": 16.4179,
+                "max_ms": 19.665,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.266,
+                "p95_ms": 16.1049,
+                "p99_ms": 16.5267,
+                "max_ms": 18.0698,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.2855,
+                "p95_ms": 16.1401,
+                "p99_ms": 16.4509,
+                "max_ms": 20.1406,
+                "over_limit_count": 1,
+                "over_limit_fraction": 0.001
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.2934,
+                "p95_ms": 16.0812,
+                "p99_ms": 16.3866,
+                "max_ms": 17.6485,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.3077,
+                "p95_ms": 16.097,
+                "p99_ms": 16.3529,
+                "max_ms": 17.6074,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              }
+            ],
+            "overall": {
+              "count": 5000,
+              "p50_ms": 7.2954,
+              "p95_ms": 16.102,
+              "p99_ms": 16.4473,
+              "max_ms": 20.1406,
+              "over_limit_count": 1,
+              "over_limit_fraction": 0.0002
+            },
+            "throughput_per_s": 560.33541,
+            "client_cpu_core_equivalents": 0.351960679,
+            "worker_cpu_core_equivalents": 0.693415069,
+            "client_private_peak": 46813184,
+            "worker_private_peak": 548483072
+          },
+          {
+            "round": 1,
+            "errors": 0,
+            "elapsed_s": 9.2022577,
+            "lanes": [
+              {
+                "count": 1000,
+                "p50_ms": 7.4977,
+                "p95_ms": 13.283,
+                "p99_ms": 16.8304,
+                "max_ms": 17.283,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5225,
+                "p95_ms": 13.2426,
+                "p99_ms": 16.804,
+                "max_ms": 17.3249,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5037,
+                "p95_ms": 13.3267,
+                "p99_ms": 16.7994,
+                "max_ms": 17.5496,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.4997,
+                "p95_ms": 13.3165,
+                "p99_ms": 16.6956,
+                "max_ms": 19.0815,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5094,
+                "p95_ms": 13.2655,
+                "p99_ms": 16.8006,
+                "max_ms": 17.4292,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              }
+            ],
+            "overall": {
+              "count": 5000,
+              "p50_ms": 7.5062,
+              "p95_ms": 13.3003,
+              "p99_ms": 16.804,
+              "max_ms": 19.0815,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            "throughput_per_s": 543.344923,
+            "client_cpu_core_equivalents": 0.363361917,
+            "worker_cpu_core_equivalents": 0.643524143,
+            "client_private_peak": 46813184,
+            "worker_private_peak": 548487168
+          },
+          {
+            "round": 2,
+            "errors": 0,
+            "elapsed_s": 9.2547179,
+            "lanes": [
+              {
+                "count": 1000,
+                "p50_ms": 7.5453,
+                "p95_ms": 13.3305,
+                "p99_ms": 13.664,
+                "max_ms": 15.808,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5516,
+                "p95_ms": 13.2738,
+                "p99_ms": 13.56,
+                "max_ms": 14.1804,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5557,
+                "p95_ms": 13.3196,
+                "p99_ms": 13.6271,
+                "max_ms": 14.1355,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5487,
+                "p95_ms": 13.2898,
+                "p99_ms": 13.5687,
+                "max_ms": 14.0182,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.5572,
+                "p95_ms": 13.3154,
+                "p99_ms": 13.5906,
+                "max_ms": 13.854,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              }
+            ],
+            "overall": {
+              "count": 5000,
+              "p50_ms": 7.5518,
+              "p95_ms": 13.306,
+              "p99_ms": 13.6163,
+              "max_ms": 15.808,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            "throughput_per_s": 540.264982,
+            "client_cpu_core_equivalents": 0.292080756,
+            "worker_cpu_core_equivalents": 0.633123026,
+            "client_private_peak": 46727168,
+            "worker_private_peak": 547721216
+          }
+        ]
+      },
+      {
+        "schema": 1,
+        "qpc_frequency": 10000000,
+        "api_version": "CQ_X86/0.14.8",
+        "benchmark_protocol": 26,
+        "worker_protocol": 26,
+        "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+        "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+        "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+        "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+        "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+        "callers": 5,
+        "mode": "simultaneous",
+        "confidence": 0.5,
+        "nms": 0.45,
+        "p95_limit_ms": 20,
+        "warmup_per_lane": 100,
+        "samples_per_lane": 1000,
+        "cold_create_ms": 0.0149,
+        "load_ms": 2066.4184,
+        "runtime": {
+          "handle": 14,
+          "runtime_flavor": "core",
+          "ort_version": "1.24.4",
+          "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+          "available_providers": [
+            "DmlExecutionProvider",
+            "CPUExecutionProvider"
+          ],
+          "requested": "directml",
+          "active": "directml",
+          "degraded": false,
+          "mixed_cpu_fallback": true,
+          "device_id": 0,
+          "adapter_name": "NVIDIA GeForce RTX 2070",
+          "selection_basis": "offline_validation",
+          "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+          "cpu_calibration_ms": -1.0,
+          "directml_calibration_ms": -1.0,
+          "active_requests": 1,
+          "live_connections": 1,
+          "precision": "fp32",
+          "tensorrt_version": "",
+          "cuda_version": 0,
+          "driver_version": 0,
+          "driver_file_version": "",
+          "driver_binary_sha256": "",
+          "execution_slots": 3,
+          "engine_cache_hit": false,
+          "cuda_graph": false,
+          "engine_build_us": 0,
+          "engine_cache_key": "",
+          "reason": "",
+          "session_count": 3,
+          "intra_op_threads": 0,
+          "input_width": 320,
+          "input_height": 320
+        },
+        "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+        "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+        "worker_pid": 28764,
+        "rounds": [
+          {
+            "round": 0,
+            "errors": 0,
+            "elapsed_s": 10.885261,
+            "lanes": [
+              {
+                "count": 1000,
+                "p50_ms": 8.3912,
+                "p95_ms": 11.0601,
+                "p99_ms": 11.6407,
+                "max_ms": 13.1253,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.0856,
+                "p95_ms": 10.9322,
+                "p99_ms": 11.4776,
+                "max_ms": 12.2534,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 8.8963,
+                "p95_ms": 11.1446,
+                "p99_ms": 11.4921,
+                "max_ms": 12.3085,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.1101,
+                "p95_ms": 11.0697,
+                "p99_ms": 11.455,
+                "max_ms": 12.3084,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.0431,
+                "p95_ms": 10.9968,
+                "p99_ms": 11.4106,
+                "max_ms": 13.3606,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              }
+            ],
+            "overall": {
+              "count": 5000,
+              "p50_ms": 7.2799,
+              "p95_ms": 11.0413,
+              "p99_ms": 11.488,
+              "max_ms": 13.3606,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            "throughput_per_s": 459.336712,
+            "client_cpu_core_equivalents": 0.297133436,
+            "worker_cpu_core_equivalents": 0.551204055,
+            "client_private_peak": 46800896,
+            "worker_private_peak": 584765440
+          },
+          {
+            "round": 1,
+            "errors": 0,
+            "elapsed_s": 10.8839639,
+            "lanes": [
+              {
+                "count": 1000,
+                "p50_ms": 7.0048,
+                "p95_ms": 11.089,
+                "p99_ms": 11.7098,
+                "max_ms": 13.2412,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 6.8518,
+                "p95_ms": 10.9536,
+                "p99_ms": 11.4253,
+                "max_ms": 13.013,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.3933,
+                "p95_ms": 11.299,
+                "p99_ms": 11.7664,
+                "max_ms": 13.1233,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 8.5881,
+                "p95_ms": 11.0876,
+                "p99_ms": 11.6071,
+                "max_ms": 13.0971,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 8.8056,
+                "p95_ms": 11.0848,
+                "p99_ms": 11.5664,
+                "max_ms": 12.0867,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              }
+            ],
+            "overall": {
+              "count": 5000,
+              "p50_ms": 7.2557,
+              "p95_ms": 11.0897,
+              "p99_ms": 11.6715,
+              "max_ms": 13.2412,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            "throughput_per_s": 459.391454,
+            "client_cpu_core_equivalents": 0.315831625,
+            "worker_cpu_core_equivalents": 0.65606842,
+            "client_private_peak": 46813184,
+            "worker_private_peak": 540692480
+          },
+          {
+            "round": 2,
+            "errors": 0,
+            "elapsed_s": 10.9900302,
+            "lanes": [
+              {
+                "count": 1000,
+                "p50_ms": 7.0226,
+                "p95_ms": 11.065,
+                "p99_ms": 11.8177,
+                "max_ms": 12.9807,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 7.2584,
+                "p95_ms": 11.2864,
+                "p99_ms": 12.0933,
+                "max_ms": 12.9222,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 5.3548,
+                "p95_ms": 10.861,
+                "p99_ms": 11.3435,
+                "max_ms": 12.2153,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 8.8233,
+                "p95_ms": 11.4228,
+                "p99_ms": 11.998,
+                "max_ms": 12.6631,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              },
+              {
+                "count": 1000,
+                "p50_ms": 8.9558,
+                "p95_ms": 11.2515,
+                "p99_ms": 12.2513,
+                "max_ms": 13.1971,
+                "over_limit_count": 0,
+                "over_limit_fraction": 0
+              }
+            ],
+            "overall": {
+              "count": 5000,
+              "p50_ms": 7.2524,
+              "p95_ms": 11.1708,
+              "p99_ms": 11.9855,
+              "max_ms": 13.1971,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            "throughput_per_s": 454.957803,
+            "client_cpu_core_equivalents": 0.253070278,
+            "worker_cpu_core_equivalents": 0.663954044,
+            "client_private_peak": 46821376,
+            "worker_private_peak": 539840512
+          }
+        ]
+      }
+    ]
+  },
+  "failures": [],
+  "p95_limit_ms": 20.0,
+  "host_sample_threshold_met": true,
+  "auto_report": {
+    "schema": 1,
+    "qpc_frequency": 10000000,
+    "api_version": "CQ_X86/0.14.8",
+    "benchmark_protocol": 26,
+    "worker_protocol": 26,
+    "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+    "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+    "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+    "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+    "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+    "callers": 5,
+    "mode": "continuous",
+    "confidence": 0.5,
+    "nms": 0.45,
+    "p95_limit_ms": 20,
+    "warmup_per_lane": 100,
+    "samples_per_lane": 1000,
+    "cold_create_ms": 0.011,
+    "load_ms": 2046.9345,
+    "runtime": {
+      "handle": 15,
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "auto",
+      "active": "directml",
+      "degraded": false,
+      "mixed_cpu_fallback": true,
+      "device_id": 0,
+      "adapter_name": "NVIDIA GeForce RTX 2070",
+      "selection_basis": "business_calibration",
+      "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "active_requests": 1,
+      "live_connections": 1,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 3,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": "",
+      "session_count": 3,
+      "intra_op_threads": 0,
+      "input_width": 320,
+      "input_height": 320
+    },
+    "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+    "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+    "worker_pid": 28764,
+    "rounds": [
+      {
+        "round": 0,
+        "errors": 0,
+        "elapsed_s": 9.1874122,
+        "lanes": [
+          {
+            "count": 1000,
+            "p50_ms": 7.4964,
+            "p95_ms": 16.5431,
+            "p99_ms": 16.9164,
+            "max_ms": 17.3365,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.4951,
+            "p95_ms": 16.44,
+            "p99_ms": 16.9302,
+            "max_ms": 17.3037,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5005,
+            "p95_ms": 16.4882,
+            "p99_ms": 16.8781,
+            "max_ms": 19.2071,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.4892,
+            "p95_ms": 16.457,
+            "p99_ms": 17.0084,
+            "max_ms": 17.8743,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.4983,
+            "p95_ms": 16.5224,
+            "p99_ms": 17.0233,
+            "max_ms": 18.6233,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          }
+        ],
+        "overall": {
+          "count": 5000,
+          "p50_ms": 7.4973,
+          "p95_ms": 16.4902,
+          "p99_ms": 16.9843,
+          "max_ms": 19.2071,
+          "over_limit_count": 0,
+          "over_limit_fraction": 0
+        },
+        "throughput_per_s": 544.222888,
+        "client_cpu_core_equivalents": 0.215988459,
+        "worker_cpu_core_equivalents": 0.593543087,
+        "client_private_peak": 46714880,
+        "worker_private_peak": 560218112
+      },
+      {
+        "round": 1,
+        "errors": 0,
+        "elapsed_s": 9.2271256,
+        "lanes": [
+          {
+            "count": 1000,
+            "p50_ms": 7.5282,
+            "p95_ms": 16.029,
+            "p99_ms": 17.0942,
+            "max_ms": 17.6614,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5584,
+            "p95_ms": 16.1227,
+            "p99_ms": 17.0954,
+            "max_ms": 17.3756,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5353,
+            "p95_ms": 16.0496,
+            "p99_ms": 17.0005,
+            "max_ms": 17.9217,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5397,
+            "p95_ms": 16.1691,
+            "p99_ms": 16.9686,
+            "max_ms": 17.5745,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5501,
+            "p95_ms": 16.0746,
+            "p99_ms": 17.0571,
+            "max_ms": 17.4112,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          }
+        ],
+        "overall": {
+          "count": 5000,
+          "p50_ms": 7.5408,
+          "p95_ms": 16.1052,
+          "p99_ms": 17.0545,
+          "max_ms": 17.9217,
+          "over_limit_count": 0,
+          "over_limit_fraction": 0
+        },
+        "throughput_per_s": 541.880561,
+        "client_cpu_core_equivalents": 0.26078002,
+        "worker_cpu_core_equivalents": 0.57913485,
+        "client_private_peak": 46731264,
+        "worker_private_peak": 546471936
+      },
+      {
+        "round": 2,
+        "errors": 0,
+        "elapsed_s": 9.2961751,
+        "lanes": [
+          {
+            "count": 1000,
+            "p50_ms": 7.6088,
+            "p95_ms": 16.8402,
+            "p99_ms": 17.3357,
+            "max_ms": 19.1536,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.6108,
+            "p95_ms": 16.8665,
+            "p99_ms": 17.3633,
+            "max_ms": 17.9171,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5786,
+            "p95_ms": 16.8374,
+            "p99_ms": 17.4134,
+            "max_ms": 18.2458,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.5907,
+            "p95_ms": 16.8814,
+            "p99_ms": 17.2992,
+            "max_ms": 18.0975,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          {
+            "count": 1000,
+            "p50_ms": 7.601,
+            "p95_ms": 16.8976,
+            "p99_ms": 17.3388,
+            "max_ms": 18.7587,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          }
+        ],
+        "overall": {
+          "count": 5000,
+          "p50_ms": 7.5961,
+          "p95_ms": 16.8691,
+          "p99_ms": 17.3835,
+          "max_ms": 19.1536,
+          "over_limit_count": 0,
+          "over_limit_fraction": 0
+        },
+        "throughput_per_s": 537.855618,
+        "client_cpu_core_equivalents": 0.268927809,
+        "worker_cpu_core_equivalents": 0.638703546,
+        "client_private_peak": 46698496,
+        "worker_private_peak": 545689600
+      }
+    ]
+  },
+  "auto_reports": [
+    {
+      "schema": 1,
+      "qpc_frequency": 10000000,
+      "api_version": "CQ_X86/0.14.8",
+      "benchmark_protocol": 26,
+      "worker_protocol": 26,
+      "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+      "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+      "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+      "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+      "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+      "callers": 5,
+      "mode": "continuous",
+      "confidence": 0.5,
+      "nms": 0.45,
+      "p95_limit_ms": 20,
+      "warmup_per_lane": 100,
+      "samples_per_lane": 1000,
+      "cold_create_ms": 0.011,
+      "load_ms": 2046.9345,
+      "runtime": {
+        "handle": 15,
+        "runtime_flavor": "core",
+        "ort_version": "1.24.4",
+        "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+        "available_providers": [
+          "DmlExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "requested": "auto",
+        "active": "directml",
+        "degraded": false,
+        "mixed_cpu_fallback": true,
+        "device_id": 0,
+        "adapter_name": "NVIDIA GeForce RTX 2070",
+        "selection_basis": "business_calibration",
+        "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+        "cpu_calibration_ms": -1.0,
+        "directml_calibration_ms": -1.0,
+        "active_requests": 1,
+        "live_connections": 1,
+        "precision": "fp32",
+        "tensorrt_version": "",
+        "cuda_version": 0,
+        "driver_version": 0,
+        "driver_file_version": "",
+        "driver_binary_sha256": "",
+        "execution_slots": 3,
+        "engine_cache_hit": false,
+        "cuda_graph": false,
+        "engine_build_us": 0,
+        "engine_cache_key": "",
+        "reason": "",
+        "session_count": 3,
+        "intra_op_threads": 0,
+        "input_width": 320,
+        "input_height": 320
+      },
+      "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+      "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+      "worker_pid": 28764,
+      "rounds": [
+        {
+          "round": 0,
+          "errors": 0,
+          "elapsed_s": 9.1874122,
+          "lanes": [
+            {
+              "count": 1000,
+              "p50_ms": 7.4964,
+              "p95_ms": 16.5431,
+              "p99_ms": 16.9164,
+              "max_ms": 17.3365,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.4951,
+              "p95_ms": 16.44,
+              "p99_ms": 16.9302,
+              "max_ms": 17.3037,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5005,
+              "p95_ms": 16.4882,
+              "p99_ms": 16.8781,
+              "max_ms": 19.2071,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.4892,
+              "p95_ms": 16.457,
+              "p99_ms": 17.0084,
+              "max_ms": 17.8743,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.4983,
+              "p95_ms": 16.5224,
+              "p99_ms": 17.0233,
+              "max_ms": 18.6233,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            }
+          ],
+          "overall": {
+            "count": 5000,
+            "p50_ms": 7.4973,
+            "p95_ms": 16.4902,
+            "p99_ms": 16.9843,
+            "max_ms": 19.2071,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          "throughput_per_s": 544.222888,
+          "client_cpu_core_equivalents": 0.215988459,
+          "worker_cpu_core_equivalents": 0.593543087,
+          "client_private_peak": 46714880,
+          "worker_private_peak": 560218112
+        },
+        {
+          "round": 1,
+          "errors": 0,
+          "elapsed_s": 9.2271256,
+          "lanes": [
+            {
+              "count": 1000,
+              "p50_ms": 7.5282,
+              "p95_ms": 16.029,
+              "p99_ms": 17.0942,
+              "max_ms": 17.6614,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5584,
+              "p95_ms": 16.1227,
+              "p99_ms": 17.0954,
+              "max_ms": 17.3756,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5353,
+              "p95_ms": 16.0496,
+              "p99_ms": 17.0005,
+              "max_ms": 17.9217,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5397,
+              "p95_ms": 16.1691,
+              "p99_ms": 16.9686,
+              "max_ms": 17.5745,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5501,
+              "p95_ms": 16.0746,
+              "p99_ms": 17.0571,
+              "max_ms": 17.4112,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            }
+          ],
+          "overall": {
+            "count": 5000,
+            "p50_ms": 7.5408,
+            "p95_ms": 16.1052,
+            "p99_ms": 17.0545,
+            "max_ms": 17.9217,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          "throughput_per_s": 541.880561,
+          "client_cpu_core_equivalents": 0.26078002,
+          "worker_cpu_core_equivalents": 0.57913485,
+          "client_private_peak": 46731264,
+          "worker_private_peak": 546471936
+        },
+        {
+          "round": 2,
+          "errors": 0,
+          "elapsed_s": 9.2961751,
+          "lanes": [
+            {
+              "count": 1000,
+              "p50_ms": 7.6088,
+              "p95_ms": 16.8402,
+              "p99_ms": 17.3357,
+              "max_ms": 19.1536,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.6108,
+              "p95_ms": 16.8665,
+              "p99_ms": 17.3633,
+              "max_ms": 17.9171,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5786,
+              "p95_ms": 16.8374,
+              "p99_ms": 17.4134,
+              "max_ms": 18.2458,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5907,
+              "p95_ms": 16.8814,
+              "p99_ms": 17.2992,
+              "max_ms": 18.0975,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.601,
+              "p95_ms": 16.8976,
+              "p99_ms": 17.3388,
+              "max_ms": 18.7587,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            }
+          ],
+          "overall": {
+            "count": 5000,
+            "p50_ms": 7.5961,
+            "p95_ms": 16.8691,
+            "p99_ms": 17.3835,
+            "max_ms": 19.1536,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          "throughput_per_s": 537.855618,
+          "client_cpu_core_equivalents": 0.268927809,
+          "worker_cpu_core_equivalents": 0.638703546,
+          "client_private_peak": 46698496,
+          "worker_private_peak": 545689600
+        }
+      ]
+    },
+    {
+      "schema": 1,
+      "qpc_frequency": 10000000,
+      "api_version": "CQ_X86/0.14.8",
+      "benchmark_protocol": 26,
+      "worker_protocol": 26,
+      "model_sha256": "ca5407763a638b86d73e9f17c423ebec39c9b0c8c1ee7f33de64aa32c73177b8",
+      "dll": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_X86.dll",
+      "dll_sha256": "1a59527ef0c2c2f0c7d2e70731574e8c96a2869095b0a29a9800183f4e2bef54",
+      "benchmark_sha256": "897cac130bf9194d12dd999e99d6f314c3f277a10cfe97309f53693c92acf456",
+      "workload": "1001c2c0dc6d8636f38e089f34564b461957fd6de004f373edc49725ced2cc07",
+      "callers": 5,
+      "mode": "simultaneous",
+      "confidence": 0.5,
+      "nms": 0.45,
+      "p95_limit_ms": 20,
+      "warmup_per_lane": 100,
+      "samples_per_lane": 1000,
+      "cold_create_ms": 0.0267,
+      "load_ms": 2016.6715,
+      "runtime": {
+        "handle": 16,
+        "runtime_flavor": "core",
+        "ort_version": "1.24.4",
+        "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-03721cb7bb9af7cc66dcdef090462f95fae9d2cab50b31363f9338736029b56c\\onnxruntime.dll",
+        "available_providers": [
+          "DmlExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "requested": "auto",
+        "active": "directml",
+        "degraded": false,
+        "mixed_cpu_fallback": true,
+        "device_id": 0,
+        "adapter_name": "NVIDIA GeForce RTX 2070",
+        "selection_basis": "business_calibration",
+        "calibration_key": "1aadfdc4dde5207aba84a6dd35bcab442d1fba63b743610b4a401b8b123200de",
+        "cpu_calibration_ms": -1.0,
+        "directml_calibration_ms": -1.0,
+        "active_requests": 1,
+        "live_connections": 1,
+        "precision": "fp32",
+        "tensorrt_version": "",
+        "cuda_version": 0,
+        "driver_version": 0,
+        "driver_file_version": "",
+        "driver_binary_sha256": "",
+        "execution_slots": 3,
+        "engine_cache_hit": false,
+        "cuda_graph": false,
+        "engine_build_us": 0,
+        "engine_cache_key": "",
+        "reason": "",
+        "session_count": 3,
+        "intra_op_threads": 0,
+        "input_width": 320,
+        "input_height": 320
+      },
+      "worker": "D:\\codex-project\\OpenCV\\build\\portable-x86\\Release\\CQ_AI_worker.exe",
+      "worker_sha256": "14620e2cecc8044b8465eeb93ef6e15cd5bc63df0d0f39d51a94259ae64c0a37",
+      "worker_pid": 28764,
+      "rounds": [
+        {
+          "round": 0,
+          "errors": 0,
+          "elapsed_s": 10.8531275,
+          "lanes": [
+            {
+              "count": 1000,
+              "p50_ms": 6.9637,
+              "p95_ms": 10.9548,
+              "p99_ms": 11.574,
+              "max_ms": 11.8488,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.0508,
+              "p95_ms": 10.9742,
+              "p99_ms": 11.5726,
+              "max_ms": 12.0937,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.2128,
+              "p95_ms": 11.2148,
+              "p99_ms": 11.8203,
+              "max_ms": 12.796,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 8.6058,
+              "p95_ms": 11.1282,
+              "p99_ms": 11.6775,
+              "max_ms": 12.1772,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.5513,
+              "p95_ms": 10.9694,
+              "p99_ms": 11.3796,
+              "max_ms": 12.1103,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            }
+          ],
+          "overall": {
+            "count": 5000,
+            "p50_ms": 7.2236,
+            "p95_ms": 11.0427,
+            "p99_ms": 11.6259,
+            "max_ms": 12.796,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          "throughput_per_s": 460.696698,
+          "client_cpu_core_equivalents": 0.312409948,
+          "worker_cpu_core_equivalents": 0.608983447,
+          "client_private_peak": 46735360,
+          "worker_private_peak": 562061312
+        },
+        {
+          "round": 1,
+          "errors": 0,
+          "elapsed_s": 10.8982076,
+          "lanes": [
+            {
+              "count": 1000,
+              "p50_ms": 7.2793,
+              "p95_ms": 11.018,
+              "p99_ms": 11.5067,
+              "max_ms": 12.0332,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.0662,
+              "p95_ms": 11.0325,
+              "p99_ms": 11.5269,
+              "max_ms": 12.1678,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.0137,
+              "p95_ms": 10.9885,
+              "p99_ms": 11.4431,
+              "max_ms": 11.9153,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.1867,
+              "p95_ms": 10.9533,
+              "p99_ms": 11.5956,
+              "max_ms": 12.6878,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 8.9743,
+              "p95_ms": 11.2036,
+              "p99_ms": 11.8659,
+              "max_ms": 12.485,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            }
+          ],
+          "overall": {
+            "count": 5000,
+            "p50_ms": 7.3071,
+            "p95_ms": 11.0478,
+            "p99_ms": 11.5956,
+            "max_ms": 12.6878,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          "throughput_per_s": 458.79104,
+          "client_cpu_core_equivalents": 0.318286284,
+          "worker_cpu_core_equivalents": 0.576356244,
+          "client_private_peak": 46731264,
+          "worker_private_peak": 546373632
+        },
+        {
+          "round": 2,
+          "errors": 0,
+          "elapsed_s": 10.8235905,
+          "lanes": [
+            {
+              "count": 1000,
+              "p50_ms": 7.3997,
+              "p95_ms": 10.9638,
+              "p99_ms": 11.4352,
+              "max_ms": 12.2319,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 8.4684,
+              "p95_ms": 11.026,
+              "p99_ms": 11.5793,
+              "max_ms": 12.0312,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 6.6827,
+              "p95_ms": 10.9519,
+              "p99_ms": 11.5081,
+              "max_ms": 11.9601,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.0945,
+              "p95_ms": 11.0176,
+              "p99_ms": 11.5328,
+              "max_ms": 12.4316,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            },
+            {
+              "count": 1000,
+              "p50_ms": 7.1253,
+              "p95_ms": 10.9707,
+              "p99_ms": 11.5576,
+              "max_ms": 12.1722,
+              "over_limit_count": 0,
+              "over_limit_fraction": 0
+            }
+          ],
+          "overall": {
+            "count": 5000,
+            "p50_ms": 7.131,
+            "p95_ms": 10.9942,
+            "p99_ms": 11.5328,
+            "max_ms": 12.4316,
+            "over_limit_count": 0,
+            "over_limit_fraction": 0
+          },
+          "throughput_per_s": 461.953914,
+          "client_cpu_core_equivalents": 0.349352648,
+          "worker_cpu_core_equivalents": 0.534134214,
+          "client_private_peak": 46747648,
+          "worker_private_peak": 545517568
+        }
+      ]
+    }
+  ],
+  "caveat": "Acceptance applies only to this host and these BMPs; run with all five business windows on E5/RTX2070"
+}

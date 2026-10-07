@@ -1,0 +1,134 @@
+{
+  "package": {
+    "version": "CQ_AI_x64/0.14.8",
+    "dll": "D:\\codex-project\\OpenCV\\outpush\\installed-v23.8-venv\\Lib\\site-packages\\cq_ai_engine\\_native\\CQ_AI_x64.dll"
+  },
+  "cv": {
+    "source": "tests\\fixtures\\cv\\base\\大图1.bmp",
+    "single": {
+      "box": {
+        "x": 364,
+        "y": 28,
+        "w": 27,
+        "h": 22
+      },
+      "score": 1.0,
+      "template_index": 0
+    },
+    "multi_count": 4
+  },
+  "ocr_cpu": {
+    "text": "ABC123",
+    "runtime": {
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-project\\OpenCV\\outpush\\installed-v23.8-venv\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "mixed_cpu_fallback": false,
+      "selection_basis": "",
+      "calibration_key": "",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 0,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": ""
+    }
+  },
+  "yolo": {
+    "path_detections": 1,
+    "memory_detections": 1,
+    "path_runtime": {
+      "handle": 1,
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-project\\OpenCV\\outpush\\installed-v23.8-venv\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "mixed_cpu_fallback": false,
+      "selection_basis": "explicit",
+      "calibration_key": "975051d98aa3215b762f017e46fc6fa18235386f3a40e67b1fedcef964e3a783",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 2,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": "",
+      "session_count": 2,
+      "intra_op_threads": 4,
+      "input_width": 320,
+      "input_height": 320
+    },
+    "memory_runtime": {
+      "handle": 2,
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-project\\OpenCV\\outpush\\installed-v23.8-venv\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "mixed_cpu_fallback": false,
+      "selection_basis": "explicit",
+      "calibration_key": "975051d98aa3215b762f017e46fc6fa18235386f3a40e67b1fedcef964e3a783",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 2,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": "",
+      "session_count": 2,
+      "intra_op_threads": 4,
+      "input_width": 320,
+      "input_height": 320
+    }
+  },
+  "directml_soak": {
+    "iterations": 0,
+    "skipped": true
+  }
+}

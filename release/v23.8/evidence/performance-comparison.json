@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "comparisons": [
+    {
+      "mode": "continuous",
+      "same_backend": "directml",
+      "same_slots": 5,
+      "worst_lane_p50_change_fraction": 0.003998135145444559,
+      "worst_lane_p95_change_fraction": -4.24346153301558e-05,
+      "note": "One three-round cohort per version; investigate >5% before declaring repeatable regression absent."
+    },
+    {
+      "mode": "simultaneous",
+      "same_backend": "directml",
+      "same_slots": 5,
+      "worst_lane_p50_change_fraction": -0.005535034509245862,
+      "worst_lane_p95_change_fraction": -0.0099299013260703,
+      "note": "One three-round cohort per version; investigate >5% before declaring repeatable regression absent."
+    }
+  ]
+}

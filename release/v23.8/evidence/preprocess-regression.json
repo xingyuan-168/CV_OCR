@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "formats": 5,
+  "signed_strides": true,
+  "dimensions": [
+    320,
+    640
+  ],
+  "all_256_normalization_values_bit_exact": true,
+  "evidence": [
+    "identity-native-x86.log",
+    "identity-native-x64.log"
+  ],
+  "method": "Real CTest ai_engine_yolo_pipeline_test with bitwise memcmp"
+}

@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "delivery": "CQ_X86/0.14.8",
+  "worker_protocol": 26,
+  "target_host": true,
+  "business_windows_active": false,
+  "baseline_only": false,
+  "target_performance_accepted": false,
+  "p95_limit_ms": 20.0,
+  "gpu": {
+    "state": "cache_and_selected_fp16_soak_passed",
+    "cache_hit": true,
+    "corruption_rebuilt": true,
+    "gpu_soak": true
+  },
+  "ipc_p95_ms": 1.705,
+  "shared_memory_followup": false,
+  "measured_worst_lane_p50_ms": 14.1874,
+  "measured_worst_lane_p95_ms": 17.6832,
+  "threshold_met": true,
+  "stability": {
+    "soak.json": {
+      "client_private_mib": {
+        "min": 119.94921875,
+        "max": 120.0859375,
+        "initial_mean": 119.94921875,
+        "final_mean": 119.9609375,
+        "growth": 0.01171875
+      },
+      "worker_private_mib": {
+        "min": 552.76953125,
+        "max": 553.3125,
+        "initial_mean": 552.9505208333334,
+        "final_mean": 553.3125,
+        "growth": 0.36197916666662877
+      },
+      "continuous_growth_detected": false,
+      "samples_after_warmup": 1522
+    }
+  },
+  "memory_growth_detected": false,
+  "cache_detections_consistent": true,
+  "optional_dependency_checks": {
+    "passed": true,
+    "checks": {
+      "missing-module": {
+        "passed": true,
+        "exit_code": 2,
+        "log": "D:\\codex-project\\OpenCV\\outpush\\yolo26-15ms-implementation\\final-20ms\\optional-dependency-checks\\missing-module.log"
+      },
+      "missing-nvidia-runtime": {
+        "passed": true,
+        "exit_code": 2,
+        "log": "D:\\codex-project\\OpenCV\\outpush\\yolo26-15ms-implementation\\final-20ms\\optional-dependency-checks\\missing-nvidia-runtime.log"
+      },
+      "cpu-without-nvidia": {
+        "passed": true,
+        "exit_code": 0,
+        "log": "D:\\codex-project\\OpenCV\\outpush\\yolo26-15ms-implementation\\final-20ms\\optional-dependency-checks\\cpu-without-nvidia.log"
+      }
+    }
+  },
+  "calibration_only": false,
+  "gpu_memory": {
+    "available": true,
+    "devices": {
+      "0": {
+        "peak_used_mib": 1496.0,
+        "initial_mean": 1379.1666666666667,
+        "final_mean": 1420.85,
+        "growth_mib": 41.68333333333317
+      }
+    },
+    "growth_detected": true,
+    "note": "nvidia-smi reports total device memory including the five business windows; a growth flag needs investigation before acceptance"
+  },
+  "gpu_stability": {
+    "soak.json": {
+      "available": true,
+      "devices": {
+        "0": {
+          "peak_used_mib": 1496.0,
+          "initial_mean": 1379.1666666666667,
+          "final_mean": 1420.85,
+          "growth_mib": 41.68333333333317
+        }
+      },
+      "growth_detected": true,
+      "note": "nvidia-smi reports total device memory including the five business windows; a growth flag needs investigation before acceptance"
+    }
+  },
+  "local_benchmark_accepted": false,
+  "local_benchmark_scope": "Only the measured host/model/BMPs and five callers; business-window acceptance is separate."
+}

@@ -37,8 +37,8 @@ function Remove-RegisteredTarget {
     $path = Resolve-CleanupTarget -Root $Root -Relative $Relative -Allowed $Allowed
     if (!(Test-Path -LiteralPath $path)) { return @{path=$Relative; state='already_absent'; bytes=0} }
     $item = Get-Item -LiteralPath $path -Force
-    $files = if ($item.PSIsContainer) { @(Get-ChildItem -LiteralPath $path -File -Force -Recurse) } else { @($item) }
-    $bytes = ($files | Measure-Object -Property Length -Sum).Sum
+    $files = @(if ($item.PSIsContainer) { Get-ChildItem -LiteralPath $path -File -Force -Recurse } else { $item })
+    $bytes = if ($files.Count) { ($files | Measure-Object -Property Length -Sum).Sum } else { 0L }
     if (!$Apply) { return @{path=$Relative; state='preview'; bytes=[long]$bytes} }
     $handles = [Collections.Generic.List[IDisposable]]::new()
     try {

@@ -1,0 +1,79 @@
+{
+  "requests": 550,
+  "discarded_incomplete_rows": 1,
+  "stages": {
+    "total_ms": {
+      "p50": 11.906,
+      "p95": 12.519,
+      "p99": 13.917
+    },
+    "pack_ms": {
+      "p50": 0.556,
+      "p95": 0.628,
+      "p99": 0.744
+    },
+    "connect_ms": {
+      "p50": 0.0,
+      "p95": 0.0,
+      "p99": 0.0
+    },
+    "transport_ms": {
+      "p50": 0.999,
+      "p95": 1.174,
+      "p99": 1.432
+    },
+    "bmp_ms": {
+      "p50": 0.0,
+      "p95": 0.0,
+      "p99": 0.0
+    },
+    "wait_ms": {
+      "p50": 5.564,
+      "p95": 6.127,
+      "p99": 6.585
+    },
+    "preprocess_ms": {
+      "p50": 1.132,
+      "p95": 1.567,
+      "p99": 2.222
+    },
+    "run_ms": {
+      "p50": 3.495,
+      "p95": 4.002,
+      "p99": 4.218
+    },
+    "postprocess_ms": {
+      "p50": 0.006,
+      "p95": 0.014,
+      "p99": 0.021
+    },
+    "json_ms": {
+      "p50": 0.057,
+      "p95": 0.081,
+      "p99": 0.115
+    },
+    "h2d_ms": {
+      "p50": 0.483,
+      "p95": 0.524,
+      "p99": 0.566
+    },
+    "gpu_ms": {
+      "p50": 1.777,
+      "p95": 2.103,
+      "p99": 2.324
+    },
+    "d2h_ms": {
+      "p50": 0.093,
+      "p95": 0.119,
+      "p99": 0.137
+    },
+    "worker_ms": {
+      "p50": 10.342,
+      "p95": 11.0,
+      "p99": 11.487
+    }
+  },
+  "ipc_p95_ms": 1.73,
+  "shared_memory_measurement_gate_exceeded": false,
+  "note": "Diagnostic tracing adds overhead; formal performance runs must disable it. A target-host IPC P95 >2ms requires a shared-memory follow-up."
+}

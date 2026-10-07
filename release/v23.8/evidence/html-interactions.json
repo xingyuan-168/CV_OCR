@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "html_sha256": "7ed42ba23cbc3bf492895df6b5f81cc8de3035494f82d0ba6f40fbc3b022dcd2",
+  "sections": 63,
+  "navigation_links": 63,
+  "offline_assets": true,
+  "navigation": true,
+  "search": true,
+  "hash_navigation": true,
+  "method": "actual inline JavaScript with deterministic DOM fixture",
+  "visual_browser_preview": "unverified: browser security policy blocks local file URLs"
+}
