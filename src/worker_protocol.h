@@ -18,11 +18,11 @@ constexpr const char* runtime_flavor_name(RuntimeFlavor) {
 }
 
 constexpr const char* pipe_name(RuntimeFlavor) {
-    return R"(\\.\pipe\cq_ai_worker_v26_core_0147)";
+    return R"(\\.\pipe\cq_ai_worker_v26_core_0148)";
 }
 
 constexpr const char* singleton_name(RuntimeFlavor) {
-    return "Local\\cq_ai_worker_v26_core_0147_singleton";
+    return "Local\\cq_ai_worker_v26_core_0148_singleton";
 }
 
 static constexpr RuntimeFlavor kBuildFlavor = RuntimeFlavor::Core;

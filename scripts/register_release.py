@@ -46,10 +46,19 @@ def register(package, wheel, select=False):
         for name in ['compatibility-x64.json','compatibility-x86.json','mixed-models.json',
                      'legacy-equivalence.json','performance-comparison.json','model-sources.json',
                      'native-regression.json','python-acceptance.json','stability-summary.json',
-                     'delivery-unicode-v26.json']:
+                     'delivery-unicode-v26.json','local-benchmark-summary.json','calibration-report.json',
+                     'acceptance-summary.json','cache-verification.json','stages.json','preprocess-regression.json',
+                     'optional-dependency-summary.json','graph-decisions.json','calibration-restart-summary.json',
+                     'v8-local-summary.json','v8-calibration-report.json','hardware.json',
+                     'business-calibration.tsv','v8-business-calibration.tsv','stability-attempt1.json','stability-attempt2.json',
+                     'finish-candidate.json','finish-current.json','storage-final.json']:
             if (validation/name).is_file():
                 dest=stage/'evidence'/name; copy(validation/name,dest)
                 m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
+        local_detail=validation/'YOLO26_LOCAL_20MS_SUMMARY.json'
+        if local_detail.is_file():
+            dest=stage/'evidence'/local_detail.name; copy(local_detail,dest)
+            m['evidence'][local_detail.name]=dict(file='evidence/'+local_detail.name,size=dest.stat().st_size,sha256=digest(dest))
         for name in ['delivery-staged.json','delivery-output.json']:
             dest=stage/'evidence'/name; copy(package/name,dest)
             m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))

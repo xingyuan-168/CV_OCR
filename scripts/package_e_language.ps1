@@ -8,6 +8,7 @@
     [string]$StageDir = '',
     [string]$ValidationDir = '',
     [string]$Metadata = '',
+    [string]$NvidiaZip = '',
     [string]$Model = 'input/best.onnx',
     [string]$Image = 'tests/fixtures/yolo/baseline-800x600.bmp',
     [switch]$SkipNvidiaPacking,
@@ -43,11 +44,16 @@ $x64Path = Resolve-ProjectPath $X64Dir
 $htmlPath = Resolve-ProjectPath $ApiHtml
 if (!$htmlPath.Equals((Resolve-ProjectPath 'docs/易语言_DLL_API_说明.html'),[StringComparison]::OrdinalIgnoreCase)) { throw 'Use the generated current API HTML; custom copies are not accepted' }
 $python = (Get-Command $PythonExe -ErrorAction Stop).Source
-$msvcRoot = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC'
-$dumpbin = Get-ChildItem -LiteralPath $msvcRoot -Directory | Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin/Hostx64/x64/dumpbin.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+$dumpbinCommand = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+if ($dumpbinCommand) { $dumpbin = $dumpbinCommand.Source }
+else {
+    $msvcRoot = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC'
+    $dumpbin = Get-ChildItem -LiteralPath $msvcRoot -Directory | Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin/Hostx64/x64/dumpbin.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
 if (!$dumpbin) { throw 'dumpbin.exe was not found' }
 $arguments = @((Join-Path $PSScriptRoot 'package_delivery.py'), '--x86', (Split-Path -Parent $x86Path), '--worker', $workerPath, '--x64', $x64Path, '--out', $stageRoot, '--validation', $validation, '--dumpbin', $dumpbin, '--metadata', (Resolve-ProjectPath $Metadata), '--model', (Resolve-ProjectPath $Model), '--image', (Resolve-ProjectPath $Image), '--keep-stage')
 if ($SkipNvidiaPacking) { $arguments += '--skip-nvidia' }
+if ($NvidiaZip) { $arguments += @('--nvidia-zip', (Resolve-ProjectPath $NvidiaZip)) }
 if ($NoZip) { $arguments += '--no-zip' }
 & $python @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Delivery staging/validation failed; output was preserved' }

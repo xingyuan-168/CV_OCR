@@ -91,11 +91,11 @@ def verify_sources(root: Path, manifest: dict) -> None:
         raise ValueError("Header version or Worker protocol differs from manifest")
 
 
-def verify_current(root: Path, output: Path | None = None) -> dict:
+def verify_current_delivery(root: Path, output: Path | None = None) -> dict:
+    """Verify the registered immutable delivery independently of a task checkout."""
     path, manifest = current_manifest(root)
     if manifest["public_exports"] != 60 or set(manifest["files"]) != CORE_NAMES:
         raise ValueError("Public ABI or delivery cohort differs")
-    verify_sources(root, manifest)
     for kind, artifact in manifest["artifacts"].items():
         verify_archive(safe_member(path.parent, artifact["file"]), artifact,
                        manifest["files"] if kind == "easy_language_zip" else None)
@@ -115,6 +115,12 @@ def verify_current(root: Path, output: Path | None = None) -> dict:
             "protocol": manifest["worker_protocol"], "source_files": len(manifest["git_source_sha256"]),
             "functional_validation": manifest["functional_validation"],
             "target_performance": manifest["target_performance_validation"]}
+
+
+def verify_current(root: Path, output: Path | None = None) -> dict:
+    _, manifest = current_manifest(root)
+    verify_sources(root, manifest)
+    return verify_current_delivery(root, output)
 
 
 def verify_historical(root: Path) -> None:

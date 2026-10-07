@@ -10,7 +10,7 @@ import sys
 from urllib.parse import unquote
 
 from generate_e_language_api_doc import parse_exports, source_metadata
-from release_manifest import current_manifest, verify_current, verify_historical
+from release_manifest import current_manifest, verify_current, verify_current_delivery, verify_historical, verify_sources, verify_file, safe_member
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOTS = {".gitattributes", ".github", ".gitignore", ".codex", ".codex-os", "AGENTS.md", "CMakeLists.txt", "CMakePresets.json", "README.md", "configs", "docs", "examples", "include", "models", "python", "release", "scripts", "src", "tests", "tools"}
@@ -71,23 +71,64 @@ def docs() -> int:
     return checked
 
 
+def verify_candidate(root: Path, metadata_path: Path, branch: str) -> dict:
+    root, metadata_path = root.resolve(), metadata_path.resolve()
+    if not metadata_path.is_relative_to(root / "outpush") or not branch.startswith("codex/"):
+        raise ValueError("Candidate verification requires an outpush manifest on a codex task branch")
+    candidate = json.loads(metadata_path.read_text(encoding="utf-8-sig"))
+    if candidate["functional_validation"] != "passed" or candidate["public_exports"] != 60 or candidate["worker_protocol"] != 26:
+        raise ValueError("The candidate has not passed functional/ABI/protocol validation")
+    _, published = current_manifest(root)
+    if not set(published["git_source_sha256"]).issubset(candidate["git_source_sha256"]):
+        raise ValueError("The candidate source snapshot is incomplete")
+    verify_sources(root, candidate)
+    fingerprints = candidate["binary_fingerprints"]
+    if set(fingerprints) != {"CQ_X86.dll", "CQ_AI_worker.exe"}:
+        raise ValueError("A paired DLL/Worker fingerprint is required")
+    runtime = Path(candidate["candidate_runtime_directory"]).resolve()
+    if not any(runtime.is_relative_to(root / name) for name in ("outpush", "build")):
+        raise ValueError("Candidate binaries must be in workspace build/outpush staging")
+    for name, expected in fingerprints.items():
+        verify_file(runtime / name, expected)
+    evidence = candidate.get("functional_evidence")
+    if not evidence:
+        raise ValueError("Actual independent paired-loader evidence is required")
+    evidence_path = safe_member(root / "outpush", evidence["file"])
+    verify_file(evidence_path, evidence)
+    probe = json.loads(evidence_path.read_text(encoding="utf-8-sig"))
+    if (probe["errors"] or probe["public_exports"] != 60 or probe["worker_protocol"] != 26
+            or probe["version"] != "CQ_X86/" + candidate["project_version"]
+            or probe["dll_sha256"] != fingerprints["CQ_X86.dll"]["sha256"]
+            or probe["worker_sha256"] != fingerprints["CQ_AI_worker.exe"]["sha256"]):
+        raise ValueError("Independent paired-loader evidence differs or failed")
+    return candidate
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--working-tree", action="store_true")
     parser.add_argument("--require-clean", action="store_true")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--all", action="store_true", help="Run affected script/wrapper/calibration tests")
+    parser.add_argument("--candidate-metadata", type=Path, help="Verify an unpromoted task candidate while preserving the current delivery")
     args = parser.parse_args()
     hygiene(args.working_tree, args.require_clean)
-    result = verify_current(ROOT, args.output)
+    if args.candidate_metadata:
+        metadata_path = args.candidate_metadata.resolve()
+        candidate = verify_candidate(ROOT, metadata_path, git("branch", "--show-current").strip())
+        result = dict(verify_current_delivery(ROOT, args.output), candidate_version=candidate["project_version"],
+                      candidate_local_benchmark=candidate["local_benchmark_validation"])
+    else:
+        metadata_path, _ = current_manifest(ROOT)
+        result = verify_current(ROOT, args.output)
     verify_historical(ROOT)
     result["documents"] = docs()
     manifest_path, manifest = current_manifest(ROOT)
-    source_metadata(ROOT / "include/ai_engine.h", ROOT / "src/worker_protocol.h", manifest_path)
+    source_metadata(ROOT / "include/ai_engine.h", ROOT / "src/worker_protocol.h", metadata_path)
     if len(parse_exports(ROOT / "include/ai_engine.h")) != manifest["public_exports"]:
         raise ValueError("Header declaration count differs")
     if args.all:
-        for pattern in ("test_governance.py", "test_repository_storage.py", "test_packaging.py", "test_yolo_calibration.py", "test_yolo_model_tool.py", "python_wrapper_test.py"):
+        for pattern in ("test_governance.py", "test_repository_storage.py", "test_packaging.py", "test_yolo_calibration.py", "test_yolo_acceptance.py", "test_yolo_model_tool.py", "python_wrapper_test.py"):
             subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "tests"), "-p", pattern], cwd=ROOT, check=True)
     print(json.dumps(dict(passed=True, **result), ensure_ascii=False))
 

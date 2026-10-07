@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(ai_engine_dll VERSION 0.14.7 LANGUAGES CXX)
+project(ai_engine_dll VERSION 0.14.8 LANGUAGES CXX)
 
-set(AIENGINE_DELIVERY_VERSION "v23.7")
+set(AIENGINE_DELIVERY_VERSION "v23.8")
 set(AIENGINE_WORKER_PROTOCOL_VERSION "26")
 
 option(AIENGINE_CV_TEST_HOOKS "Private CV fault injection and pool accounting (never ship)" OFF)
@@ -73,7 +73,8 @@ if(AIENGINE_WITH_OPENCV AND AIENGINE_BUILD_API_DLL)
         target_include_directories(ai_engine PRIVATE "${AIENGINE_IPP_INCLUDE}")
         target_compile_definitions(ai_engine PRIVATE AIENGINE_CV_IPP_PLAN=1)
     endif()
-    if(MSVC AND (CMAKE_GENERATOR_PLATFORM MATCHES "^(Win32|x64)$"))
+    if(MSVC AND (CMAKE_GENERATOR_PLATFORM MATCHES "^(Win32|x64)$" OR
+                 CMAKE_CXX_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x64)$"))
         set(AIENGINE_CV_AVX2 ON)
         set_source_files_properties(src/cv_normalize_avx2.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2;/GL-")
         set_source_files_properties(src/cv_masked_score_avx2.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2;/GL-")

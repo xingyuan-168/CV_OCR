@@ -68,7 +68,7 @@ def _process_memory_mib() -> dict[str, float]:
 
 def _installed_package_checks() -> dict[str, object]:
     assert struct.calcsize("P") * 8 == 64
-    assert cq_ai_engine.__version__ == "0.14.7"
+    assert cq_ai_engine.__version__ == "0.14.8"
     with Engine() as engine:
         assert engine.version() == "CQ_AI_x64/" + cq_ai_engine.__version__
         assert engine.dll_path.name == "CQ_AI_x64.dll"

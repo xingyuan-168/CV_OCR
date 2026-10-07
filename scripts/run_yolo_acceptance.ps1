@@ -4,11 +4,13 @@
     [string]$Model = (Join-Path $PSScriptRoot '../validation/best.onnx'),
     [string]$PythonExe = 'python',
     [string]$ResultsDir = '',
+    [double]$P95LimitMs = 30,
     [switch]$BusinessWindowsActive,
     [switch]$CalibrateOnly,
     [switch]$SmokeOnly
 )
 $ErrorActionPreference = 'Stop'
+if ([double]::IsNaN($P95LimitMs) -or [double]::IsInfinity($P95LimitMs) -or $P95LimitMs -le 0) { throw 'P95LimitMs must be finite and positive' }
 $toolsRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runtimeSource = [IO.Path]::GetFullPath($RuntimeDir)
 $Model = [IO.Path]::GetFullPath($Model)
@@ -30,6 +32,11 @@ $env:CQ_AI_ORT_PROFILE_PREFIX = ''
 $env:CQ_AI_YOLO_ENGINE_CACHE = Join-Path $output 'engine-cache'
 $nvidiaDirectory = Join-Path $runtimeSource 'nvidia'
 if (Test-Path -LiteralPath $nvidiaDirectory) { $env:CQ_AI_NVIDIA_DIR = $nvidiaDirectory }
+if ($env:CQ_AI_NVIDIA_DIR -and (Test-Path -LiteralPath $env:CQ_AI_NVIDIA_DIR -PathType Container)) {
+    # TensorRT's standalone x64 builder loads its resource DLL by basename.
+    # Keep the vendor search path scoped to this process and its children.
+    $env:PATH = [IO.Path]::GetFullPath($env:CQ_AI_NVIDIA_DIR) + ';' + $env:PATH
+}
 $inventory = [ordered]@{
     time = (Get-Date).ToString('o')
     cpu = @(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors)
@@ -58,7 +65,7 @@ foreach ($name in @('CQ_X86.dll','CQ_AI_worker.exe','CQ_YOLO_TensorRT.dll')) {
 }
 $benchmark = Join-Path $stage 'yolo_benchmark_x86.exe'
 if ($SmokeOnly) {
-    & $benchmark --model $Model --images-dir $ImagesDir --device 2 --sessions 5 --threads 1 --warmup 2 --samples 5 --rounds 1 --mode continuous --shutdown-worker 0 --verify-output (Join-Path $output 'smoke-detections.json') --output (Join-Path $output 'smoke.json')
+    & $benchmark --model $Model --images-dir $ImagesDir --device 2 --sessions 5 --threads 1 --warmup 2 --samples 5 --rounds 1 --mode continuous --p95-limit-ms $P95LimitMs --shutdown-worker 0 --verify-output (Join-Path $output 'smoke-detections.json') --output (Join-Path $output 'smoke.json')
     if ($LASTEXITCODE -ne 0) { throw 'Tools smoke test failed' }
     Write-Host "Tools smoke passed. Performance acceptance was not run. Reports: $output"
     exit 0
@@ -66,7 +73,7 @@ if ($SmokeOnly) {
 $firstImage = Get-ChildItem -LiteralPath $ImagesDir -Filter '*.bmp' -File | Sort-Object Name | Select-Object -First 1 -ExpandProperty FullName
 & $python (Join-Path $PSScriptRoot 'verify_yolo_optional_dependencies.py') --runtime (Join-Path $toolsRoot 'x64') --model $Model --image $firstImage --output (Join-Path $output 'optional-dependency-checks')
 if ($LASTEXITCODE -ne 0) { throw 'Optional dependency absence checks failed' }
-& $python (Join-Path $PSScriptRoot 'calibrate_yolo.py') --benchmark $benchmark --model $Model --images-dir $ImagesDir --sessions 1,2,3,5 --cpu-threads 1,2,4,6,8 --devices 2,1,3 --fp16 --graphs --preserve-worker --warmup 100 --samples 1000 --rounds 3 --output $output
+& $python (Join-Path $PSScriptRoot 'calibrate_yolo.py') --benchmark $benchmark --model $Model --images-dir $ImagesDir --sessions 1,2,3,5 --cpu-threads 1,2,4,6,8 --devices 2,1,3 --fp16 --graphs --preserve-worker --warmup 100 --samples 1000 --rounds 3 --p95-limit-ms $P95LimitMs --output $output
 if ($LASTEXITCODE -ne 0) { throw 'Business calibration failed; no qualified configuration was published' }
 $calibration = Get-Content -LiteralPath (Join-Path $output 'calibration-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $profile = Join-Path $output 'business-calibration.tsv'
@@ -93,7 +100,7 @@ if ($gpuCandidates.Count -gt 0) {
             [IO.File]::WriteAllBytes($safePlan,[byte[]](0,1,2,3))
         }
         $report = Join-Path $output ("cache-$run.json")
-        & $cacheBenchmark --model $Model --images-dir $ImagesDir --device 3 --sessions $gpuBest.sessions --precision fp32 --graph 0 --threads 1 --warmup 2 --samples 10 --rounds 1 --mode continuous --shutdown-worker 0 --verify-output (Join-Path $output ("cache-$run.detections.json")) --output $report
+        & $cacheBenchmark --model $Model --images-dir $ImagesDir --device 3 --sessions $gpuBest.sessions --precision fp32 --graph 0 --threads 1 --warmup 2 --samples 10 --rounds 1 --mode continuous --p95-limit-ms $P95LimitMs --shutdown-worker 0 --verify-output (Join-Path $output ("cache-$run.detections.json")) --output $report
         if ($LASTEXITCODE -ne 0) { throw "TensorRT cache test failed: $run" }
         $cacheResult = Get-Content -LiteralPath $report -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($run -eq 'first-build') {
@@ -107,12 +114,12 @@ if ($gpuCandidates.Count -gt 0) {
 }
 $env:CQ_AI_YOLO_ENGINE_CACHE = Join-Path $output 'engine-cache'
 if (!$CalibrateOnly) {
-    & $python (Join-Path $PSScriptRoot 'monitor_yolo_benchmark.py') --gpu-log (Join-Path $output 'soak.gpu.csv') -- $benchmark --model $Model --images-dir $ImagesDir --device 0 --sessions $calibration.best.sessions --threads 0 --profile $profile --workload $calibration.workload --warmup 100 --seconds 1800 --rounds 1 --mode continuous --shutdown-worker 0 --output (Join-Path $output 'soak.json')
+    & $python (Join-Path $PSScriptRoot 'monitor_yolo_benchmark.py') --gpu-log (Join-Path $output 'soak.gpu.csv') -- $benchmark --model $Model --images-dir $ImagesDir --device 0 --sessions $calibration.best.sessions --threads 0 --profile $profile --workload $calibration.workload --warmup 100 --seconds 1800 --rounds 1 --mode continuous --p95-limit-ms $P95LimitMs --shutdown-worker 0 --output (Join-Path $output 'soak.json')
     if ($LASTEXITCODE -ne 0) { throw 'Five-caller 30-minute AUTO stability test failed' }
     if ($gpuCandidates.Count -gt 0) {
         if ($calibration.best.device -eq 3 -and $calibration.best.precision -eq 'fp32' -and $calibration.best.graph -eq 0) { $gpuChecks.gpu_soak=$true }
         else {
-            & $python (Join-Path $PSScriptRoot 'monitor_yolo_benchmark.py') --gpu-log (Join-Path $output 'soak-tensorrt-fp32.gpu.csv') -- $benchmark --model $Model --images-dir $ImagesDir --device 3 --sessions $gpuCandidates[0].sessions --precision fp32 --graph 0 --threads 1 --warmup 100 --seconds 1800 --rounds 1 --mode continuous --shutdown-worker 0 --output (Join-Path $output 'soak-tensorrt-fp32.json')
+            & $python (Join-Path $PSScriptRoot 'monitor_yolo_benchmark.py') --gpu-log (Join-Path $output 'soak-tensorrt-fp32.gpu.csv') -- $benchmark --model $Model --images-dir $ImagesDir --device 3 --sessions $gpuCandidates[0].sessions --precision fp32 --graph 0 --threads 1 --warmup 100 --seconds 1800 --rounds 1 --mode continuous --p95-limit-ms $P95LimitMs --shutdown-worker 0 --output (Join-Path $output 'soak-tensorrt-fp32.json')
             if ($LASTEXITCODE -ne 0) { throw 'TensorRT FP32 five-caller 30-minute stability test failed' }
             $gpuChecks.gpu_soak=$true
         }
@@ -121,7 +128,7 @@ if (!$CalibrateOnly) {
 # Trace is a separate short diagnostic; formal calibration above disables it.
 $tracePrefix = Join-Path $output 'stages'
 $env:CQ_AI_YOLO_TRACE_PREFIX = $tracePrefix
-& $benchmark --model $Model --images-dir $ImagesDir --device 0 --sessions $calibration.best.sessions --threads 0 --profile $profile --workload $calibration.workload --warmup 10 --samples 100 --rounds 1 --mode continuous --shutdown-worker 0 --output (Join-Path $output 'stage-diagnostic.json')
+& $benchmark --model $Model --images-dir $ImagesDir --device 0 --sessions $calibration.best.sessions --threads 0 --profile $profile --workload $calibration.workload --warmup 10 --samples 100 --rounds 1 --mode continuous --p95-limit-ms $P95LimitMs --shutdown-worker 0 --output (Join-Path $output 'stage-diagnostic.json')
 $env:CQ_AI_YOLO_TRACE_PREFIX = ''
 if ($LASTEXITCODE -ne 0) { throw 'Stage diagnostic failed' }
 & $python (Join-Path $PSScriptRoot 'summarize_yolo_trace.py') $tracePrefix --output (Join-Path $output 'stages.json')
@@ -130,9 +137,9 @@ $stages = Get-Content -LiteralPath (Join-Path $output 'stages.json') -Raw -Encod
 $targetHost = (@($inventory.cpu | Where-Object Name -Match '2696.*v4').Count -gt 0 -and @($inventory.gpu | Where-Object Name -Match 'RTX\s*2070').Count -gt 0)
 $accepted = $targetHost -and $BusinessWindowsActive.IsPresent -and !$inventory.baseline_only -and !$CalibrateOnly -and $calibration.host_sample_threshold_met -and $gpuChecks.gpu_soak
 $diagnostic = Get-Content -LiteralPath (Join-Path $output 'stage-diagnostic.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$summary = [ordered]@{schema=1; delivery=$diagnostic.api_version; worker_protocol=$diagnostic.worker_protocol; target_host=$targetHost; business_windows_active=$BusinessWindowsActive.IsPresent; baseline_only=$inventory.baseline_only; target_performance_accepted=$accepted; measured_worst_lane_p50_ms=$calibration.best.p50; measured_worst_lane_p95_ms=$calibration.best.p95; gpu=$gpuChecks; ipc_p95_ms=$stages.ipc_p95_ms; shared_memory_followup=$stages.shared_memory_measurement_gate_exceeded; limitation='Only this host, model, frames and actual business window load are covered. Functional success does not imply the 20/30ms target.'}
+$summary = [ordered]@{schema=1; delivery=$diagnostic.api_version; worker_protocol=$diagnostic.worker_protocol; target_host=$targetHost; business_windows_active=$BusinessWindowsActive.IsPresent; baseline_only=$inventory.baseline_only; target_performance_accepted=$accepted; measured_worst_lane_p50_ms=$calibration.best.p50; measured_worst_lane_p95_ms=$calibration.best.p95; gpu=$gpuChecks; ipc_p95_ms=$stages.ipc_p95_ms; shared_memory_followup=$stages.shared_memory_measurement_gate_exceeded; p95_limit_ms=$P95LimitMs; limitation="Only this host, model, frames and measured load are covered. Functional success does not imply the requested P95 limit of ${P95LimitMs}ms."}
 $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'acceptance-summary.json') -Encoding UTF8
-$summaryArguments = @((Join-Path $PSScriptRoot 'summarize_yolo_acceptance.py'), $output)
+$summaryArguments = @((Join-Path $PSScriptRoot 'summarize_yolo_acceptance.py'), $output, '--p95-limit-ms', $P95LimitMs)
 if ($CalibrateOnly) { $summaryArguments += '--calibrate-only' }
 & $python @summaryArguments
 if ($LASTEXITCODE -ne 0) { throw 'Acceptance consistency/memory summary failed' }

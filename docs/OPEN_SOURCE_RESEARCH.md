@@ -2,6 +2,57 @@
 
 ## Requirement
 
+requirement_id: REQ-YOLO-003
+summary: Reach local YOLO26/bus five-caller complete-call P95 <=20ms with unchanged public contracts; the user revised acceptance from15ms on2026-10-07.
+scope: optional NVIDIA runtime recovery, native preprocessing, calibration/acceptance, RTX2070 evidence and paired delivery
+updated_at: 2026-10-08
+
+## Candidates
+
+### Existing native TensorRT10.13.3.9 module and pinned NVIDIA distribution
+
+- URL: https://github.com/NVIDIA/TensorRT ; https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/optimization.html
+- License: existing headers Apache-2.0; runtime distributions carry separate NVIDIA terms and retained licenses.
+- Reuse: ABI3 engine/context/stream/pinned buffers, FP16, CUDA Graph, per-driver/model engine and timing cache.
+- Limits: this host lacks nvinfer_10.dll; a real load fails with Windows error126. A compiled module does not prove GPU execution. FP16 and Graph remain gated by correctness and repeated measurements.
+
+### Existing preprocessing and native caller benchmark
+
+- Source: src/yolo_preprocess.h, tests/yolo_pipeline_test.cpp, tests/yolo_benchmark.cpp and scripts/calibrate_yolo.py.
+- Reuse: exact nearest-neighbor letterbox,114 padding, FP32 CHW normalization, QPC complete-call timing and per-request traces.
+- Extension: a256-entry FP32 division lookup and separate content/padding loops; configurable P95 limit with legacy defaults preserved.
+- Limits: current selection/acceptance use30ms, not the requested15ms. Baseline diagnostic P95: ORT Run32.086ms, preprocessing3.448ms, combined IPC1.905ms. Stage percentiles are diagnostic and are not additive formal acceptance evidence.
+
+### Existing calibration identity and embedded runtime bundle
+
+- Source: src/yolo_pool.cpp runtime_fingerprint(), src/runtime_bundle_loader.cpp runtime_bundle_hash()/ensure_embedded_directml().
+- Evidence: after native cache tests, the same model/driver/slots/workload changed key from773c9aee... to153b8a22...; AUTO missed the record and used FP32. The embedded CPU runtime lazily extracts DirectML.dll, while the old fingerprint hashed that cache file or the word missing once per process.
+- Reuse: the verified embedded bundle SHA already covers both ORT and DirectML payloads independently of extraction state. Use that identity for embedded Workers; retain actual file fingerprints for the external x64 runtime.
+- Acceptance: an owned cold LOCALAPPDATA cache, subsequent DirectML extraction and a fresh process must produce the same key; AUTO must read the newly validated record. Version the key algorithm to reject earlier ambiguous records. Public ABI/protocol remain unchanged.
+
+### Portable build tooling for this host
+
+- Source: https://github.com/tgbender/portablemsvc ; CMake/Ninja PyPI binary wheels.
+- Reuse: extract official Microsoft MSVC14.44/SDK26100 packages to an independent directory using the pure-Python MSI extractor. No system installer, registry registration or permanent environment change.
+- Evidence: external portablemsvc.lock records resolved MSVC14.44.35207 (compiler19.44.35229), SDK10.0.26100.0, package URLs and hashes. The Microsoft channel manifest's declared vsman hash differs from its downloaded response; both are retained, and individual payload hashes are checked. This build tooling is not shipped with the product.
+- Extension: allow compiler-discovered X86/x64 AVX2 paths with Ninja, and discover packaging tools from the active PATH before the existing VS2022 fallback.
+
+### CUDA stage timing after long-run failure
+
+- Source: https://docs.nvidia.com/cuda/archive/12.8.1/cuda-driver-api/group__CUDA__EVENT.html ; src/tensorrt_module.cpp run().
+- Evidence: the final core pair passed short formal20ms sampling, but a second1800-second run reached worst-laneP95 27.0985ms with621,628 successful calls. Both retained runs show higher minute latency after about13-15minutes. This does not establish a thermal, scheduling or background-load cause.
+- Extension: allocate/record four CUDA timing events and query elapsed times only when CQ_AI_YOLO_TRACE_PREFIX is configured before model creation. Normal requests retain asynchronous copies, enqueueV3/Graph and cuStreamSynchronize before output; zero stage timings mean instrumentation disabled.
+- Limits: this removes known diagnostic work, not the demonstrated cause of the long-run tail. Requalify CPU/FP32/FP16 detections, both modes/three rounds, Graph and1800-second stability. A failed candidate remains unpromoted; do not repeat until a favorable result and discard failures.
+
+## Decision
+
+decision: use
+reason: Reuse and qualify the already implemented NVIDIA path before adding infrastructure. Restore exact locked dependencies, retain the640 model, optimize only bit-identical preprocessing, and expose the P95 limit explicitly. Keep the original15ms scan and use the user-revised20ms limit for final acceptance. CUDA Graph is enabled only after every-round >=10% P95 improvement. IPC is below the registered2ms trigger, so shared memory is outside the current change unless new measurements exceed it. Baseline evidence is outpush/yolo26-local-20261007/measurement-summary.json;30,000 formal samples passed correctness but failed latency. No five-window business acceptance claim follows from this workload.
+
+## Prior research — REQ-YOLO-002
+
+## Requirement
+
 requirement_id: REQ-YOLO-002
 summary: Support YOLOv5, YOLO11 and YOLO26 ONNX detection without public ABI or result-contract changes.
 scope: native model inspection/decoding, ORT/TensorRT adapters, offline tools, tests and delivery

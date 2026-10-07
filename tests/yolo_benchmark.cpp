@@ -51,11 +51,13 @@ Resources resources(HANDLE process) {
     if(GetProcessMemoryInfo(process,reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory),sizeof(memory))) {r.private_bytes=memory.PrivateUsage;r.working_set=memory.WorkingSetSize;}
     return r;
 }
-std::string stats(std::vector<double> samples) {
+std::string stats(std::vector<double> samples, double limit_ms) {
     std::sort(samples.begin(),samples.end());
     if(samples.empty())return "{}";
     const auto percentile=[&](double p){const size_t index=static_cast<size_t>(std::ceil(p*samples.size()))-1;return samples[std::min(index,samples.size()-1)];};
-    std::ostringstream output;output<<std::setprecision(9)<<"{\"count\":"<<samples.size()<<",\"p50_ms\":"<<percentile(.5)<<",\"p95_ms\":"<<percentile(.95)<<",\"p99_ms\":"<<percentile(.99)<<'}';return output.str();
+    const auto over_limit=static_cast<size_t>(samples.end()-std::upper_bound(samples.begin(),samples.end(),limit_ms));
+    std::ostringstream output;output<<std::setprecision(9)<<"{\"count\":"<<samples.size()<<",\"p50_ms\":"<<percentile(.5)<<",\"p95_ms\":"<<percentile(.95)<<",\"p99_ms\":"<<percentile(.99)
+        <<",\"max_ms\":"<<samples.back()<<",\"over_limit_count\":"<<over_limit<<",\"over_limit_fraction\":"<<static_cast<double>(over_limit)/samples.size()<<'}';return output.str();
 }
 }
 int wmain(int argc,wchar_t** argv) {
@@ -65,7 +67,7 @@ int wmain(int argc,wchar_t** argv) {
         std::filesystem::path model,output="yolo-benchmark.json",verification;
         std::vector<std::filesystem::path> images;
         int device=2,sessions=5,callers=5,warmup=100,samples=1000,rounds=3,threads=0,seconds=0,worker_protocol=26;
-        float conf=.5f;bool burst=false;std::string precision="fp32",workload,profile;int graph=0;
+        float conf=.5f;bool burst=false;std::string precision="fp32",workload,profile;int graph=0;double limit_ms=30;
         const auto utf8=[](const wchar_t* value){const int n=WideCharToMultiByte(CP_UTF8,0,value,-1,nullptr,0,nullptr,nullptr);std::string text(n,0);WideCharToMultiByte(CP_UTF8,0,value,-1,text.data(),n,nullptr,nullptr);text.pop_back();return text;};
         for(int i=1;i<argc;++i) {
             const std::wstring key=argv[i];if(i+1>=argc)throw std::runtime_error("Every option requires a value");const wchar_t* value=argv[++i];
@@ -81,10 +83,12 @@ int wmain(int argc,wchar_t** argv) {
             else if(key==L"--mode")burst=std::wstring(value)==L"simultaneous";
             else if(key==L"--precision")precision=utf8(value);else if(key==L"--graph")graph=std::stoi(value);
             else if(key==L"--confidence")conf=std::stof(value);else if(key==L"--workload")workload=utf8(value);
+            else if(key==L"--p95-limit-ms")limit_ms=std::stod(value);
             else if(key==L"--profile")profile=utf8(value);else throw std::runtime_error("Unknown option: "+utf8(key.c_str()));
         }
         if(model.empty() ||images.empty() ||callers<=0 ||callers>64 ||sessions<=0 ||warmup<0 ||samples<1 ||rounds<1 ||seconds<0)throw std::runtime_error("Required: --model path --image BMP; positive callers/sessions/samples/rounds");
         if(seconds &&burst)throw std::runtime_error("Duration mode requires --mode continuous");
+        if(!std::isfinite(limit_ms) ||limit_ms<=0)throw std::runtime_error("P95 limit must be finite and positive");
         if(worker_protocol!=25 &&worker_protocol!=26)throw std::runtime_error("Benchmark supports Worker protocols 25 and 26");
         std::sort(images.begin(),images.end());std::vector<std::vector<uint8_t>> frames;
         std::string image_hashes;
@@ -145,10 +149,10 @@ int wmain(int argc,wchar_t** argv) {
             <<",\"dll\":"<<quote(dll.u8string())<<",\"dll_sha256\":"<<quote(ai::sha256(dll_data.data(),dll_data.size()))
             <<",\"benchmark_sha256\":"<<quote(ai::sha256(exe_data.data(),exe_data.size()))
             <<",\"workload\":"<<quote(workload)<<",\"callers\":"<<callers<<",\"mode\":"<<quote(burst?"simultaneous":"continuous")
-            <<",\"confidence\":"<<conf<<",\"nms\":0.45,\"warmup_per_lane\":"<<warmup<<",\"samples_per_lane\":"<<samples
+            <<",\"confidence\":"<<conf<<",\"nms\":0.45,\"p95_limit_ms\":"<<limit_ms<<",\"warmup_per_lane\":"<<warmup<<",\"samples_per_lane\":"<<samples
             <<",\"cold_create_ms\":"<<(load_start-cold_start)*1000.0/frequency.QuadPart<<",\"load_ms\":"<<(load_end-load_start)*1000.0/frequency.QuadPart<<",\"runtime\":"<<runtime;
         if(!worker_path.empty()){const auto data=bytes(worker_path);report<<",\"worker\":"<<quote(worker_path.u8string())<<",\"worker_sha256\":"<<quote(ai::sha256(data.data(),data.size()));}
-        report<<",\"rounds\":[";
+        report<<",\"worker_pid\":"<<(worker?GetProcessId(worker):0)<<",\"rounds\":[";
         std::ofstream raw(output.wstring()+L".samples.csv");raw<<"round,lane,sample,frame,total_ms\n";
         std::ofstream memory_file(output.wstring()+L".resources.csv");memory_file<<"round,elapsed_s,client_private,worker_private,client_working_set,worker_working_set\n";
         for(int round=0;round<rounds;++round) {
@@ -181,12 +185,12 @@ int wmain(int argc,wchar_t** argv) {
             const double elapsed=(end-begin)/static_cast<double>(frequency.QuadPart);
             if(round)report<<',';report<<"{\"round\":"<<round<<",\"errors\":"<<errors.load()<<",\"elapsed_s\":"<<elapsed<<",\"lanes\":[";
             std::vector<double> all;
-            for(int lane=0;lane<callers;++lane){if(lane)report<<',';report<<stats(timings[lane]);all.insert(all.end(),timings[lane].begin(),timings[lane].end());
+            for(int lane=0;lane<callers;++lane){if(lane)report<<',';report<<stats(timings[lane],limit_ms);all.insert(all.end(),timings[lane].begin(),timings[lane].end());
                 for(size_t n=0;n<timings[lane].size();++n)raw<<round<<','<<lane<<','<<n<<','<<(n+lane)%frames.size()<<','<<timings[lane][n]<<'\n';}
-            report<<"],\"overall\":"<<stats(all)<<",\"throughput_per_s\":"<<all.size()/elapsed
+            report<<"],\"overall\":"<<stats(all,limit_ms)<<",\"throughput_per_s\":"<<all.size()/elapsed
                 <<",\"client_cpu_core_equivalents\":"<<(after_client.cpu-before_client.cpu)/1e7/elapsed<<",\"worker_cpu_core_equivalents\":"<<(after_worker.cpu-before_worker.cpu)/1e7/elapsed
                 <<",\"client_private_peak\":"<<client_peak<<",\"worker_private_peak\":"<<worker_peak<<'}';
-            std::cout<<"round="<<round<<" errors="<<errors<<" "<<stats(all)<<" throughput="<<all.size()/elapsed<<std::endl;
+            std::cout<<"round="<<round<<" errors="<<errors<<" "<<stats(all,limit_ms)<<" throughput="<<all.size()/elapsed<<std::endl;
             if(errors)throw std::runtime_error("Inference failed during measurement");
         }
         report<<"]}";std::ofstream file(output);file<<report.str();file.flush();if(!file)throw std::runtime_error("Cannot write benchmark report");

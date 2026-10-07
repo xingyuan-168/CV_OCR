@@ -4,7 +4,7 @@ import csv
 import json
 from pathlib import Path
 
-from calibrate_yolo import verify, worst_lanes
+from calibrate_yolo import verify, worst_lanes, performance_met, positive_milliseconds
 
 
 def read(path):
@@ -54,12 +54,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--calibrate-only", action="store_true")
+    parser.add_argument("--p95-limit-ms", type=positive_milliseconds)
     args = parser.parse_args()
     folder = args.directory.resolve()
     inventory = read(folder / "hardware.json")
     calibration = read(folder / "calibration-report.json")
+    p95_limit_ms = args.p95_limit_ms if args.p95_limit_ms is not None else calibration.get("p95_limit_ms", 30.0)
+    positive_milliseconds(p95_limit_ms)
     preliminary = read(folder / "acceptance-summary.json")
-    reports = list(calibration["best"]["reports"]) + [calibration["auto_report"]]
+    reports = list(calibration["best"]["reports"]) + calibration.get("auto_reports", [calibration["auto_report"]])
     stability = {}
     if not args.calibrate_only:
         for name in ("soak.json", "soak-tensorrt-fp32.json"):
@@ -80,16 +83,24 @@ def main():
             raise ValueError("FP32 cache hit/rebuild detections changed from the initial engine")
     missing = read(folder / "optional-dependency-checks/summary.json")
     p50, p95 = worst_lanes(reports)
-    timing_passed = p50 <= 20 and p95 <= 30 and all(not r["errors"] for report in reports for r in report["rounds"])
+    timing_passed = performance_met(reports, p95_limit_ms)
     grew = any(item["continuous_growth_detected"] for item in stability.values())
-    gpu_memory = gpu_memory_summary(folder / ("soak-tensorrt-fp32.gpu.csv" if (folder / "soak-tensorrt-fp32.json").is_file() else "soak.gpu.csv"))
-    preliminary.update(measured_worst_lane_p50_ms=p50, measured_worst_lane_p95_ms=p95, threshold_met=timing_passed,
+    gpu_stability = {name: gpu_memory_summary(folder / name.replace(".json", ".gpu.csv"))
+                     for name in stability}
+    gpu_memory = gpu_stability.get("soak.json", dict(available=False, growth_detected=None))
+    preliminary.update(p95_limit_ms=p95_limit_ms, measured_worst_lane_p50_ms=p50, measured_worst_lane_p95_ms=p95, threshold_met=timing_passed,
                        stability=stability, memory_growth_detected=grew, cache_detections_consistent=cache_consistent,
-                       optional_dependency_checks=missing, calibration_only=args.calibrate_only, gpu_memory=gpu_memory)
+                       optional_dependency_checks=missing, calibration_only=args.calibrate_only, gpu_memory=gpu_memory,
+                       gpu_stability=gpu_stability)
     preliminary["target_performance_accepted"] = bool(preliminary["target_host"] and inventory["business_windows_active"] and not inventory["baseline_only"]
-        and not args.calibrate_only and timing_passed and not grew and stability and missing["passed"]
+        and not args.calibrate_only and timing_passed and not grew and "soak.json" in stability and missing["passed"]
         and preliminary["gpu"]["gpu_soak"] and preliminary["gpu"]["cache_hit"] and preliminary["gpu"]["corruption_rebuilt"] and cache_consistent
+        and all(item["available"] and not item["growth_detected"] for item in gpu_stability.values()))
+    preliminary["local_benchmark_accepted"] = bool(preliminary["target_host"] and not args.calibrate_only
+        and timing_passed and not grew and "soak.json" in stability and missing["passed"]
+        and preliminary["gpu"]["cache_hit"] and preliminary["gpu"]["corruption_rebuilt"] and cache_consistent
         and gpu_memory["available"] and not gpu_memory["growth_detected"])
+    preliminary["local_benchmark_scope"] = "Only the measured host/model/BMPs and five callers; business-window acceptance is separate."
     (folder / "acceptance-summary.json").write_text(json.dumps(preliminary, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Worst lane P50={p50:.3f}ms P95={p95:.3f}ms; target accepted={preliminary['target_performance_accepted']}")
 

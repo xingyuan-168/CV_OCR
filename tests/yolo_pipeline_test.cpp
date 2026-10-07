@@ -98,22 +98,35 @@ void image_to_chw_float(
 int main() {
     std::mt19937 random(42);
     for (int format : {AI_IMAGE_GRAY8, AI_IMAGE_RGB24, AI_IMAGE_BGR24, AI_IMAGE_BGRA32, AI_IMAGE_RGBA32}) {
-        for (const auto dims : {std::pair<int,int>{800,600}, {321,205}, {17,19}, {1,320}, {640,1}}) {
+        for (const auto dims : {std::pair<int,int>{800,600}, {810,1080}, {321,205}, {17,19}, {1,320}, {640,1}}) {
             const int stride = dims.first * ai::channels_for_format(format) + 7;
             std::vector<uint8_t> pixels(static_cast<size_t>(stride) * dims.second);
             for (auto& p : pixels) p = static_cast<uint8_t>(random());
             for (int direction : {1,-1}) {
                 AIImage image{pixels.data() + (direction == 1 ? 0 : static_cast<size_t>(stride) * (dims.second-1)), dims.first,dims.second,direction*stride,format};
-                std::vector<float> expected, actual(3*320*320);
-                std::vector<uint8_t> scratch; std::vector<int> columns;
-                reference::LetterboxInfo previous{};
-                reference::image_to_chw_float(image.data,image.width,image.height,image.stride,image.format,320,320,expected,scratch,previous);
-                const auto box=ai::yolo_preprocess(image,320,320,actual.data(),columns);
-                assert(previous.scale == box.scale && previous.pad_x == box.pad_x && previous.pad_y == box.pad_y);
-                assert(expected.size() == actual.size());
-                assert(std::memcmp(expected.data(),actual.data(),actual.size()*sizeof(float)) == 0);
+                for (int target : {320,640}) {
+                    std::vector<float> expected, actual(3*target*target);
+                    std::vector<uint8_t> scratch; std::vector<int> columns;
+                    reference::LetterboxInfo previous{};
+                    reference::image_to_chw_float(image.data,image.width,image.height,image.stride,image.format,target,target,expected,scratch,previous);
+                    const auto box=ai::yolo_preprocess(image,target,target,actual.data(),columns);
+                    assert(previous.scale == box.scale && previous.pad_x == box.pad_x && previous.pad_y == box.pad_y);
+                    assert(expected.size() == actual.size());
+                    assert(std::memcmp(expected.data(),actual.data(),actual.size()*sizeof(float)) == 0);
+                }
             }
         }
+    }
+    // Cover every byte in the normalization lookup independently of resizing.
+    std::vector<uint8_t> ramp(256);
+    for (int i=0;i<256;++i) ramp[i]=static_cast<uint8_t>(i);
+    AIImage gray{ramp.data(),256,1,256,AI_IMAGE_GRAY8};
+    std::vector<float> normalized(3*256); std::vector<int> columns;
+    ai::yolo_preprocess(gray,256,1,normalized.data(),columns);
+    for (int i=0;i<256;++i) {
+        const float expected=static_cast<float>(i)/255.0f;
+        for (int channel=0;channel<3;++channel)
+            assert(std::memcmp(&expected,&normalized[channel*256+i],sizeof(float))==0);
     }
     for (int direction : {1,-1}) {
         std::vector<uint8_t> bmp(54 + 8*3, 0);

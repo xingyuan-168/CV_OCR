@@ -1,5 +1,21 @@
 # Scope
 
+Current task: REQ-YOLO-003, local YOLO26/bus.jpg five-caller complete-call
+P95 <=20ms, revised by the user from15ms; pursue lower latency. Restore Git
+history without overwriting local files; use a codex/
+branch from the current source. Reuse the existing TensorRT ABI3 module and
+locked10.13.3.9/CUDA12.8 dependencies, qualify FP32/FP16 and CUDA Graph on RTX2070,
+optimize bit-identical preprocessing, and propagate an explicit P95 limit through
+calibration/acceptance tools. Stage all testing/candidates under outpush/.
+
+Do not resize/re-export the frozen640 model, change inference/result contracts,
+add INT8/batching, or claim five-business-window acceptance from a bus benchmark.
+The measured baseline IPC P95 is1.905ms, below the2ms shared-memory trigger.
+Only a verified candidate meeting the new requirement may create/promote a new
+delivery cohort; retain the currentv23.7 and all historical evidence.
+
+Prior delivered scope (REQ-YOLO-002):
+
 This task implements REQ-YOLO-002 from the registered v23.6 source: validated ONNX
 detection descriptors, v5/v11/v26 decode paths, ORT/TensorRT integration, offline
 model tools, regression tests and the0.14.7/v23.7 paired DLL/Worker/HTML delivery.

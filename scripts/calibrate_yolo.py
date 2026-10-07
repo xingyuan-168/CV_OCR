@@ -94,14 +94,29 @@ def graph_qualified(normal, graph):
     return True
 
 
-def choose_candidate(entries):
+def positive_milliseconds(value):
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise argparse.ArgumentTypeError("Latency limit must be finite and positive")
+    return number
+
+
+def performance_met(reports, p95_limit_ms=30.0):
+    rounds = [r for report in reports for r in report["rounds"]]
+    return (bool(rounds) and all(not r["errors"] and bool(r["lanes"])
+            and all(math.isfinite(lane["p50_ms"]) and math.isfinite(lane["p95_ms"])
+                    and lane["p50_ms"] <= 20 and lane["p95_ms"] <= p95_limit_ms
+                    for lane in r["lanes"]) for r in rounds))
+
+
+def choose_candidate(entries, p95_limit_ms=30.0):
     def throughput(entry):
         return min(r["throughput_per_s"] for p in entry["reports"] for r in p["rounds"])
     def rank(entry):
-        meets_p95 = entry["p95"] <= 30
+        meets_p95 = entry["p95"] <= p95_limit_ms
         return not meets_p95, entry["p50"] if meets_p95 else entry["p95"], -throughput(entry)
     fastest = min(entries, key=rank)
-    comparable = [x for x in entries if (x["p95"] <= 30) == (fastest["p95"] <= 30)
+    comparable = [x for x in entries if (x["p95"] <= p95_limit_ms) == (fastest["p95"] <= p95_limit_ms)
                   and x["p50"] <= fastest["p50"] * 1.05 and x["p95"] <= fastest["p95"] * 1.05
                   and throughput(x) >= throughput(fastest) * .95]
     # Within 5% prefer freeing the GPU, fewer CPU workers, and fewer slots.
@@ -114,14 +129,15 @@ def run_benchmark(args, folder, name, device, sessions, threads=1, precision="fp
     command = [str(args.benchmark), "--model", str(args.model), "--device", str(device), "--sessions", str(sessions),
                "--threads", str(threads), "--precision", precision, "--graph", str(graph), "--mode", mode,
                "--warmup", str(args.warmup), "--samples", str(args.samples), "--rounds", str(args.rounds),
-               "--output", str(report_path), "--verify-output", str(detections_path), "--workload", args.workload]
+               "--output", str(report_path), "--verify-output", str(detections_path), "--workload", args.workload,
+               "--p95-limit-ms", str(args.p95_limit_ms)]
     if args.preserve_worker:
         command += ["--shutdown-worker", "0"]
     if profile:
         command += ["--profile", str(profile)]
     for image in args.images:
         command += ["--image", str(image)]
-    environment = dict(os.environ, CQ_AI_YOLO_TRACE_PREFIX="")
+    environment = dict(os.environ, CQ_AI_YOLO_TRACE_PREFIX="", CQ_AI_ORT_PROFILE_PREFIX="")
     gpu_monitor = None
     smi = shutil.which("nvidia-smi")
     if smi:
@@ -164,6 +180,7 @@ def main():
     parser.add_argument("--warmup", type=int, default=100)
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=1800)
+    parser.add_argument("--p95-limit-ms", type=positive_milliseconds, default=30.0)
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--graphs", action="store_true")
     parser.add_argument("--preserve-worker", action="store_true", help="Release test models without shutting down a Worker used by business windows")
@@ -177,7 +194,13 @@ def main():
     folder.mkdir(parents=True, exist_ok=True)
     if not args.workload:
         args.workload = hashlib.sha256("".join(hashlib.sha256(p.read_bytes()).hexdigest() for p in args.images).encode()).hexdigest()
-    reference_report, reference = run_benchmark(args, folder, "reference-cpu", 2, 1, 1)
+    # This run supplies detection truth, not a performance candidate. CPU
+    # configurations still receive the full requested samples in the scan.
+    reference_args = argparse.Namespace(**vars(args))
+    reference_args.warmup = min(args.warmup, 2)
+    reference_args.samples = min(args.samples, 5)
+    reference_args.rounds = 1
+    reference_report, reference = run_benchmark(reference_args, folder, "reference-cpu", 2, 1, 1)
     candidates, failures = [], []
     budget = physical_cores()
     for sessions in map(int, args.sessions.split(",")):
@@ -212,6 +235,8 @@ def main():
                                 report, detections = run_benchmark(args, folder, base_name + "-graph-" + mode, device, sessions, threads, precision, graph=1, mode=mode)
                                 if not verify(reference, detections):
                                     raise RuntimeError("CUDA Graph detection gate failed")
+                                if precision == "fp16" and not verify(fp32_reference, detections):
+                                    raise RuntimeError("FP16 CUDA Graph differs from qualified TensorRT FP32")
                                 captured.append(report)
                             if graph_qualified(reports, captured):
                                 p50, p95 = worst_lanes(captured)
@@ -225,7 +250,7 @@ def main():
         raise RuntimeError("No backend passed detection and inference checks")
     selected = []
     for sessions in sorted({x["sessions"] for x in candidates}):
-        selected.append(choose_candidate([x for x in candidates if x["sessions"] == sessions]))
+        selected.append(choose_candidate([x for x in candidates if x["sessions"] == sessions], args.p95_limit_ms))
     profile = folder / "business-calibration.tsv"
     temporary = profile.with_suffix(".tmp")
     with temporary.open("w", encoding="utf-8") as file:
@@ -233,15 +258,21 @@ def main():
         for entry in selected:
             key = entry["reports"][0]["runtime"]["calibration_key"]
             file.write(f"{key}\t{entry['device']}\t{entry['threads']}\t{int(entry['precision']=='fp16')}\t{entry['graph']}\t1\t{entry['p50']:.9f}\t{entry['p95']:.9f}\n")
-    best = choose_candidate(selected)
+    best = choose_candidate(selected, args.p95_limit_ms)
     # Exercise the generated record through AUTO, rather than merely trusting
     # the writer and loader have compatible keys and settings.
-    auto_report, auto_detections = run_benchmark(args, folder, "selected-auto", 0, best["sessions"], 0, profile=temporary)
-    if auto_report["runtime"]["selection_basis"] != "business_calibration" or not verify(reference, auto_detections):
-        raise RuntimeError("Published AUTO record did not load or failed detection validation")
+    auto_reports = []
+    for mode in ("continuous", "simultaneous"):
+        name = "selected-auto" if mode == "continuous" else "selected-auto-simultaneous"
+        auto_report, auto_detections = run_benchmark(args, folder, name, 0, best["sessions"], 0, mode=mode, profile=temporary)
+        if auto_report["runtime"]["selection_basis"] != "business_calibration" or not verify(reference, auto_detections):
+            raise RuntimeError("Published AUTO record did not load or failed detection validation")
+        auto_reports.append(auto_report)
     temporary.replace(profile)
     result = dict(schema=1, workload=args.workload, physical_cores=budget, reference=reference_report, candidates=candidates, selected=selected, best=best, failures=failures,
-                  host_sample_threshold_met=best["p50"] <= 20 and best["p95"] <= 30, auto_report=auto_report,
+                  p95_limit_ms=args.p95_limit_ms,
+                  host_sample_threshold_met=performance_met(best["reports"] + auto_reports, args.p95_limit_ms),
+                  auto_report=auto_reports[0], auto_reports=auto_reports,
                   caveat="Acceptance applies only to this host and these BMPs; run with all five business windows on E5/RTX2070")
     (folder / "calibration-report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     example = f"设置环境变量 CQ_AI_YOLO_CALIBRATION_FILE = {profile}\n设置环境变量 CQ_AI_YOLO_WORKLOAD_ID = {args.workload}\nYOLO_创建 (模型句柄)\nYOLO_加载模型从路径 (模型句柄, 模型路径, 标签路径, 0, 0, 0, {best['sessions']})\n五个调用线程共享模型句柄。最后一个参数是执行槽数。\n每路用 QPC 包住 YOLO_InferJson 调用进行验收。\n"

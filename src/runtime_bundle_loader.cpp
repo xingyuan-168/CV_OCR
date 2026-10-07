@@ -588,7 +588,7 @@ bool prepare_bundle_and_cache(
     *bundle_hash = hex_digest(digest.data(), digest.size());
     const std::filesystem::path local = local_appdata_path(error);
     if (local.empty()) return false;
-    *cache = local / L"CQ_AI" / L"runtime" / L"v23.7" /
+    *cache = local / L"CQ_AI" / L"runtime" / L"v23.8" /
         std::filesystem::path(
             L"ort-dml-1.24.4-" +
             std::wstring(bundle_hash->begin(), bundle_hash->end()));

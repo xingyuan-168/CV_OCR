@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import argparse
 
 spec = importlib.util.spec_from_file_location("calibrate", Path(__file__).parents[1] / "scripts/calibrate_yolo.py")
 calibrate = importlib.util.module_from_spec(spec)
@@ -40,6 +41,34 @@ class DetectionGateTest(unittest.TestCase):
         self.assertIs(calibrate.choose_candidate([gpu, cpu]), cpu)
         bad_tail, stable = entry(15, 31), entry(20, 29)
         self.assertIs(calibrate.choose_candidate([bad_tail, stable]), stable)
+
+    def test_explicit_fifteen_ms_changes_selection_without_changing_default(self):
+        def entry(p50, p95):
+            return dict(p50=p50, p95=p95, device=3, threads=1, sessions=5,
+                        reports=[dict(rounds=[dict(throughput_per_s=250)])])
+        fast_median, passes_fifteen = entry(10, 25), entry(12, 14)
+        self.assertIs(calibrate.choose_candidate([fast_median, passes_fifteen]), fast_median)
+        self.assertIs(calibrate.choose_candidate([fast_median, passes_fifteen], 15), passes_fifteen)
+
+    def test_threshold_uses_every_lane_round_and_errors(self):
+        def report(tail=15, errors=0):
+            return dict(rounds=[dict(errors=0, lanes=[dict(p50_ms=10, p95_ms=14)]),
+                                dict(errors=errors, lanes=[dict(p50_ms=10, p95_ms=14),
+                                                          dict(p50_ms=12, p95_ms=tail)])])
+        self.assertTrue(calibrate.performance_met([report()], 15))
+        self.assertFalse(calibrate.performance_met([report(15.001)], 15))
+        self.assertFalse(calibrate.performance_met([report(errors=1)], 15))
+        self.assertFalse(calibrate.performance_met([report(), report(16)], 15))
+        self.assertTrue(calibrate.performance_met([report(29)]))
+        for value in (float("nan"), float("inf")):
+            self.assertFalse(calibrate.performance_met([report(value)], 15))
+        self.assertFalse(calibrate.performance_met([], 15))
+
+    def test_latency_limit_rejects_invalid_values(self):
+        for value in ("0", "-1", "nan", "inf", "-inf"):
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                calibrate.positive_milliseconds(value)
+        self.assertEqual(calibrate.positive_milliseconds("15"), 15)
 
 
 if __name__ == "__main__":

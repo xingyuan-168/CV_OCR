@@ -22,7 +22,9 @@ if (!$buildRoot.StartsWith($project + [IO.Path]::DirectorySeparatorChar,[StringC
 $opencvPath=Resolve-ProjectPath $OpenCVDir
 $runtimePath=Resolve-ProjectPath $RuntimeDir
 $python=(Get-Command $PythonExe -ErrorAction Stop).Source
-$cmake=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
+$cmakeCommand=Get-Command cmake.exe -ErrorAction SilentlyContinue
+if ($cmakeCommand) { $cmake=$cmakeCommand.Source }
+else { $cmake=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' }
 $ctest=Join-Path (Split-Path -Parent $cmake) 'ctest.exe'
 $pointer=Get-Content -LiteralPath (Join-Path $project 'release/current.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if (!$Metadata) { $Metadata=Join-Path (Join-Path $project 'release') $pointer.manifest }
@@ -48,8 +50,12 @@ if (!$SkipNativeTests) {
     & $ctest --test-dir $buildRoot -C Release --output-on-failure -R 'ai_engine_(smoke|e_api_smoke|yolo_.*|ocr_business_test|ocr_reading_order_business_test|compact_result_test|origin_zip_test|acp_compat_test|runtime_probe)$'
     if ($LASTEXITCODE -ne 0) { throw 'x64 native regression failed' }
 }
-$msvcRoot=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC'
-$dumpbin=Get-ChildItem -LiteralPath $msvcRoot -Directory | Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin/Hostx64/x64/dumpbin.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+$dumpbinCommand=Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+if ($dumpbinCommand) { $dumpbin=$dumpbinCommand.Source }
+else {
+    $msvcRoot=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC'
+    $dumpbin=Get-ChildItem -LiteralPath $msvcRoot -Directory | Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName 'bin/Hostx64/x64/dumpbin.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
 if (!$dumpbin) { throw 'dumpbin.exe was not found' }
 & $python (Join-Path $PSScriptRoot 'package_delivery.py') --python-only --x64 (Join-Path $buildRoot 'Release') --out $output --dumpbin $dumpbin --metadata $metadataPath
 if ($LASTEXITCODE -ne 0) { throw 'Wheel staging or content verification failed' }

@@ -1,5 +1,41 @@
 # Requirements
 
+## REQ-YOLO-003 — Local YOLO26 five-caller P95 <=20ms
+
+On the local E5-2696 v4 / RTX2070, five callers share one model handle through
+the x86 DLL and paired x64 Worker. Freeze input/yolov26/yolo26n.onnx
+(SHA256355c4f26cc1d48e581aaeb4a7f837baf7d5993e6f83337d30d50d0476bc5b158),
+FP32 input [1,3,640,640], native end-to-end output [1,300,6], bus.jpg and
+confidence0.5. Decode the JPEG once to a 24-bit BMP outside input/ without resizing.
+
+Acceptance: every lane in each of three independent rounds has caller QPC
+complete-call P95 <=20ms, in continuous and simultaneous modes, with100 warmups
+and1000 samples per lane. The user revised acceptance from15ms to20ms on2026-10-07;
+15ms remains a stretch target. Report P50/P95/P99, maximum and fractions above
+both15ms and20ms, preserving the original15ms scan as historical evidence.
+Require zero inference errors, CPU-reference count/class agreement and matched
+coordinate error <=1px / score difference <=0.02. FP16 also matches qualified
+TensorRT FP32. Graph requires >=10% P95 improvement in every round of both modes.
+Preprocessing remains bit-identical for all supported formats and signed strides.
+Verify engine cache build/hit/corrupt rebuild, AUTO profile readback, affected
+regressions and30-minute local stability before promoting a paired delivery.
+AUTO calibration identity must survive process restart and lazy DirectML cache
+extraction. Test this with an isolated, test-owned runtime cache.
+
+Keep the60 public signatures, stdcall aliases, protocol26 and positive
+session_count semantics. Existing tool invocations retain the20/30ms defaults;
+an explicit20ms P95 limit controls this task's final selection and acceptance. NVIDIA
+dependencies remain optional and separate. Historical releases and input/ are
+immutable. This bus-only benchmark does not complete REQ-YOLO-001 five-window
+business acceptance. Baseline formal worst-lane P95 is39.7853ms continuous and
+28.6854ms simultaneous; all30,000 samples succeeded but the latency target failed.
+
+Additional user-requested validation: input/best.onnx with input/yolo测试图.bmp
+(V8 dense-head workload), five callers, both modes, the same20ms per-lane P95
+limit and formal sampling. Report its result separately; do not infer V8 success
+from YOLO26. Keep its native static input shape and compare the old model's
+same-backend/same-slot latency with v23.7 to detect >5% repeatable regression.
+
 ## REQ-YOLO-002 — Compatible YOLO detection layouts
 
 Deliver 0.14.7 / v23.7 with unchanged 60 public signatures, result structures,

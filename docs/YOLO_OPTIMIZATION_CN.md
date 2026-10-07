@@ -1,12 +1,12 @@
-# YOLO v23.7：构建、校准与目标机验收
+# YOLO：构建、校准与目标机验收
 
-本版0.14.7/v23.7兼容V5/V11/V26检测输出，保持60个公开函数、正整数`session_count`及协议26。设备3=TensorRT仅用于YOLO。模型要求见[兼容说明](YOLO_MODEL_COMPATIBILITY_CN.md)。目标E5-2696 v4 / RTX2070五路完整调用P50≤20ms、P95≤30ms仍须实机验证。
+本轮0.14.8/v23.8候选兼容V5/V11/V26检测输出，保持60个公开函数、正整数`session_count`及协议26。设备3=TensorRT仅用于YOLO。模型要求见[兼容说明](YOLO_MODEL_COMPATIBILITY_CN.md)。本机bus和V8图片的五线程P95≤20ms结果见[本机报告](YOLO26_LOCAL_20MS_CN.md)；五业务窗口变化帧的20/30ms验收仍独立待验。
 
 ## 实现
 
 - x86 调用线程复用管道与请求缓冲区；Worker 每条连接循环收发完整帧。请求 ID 校验、512MiB 帧上限、完整读写与独立实例 ID 防止错配和旧句柄误用。断管后的 YOLO 句柄不会自动重载，应创建并加载新句柄。
 - 空闲连接与执行请求分别计数。全局关闭、OCR 轮换和孤儿清理只等待执行请求；原有 OCR 轮换仍避开存活 YOLO 模型。
-- Worker 直接使用请求缓冲区的 24位 BMP 视图，负 stride 表示自底向上图像。最近邻 letterbox、114 padding、RGB 转换、`/255.0f` 和 CHW 写入合为一遍。坐标还原及原有按分数排序、类别无关 NMS 保持不变。
+- Worker直接使用请求缓冲区的24位BMP视图，负stride表示自底向上图像。最近邻letterbox采用256项FP32归一化查表，表值仍以原来的`i/255.0f`生成；padding114与有效区域分开循环，格式分派移出逐像素循环。全部支持格式、正负stride和640输入均按位回归。坐标还原及原有按分数排序、类别无关NMS保持不变。
 - ORT 静态输入张量包装及 FP32 静态输出缓冲区复用。每个 Session 由一个租约串行占用，异常也归还槽位。DirectML 保持顺序执行和关闭 memory pattern。
 - TensorRT 模块动态加载：模型共享 engine，各槽独立 execution context、stream、pinned host input/output、device buffer 与工作区。异步 H2D / enqueueV3 / D2H 后仅同步本次 stream；没有逐帧显存申请或全设备同步。
 - engine / timing cache 绑定模型 SHA-256、GPU UUID/能力、驱动、CUDA、TensorRT、FP32/FP16、workspace、TF32/aux stream 设置和算法版本。缓存文件另带 SHA-256，损坏时重建；加载阶段构建计时单列。
@@ -31,7 +31,7 @@ cmake --build build-yolo-x64 --config Release --parallel 4
 
 易语言目录：`CQ_X86.dll`、`CQ_AI_worker.exe`、可选 `CQ_YOLO_TensorRT.dll`。Python 目录：`CQ_AI_x64.dll`、现有 ORT / DirectML / VC 运行库、可选模块。NVIDIA 可选包的 `nvidia/` 放在 Worker / x64 DLL 旁，或设置 `CQ_AI_NVIDIA_DIR` 为其绝对路径。CPU / DirectML 无需此目录。
 
-目标 NVIDIA 驱动须暴露 CUDA Driver API ≥12.8；GPU 算力须≥7.5。RTX2070 的实测驱动和可用显存由目标机记录确认。`nvcuda.dll` 来自系统驱动，不能从其他机器复制。第一次 TensorRT 加载可能需要较长构建时间；后续复用 `%LOCALAPPDATA%/CQ_AI/tensorrt-v3` 缓存。不要把冷启动算进稳定推理延迟。
+目标NVIDIA驱动须暴露CUDA Driver API≥12.8；GPU算力须≥7.5。`nvcuda.dll`来自系统驱动，不能从其他机器复制。独立x64进程首次构建还应把`CQ_AI_NVIDIA_DIR`添加到该进程PATH，供TensorRT按名称加载builder resource DLL；一键验收入口自动设置此进程路径。第一次加载可能需要较长构建时间；后续复用`%LOCALAPPDATA%/CQ_AI/tensorrt-v3`缓存。不要把冷启动算进稳定推理延迟。
 
 ## 业务校准
 
@@ -45,10 +45,11 @@ python scripts/calibrate_yolo.py `
   --model input/best.onnx --images-dir D:/业务BMP `
   --sessions 1,2,3,5 --cpu-threads 1,2,4,6,8 --devices 2,1,3 `
   --fp16 --graphs --preserve-worker --warmup 100 --samples 1000 --rounds 3 `
+  --p95-limit-ms 20 `
   --output outpush/target-calibration
 ```
 
-每个候选测持续调用与五路同时发起，输出每路/整体 P50、P95、P99、吞吐、CPU、内存采样及可用时的 NVIDIA 显存/占用采样。工具生成 `business-calibration.tsv`、完整 JSON 报告和易语言加载参数，并通过 AUTO 回读验证记录。校准后的源码算法、模型、设备/驱动、槽数、输入参数或业务图片标识改变时记录失效。
+每个候选测持续调用与五路同时发起，输出每路/整体P50、P95、P99、最大值、超限比例、吞吐、CPU、内存及可用时的NVIDIA采样。以每轮每一路P95判定，先选满足门槛的候选，再比较P50；禁止总体平均掩盖单路超标。`--p95-limit-ms`、PowerShell的`-P95LimitMs`及汇总参数默认30，显式传20用于本次要求。工具生成`business-calibration.tsv`和推荐参数，两个模式均执行AUTO回读。校准键v6绑定嵌入运行库bundle哈希，不再因DirectML延迟解压或Worker重启变化；模型、设备/驱动、槽数、输入参数或图片标识变化仍使记录失效。
 
 运行前设置 `CQ_AI_YOLO_CALIBRATION_FILE` 和 `CQ_AI_YOLO_WORKLOAD_ID` 为报告给出的值，再以推荐的正整数槽数加载 AUTO。内部线程可通过 `CQ_AI_YOLO_CPU_THREADS` 明确设置（1..8，受物理核预算限制）。生产中 FP16 / Graph 只从已验证记录启用；`CQ_AI_YOLO_VALIDATING=1` 是离线验证工具专用开关。OCR 仅支持 0..2。
 
@@ -70,7 +71,7 @@ python scripts/calibrate_yolo.py `
   --mode continuous --shutdown-worker 0 --output soak.json
 ```
 
-诊断时设置 `CQ_AI_YOLO_TRACE_PREFIX` 为可写路径前缀；DLL / Worker 各输出带进程号的 CSV，请求 ID 关联 BMP、等待、预处理、执行、后处理、JSON 和通信耗时。`python scripts/summarize_yolo_trace.py <前缀> --output stages.json` 汇总排队及各阶段 P50/P95/P99。若目标机请求打包、连接、收发合计 P95>2ms，才进入共享内存图像槽优化；当前候选的测量工具会明确报告该门槛。
+诊断时在测试Worker启动及模型创建前设置 `CQ_AI_YOLO_TRACE_PREFIX` 为可写路径前缀；DLL / Worker 各输出带进程号的 CSV，请求 ID 关联 BMP、等待、预处理、执行、后处理、JSON 和通信耗时。普通TensorRT调用不创建或记录阶段CUDA event，H2D/GPU/D2H诊断字段为0；诊断模式保留四个event和阶段计时。图像复制和输出完成同步不变。`python scripts/summarize_yolo_trace.py <前缀> --output stages.json` 汇总排队及各阶段 P50/P95/P99。若目标机请求打包、连接、收发合计 P95>2ms，才进入共享内存图像槽优化；当前候选的测量工具会明确报告该门槛。
 
 DirectML 节点分配诊断使用 `CQ_AI_ORT_PROFILE_PREFIX`，分析 ORT 输出中的 provider / memcpy 事件；`mixed_cpu_fallback=true` 仅表示允许回退，不能据此宣称发生了节点回退。
 

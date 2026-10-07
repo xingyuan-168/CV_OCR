@@ -270,6 +270,7 @@ struct Slot {
     CUstream stream{}; CUdeviceptr device_input{},device_output{};
     float* host_input=nullptr; float* host_output=nullptr;
     size_t input_bytes=0,output_bytes=0;
+    bool collect_timing=false;
     CUevent events[4]{}; CUgraph graph{}; CUgraphExec graph_exec{};
     ~Slot() {
         if (!shared) return;
@@ -304,7 +305,11 @@ void* create(const void* model,size_t size,const ai_trt::Options* options,ai_trt
         check(lib.cuMemAlloc_fn(&slot->device_output,slot->output_bytes),"device output allocation");
         require(slot->context->setTensorAddress(slot->shared->input.c_str(),reinterpret_cast<void*>(slot->device_input)) &&
             slot->context->setTensorAddress(slot->shared->output.c_str(),reinterpret_cast<void*>(slot->device_output)),"TensorRT setTensorAddress failed");
-        for(auto& event:slot->events) check(lib.cuEventCreate_fn(&event,CU_EVENT_DEFAULT),"cuEventCreate");
+        // Stage events are diagnostic work. Ordinary calls still synchronize
+        // the stream before exposing output, without recording four events.
+        slot->collect_timing=GetEnvironmentVariableW(L"CQ_AI_YOLO_TRACE_PREFIX",nullptr,0)>1;
+        if(slot->collect_timing)
+            for(auto& event:slot->events) check(lib.cuEventCreate_fn(&event,CU_EVENT_DEFAULT),"cuEventCreate");
         *info=slot->shared->info;
         if(options->graph) {
             // Flush lazy setup before capture; capture failure is not fatal.
@@ -331,17 +336,20 @@ int32_t run(void* handle,ai_trt::Timing* timing,char* error,size_t capacity) {
     try {
         require(handle && timing,"Invalid TensorRT execution arguments");
         auto& slot=*static_cast<Slot*>(handle); Current current(slot.shared->primary); auto& lib=libraries();
-        check(lib.cuEventRecord_fn(slot.events[0],slot.stream),"record H2D start");
+        *timing={};
+        if(slot.collect_timing) check(lib.cuEventRecord_fn(slot.events[0],slot.stream),"record H2D start");
         check(lib.cuMemcpyHtoDAsync_fn(slot.device_input,slot.host_input,slot.input_bytes,slot.stream),"H2D");
-        check(lib.cuEventRecord_fn(slot.events[1],slot.stream),"record GPU start");
+        if(slot.collect_timing) check(lib.cuEventRecord_fn(slot.events[1],slot.stream),"record GPU start");
         if(slot.graph_exec) check(lib.cuGraphLaunch_fn(slot.graph_exec,slot.stream),"CUDA Graph launch");
         else require(slot.context->enqueueV3(reinterpret_cast<cudaStream_t>(slot.stream)),"TensorRT enqueueV3 failed");
-        check(lib.cuEventRecord_fn(slot.events[2],slot.stream),"record D2H start");
+        if(slot.collect_timing) check(lib.cuEventRecord_fn(slot.events[2],slot.stream),"record D2H start");
         check(lib.cuMemcpyDtoHAsync_fn(slot.host_output,slot.device_output,slot.output_bytes,slot.stream),"D2H");
-        check(lib.cuEventRecord_fn(slot.events[3],slot.stream),"record D2H end");
+        if(slot.collect_timing) check(lib.cuEventRecord_fn(slot.events[3],slot.stream),"record D2H end");
         check(lib.cuStreamSynchronize_fn(slot.stream),"request stream synchronize");
-        int64_t* fields[]={&timing->h2d_us,&timing->gpu_us,&timing->d2h_us};
-        for(int i=0;i<3;++i){ float ms=0;check(lib.cuEventElapsedTime_fn(&ms,slot.events[i],slot.events[i+1]),"CUDA event elapsed time"); *fields[i]=static_cast<int64_t>(ms*1000); }
+        if(slot.collect_timing) {
+            int64_t* fields[]={&timing->h2d_us,&timing->gpu_us,&timing->d2h_us};
+            for(int i=0;i<3;++i){ float ms=0;check(lib.cuEventElapsedTime_fn(&ms,slot.events[i],slot.events[i+1]),"CUDA event elapsed time"); *fields[i]=static_cast<int64_t>(ms*1000); }
+        }
         return 0;
     } catch(const std::exception& e) { error_text(error,capacity,e.what()); return -1; }
     catch(...) { error_text(error,capacity,"Unexpected TensorRT inference failure"); return -1; }

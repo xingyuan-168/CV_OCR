@@ -379,10 +379,17 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
     fingerprints = metadata.get("binary_fingerprints", {})
     hashes = "".join(f"<tr><td>{html.escape(name)}</td><td><code>{html.escape(fact['sha256'])}</code></td></tr>" for name, fact in sorted(fingerprints.items()))
     summary = html.escape(metadata.get("validation_summary", "本版功能测试正在执行；目标机GPU性能待验。"))
+    local_validation = ""
+    target_followup = "目标机尚需验证TensorRT FP32运行、缓存损坏重建、FP16识别一致性、Graph收益、显存及五窗口30分钟GPU稳定性。每路完整调用未达到20/30ms时，报告必须标为未达标；通信P95&gt;2ms时才进入共享内存图像槽优化。"
+    if metadata.get("local_benchmark_validation") == "passed":
+        limit = metadata["local_benchmark_p95_limit_ms"]
+        local_validation = f"<p><b>本机{limit:g}ms验收：</b>YOLO26、640输入、bus图片、置信度0.5、五调用线程已通过每路每轮P95≤{limit:g}ms。此结论仅覆盖报告中的固定图片与主机；使用本次校准文件和推荐槽数。截图、JPEG解码、冷启动与五业务窗口负载需分别测量。</p>"
+        target_followup = f"五个真实业务窗口及变化帧仍须独立验收，本机bus基准不替代该验收。校准入口传-P95LimitMs {limit:g}可使用本次门槛；旧调用默认P50≤20ms、P95≤30ms。通信P95&gt;2ms时才进入共享内存图像槽优化。"
     qpc_example = html.escape((Path(__file__).resolve().parents[1] / "examples/e_language_yolo_qpc.txt").read_text(encoding="utf-8"))
     command = html.escape("powershell -NoProfile -ExecutionPolicy Bypass -File tools/run_yolo_acceptance.ps1 -ImagesDir D:/五窗口变化BMP -Model D:/模型/best.onnx -RuntimeDir D:/业务程序目录 -BusinessWindowsActive")
     sections.append(f"""<section id='yolo_delivery' class='doc-section'><h1 class='func-title'>YOLO部署与五路调用</h1>
 <p><b>本次交付：</b>{project_version} / {delivery_version} / Worker协议{worker_protocol}。功能验证状态：{html.escape(metadata.get('functional_validation', 'pending'))}；E5-2696 v4、128GB、RTX2070五窗口完整调用每路P50≤20ms、P95≤30ms仍须目标机实测。</p>
+{local_validation}
 <h2>三个核心文件</h2><p>将CQ_X86.dll、CQ_AI_worker.exe及本HTML一起放入业务目录，业务EXE加载32位DLL，DLL自动启动同目录64位Worker。Windows须为64位。模型路径由调用方传入，接口签名及现有CV/OCR功能保留。停止本程序的调用后成套替换文件，重建旧YOLO句柄。</p>
 <h2>启用NVIDIA TensorRT</h2><p>将本版ABI3模块CQ_YOLO_TensorRT.dll放到Worker旁，固定NVIDIA运行库的nvidia/目录也放到Worker旁。既有v23.6外部NVIDIA归档的nvidia/依赖可复用，但旧模块须换为本版ABI3模块。也可设置CQ_AI_NVIDIA_DIR为nvidia目录绝对路径。模块为x64，由Worker加载。基础CPU/DirectML无需NVIDIA包。GPU初始化失败时使用AI_GetLastError读取具体原因；设备3显式失败会返回错误。</p>
 <p>固定依赖为传统TensorRT10.13.3.9、CUDA runtime12.8.90、NVRTC12.8.93、cuBLAS12.8.4.1。驱动须暴露CUDA Driver API≥12.8，GPU算力≥7.5；RTX2070兼容性及显存以目标机记录为准。nvcuda.dll由系统驱动提供，包内不携带。TensorRT/CUDA/VC许可随NVIDIA包保存在nvidia/licenses/。</p>
@@ -390,7 +397,7 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
 <h2>五线程调用示例</h2><pre>{qpc_example}</pre><p>最后一个加载参数是正整数执行槽数，推荐值由业务校准产生。状态文本建议分配至少8192字节，调用YOLO_GetRuntimeStatusJson检查active、precision、session_count、intra_op_threads、execution_slots、selection_basis、engine_cache_hit、engine_build_us、cuda_graph和驱动信息。</p>
 <h2>真实业务校准</h2><p>从独立验证工具包运行下列命令；ImagesDir提供五窗口实际变化帧，RuntimeDir指向包含配套DLL/Worker的业务目录。工具对CPU、DirectML、TensorRT及1/2/3/5槽执行持续和同时发起测试，输出业务记录、加载参数及分位数。运行前设置CQ_AI_YOLO_CALIBRATION_FILE和CQ_AI_YOLO_WORKLOAD_ID为报告值，再用推荐槽数加载AUTO。</p><pre>{command}</pre>
 <p>FP32输入输出保持不变。FP16须检测数量和类别一致、每坐标误差≤1像素、分数差≤0.02；失败回退FP32。Graph须捕获成功，且两个调用模式每轮最差单路P95改善≥10%；否则使用普通异步执行。生产中仅使用已验证记录，CQ_AI_YOLO_VALIDATING=1专供离线验证。</p>
-<h2>本机验证与目标机待验</h2><p>{summary}</p><p>目标机尚需验证TensorRT FP32运行、缓存损坏重建、FP16识别一致性、Graph收益、显存及五窗口30分钟GPU稳定性。每路完整调用未达到20/30ms时，报告必须标为未达标；通信P95&gt;2ms时才进入共享内存图像槽优化。</p>
+<h2>本机验证与目标机待验</h2><p>{summary}</p><p>{target_followup}</p>
 <h2>本版文件校验</h2><table class='error-table'><tr><th>文件</th><th>SHA-256</th></tr>{hashes}</table><p>源码提交：<code>{html.escape(metadata.get('source_revision','构建中'))}</code>。在PowerShell执行Get-FileHash -Algorithm SHA256 CQ_X86.dll,CQ_AI_worker.exe并与上表比较；HTML和ZIP的哈希另存交付清单，避免自引用。</p></section>""")
     for ret, name, params in exports:
         proto = f"{ret} __stdcall {name}({', '.join(params) if params else 'void'});"

@@ -13,7 +13,7 @@ import zipfile
 
 from generate_e_language_api_doc import exported_names, parse_exports, source_metadata
 from package_common import copy, digest, zip_directory
-from release_manifest import current_manifest, verify_current, safe_member, verify_file
+from release_manifest import current_manifest, verify_current, verify_current_delivery, safe_member, verify_file
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_NAMES = {"CQ_X86.dll", "CQ_AI_worker.exe", "易语言_DLL_API_说明.html"}
@@ -88,6 +88,7 @@ def native_checks(args, folder, metadata):
 
 def verified_reports(args, binaries, metadata):
     reports = {}
+    timing_reports = []
     for name in ("delivery-build.json", "continuous.json", "simultaneous.json", "soak-30min.json"):
         path = args.validation / name
         report = json.loads(path.read_text(encoding="utf-8"))
@@ -99,7 +100,9 @@ def verified_reports(args, binaries, metadata):
             if report["errors"] or report["public_exports"] != 60 or report["version"] != "CQ_X86/" + metadata["project_version"]:
                 raise ValueError("Independent delivery loader did not pass")
         else:
-            if report["api_version"] != "CQ_X86/" + metadata["project_version"] or report["callers"] != 5 or any(r["errors"] for r in report["rounds"]):
+            timing_reports.append(report)
+            if (report["api_version"] != "CQ_X86/" + metadata["project_version"] or report["callers"] != 5
+                    or any(r["errors"] or len(r["lanes"]) != 5 for r in report["rounds"])):
                 raise ValueError(f"Five-caller verification did not pass: {name}")
             if name == "soak-30min.json":
                 if len(report["rounds"]) != 1 or report["rounds"][0]["elapsed_s"] < 1800:
@@ -110,6 +113,17 @@ def verified_reports(args, binaries, metadata):
     summary = json.loads((args.validation / "summary.json").read_text(encoding="utf-8"))
     if not summary["functional_passed"] or summary["memory_growth_detected"]:
         raise ValueError("Functional/stability summary did not pass")
+    if metadata.get("local_benchmark_validation") == "passed":
+        from calibrate_yolo import performance_met
+        from calibrate_yolo import positive_milliseconds
+        limit = positive_milliseconds(metadata.get("local_benchmark_p95_limit_ms"))
+        if not performance_met(timing_reports, limit) or not summary.get("local_benchmark_accepted"):
+            raise ValueError("The claimed local latency acceptance did not pass every lane/round and stability")
+        for report in timing_reports:
+            if (report["p95_limit_ms"] != limit or report["model_sha256"] != metadata["local_benchmark_model_sha256"]
+                    or report["workload"] != metadata["local_benchmark_workload"] or report["confidence"] != .5
+                    or report["runtime"]["input_width"] != 640 or report["runtime"]["input_height"] != 640):
+                raise ValueError("Local acceptance used different model/workload/input/threshold parameters")
     return reports
 
 
@@ -129,14 +143,17 @@ def nvidia_package(args, metadata):
     dependencies = re.findall(r"^\s+([A-Za-z0-9_.-]+\.dll)\s*$", run([args.dumpbin, "/DEPENDENTS", module]), re.M)
     if any(x.lower() not in {"kernel32.dll", "bcrypt.dll", "version.dll"} for x in dependencies):
         raise ValueError(f"TensorRT module has an ordinary third-party dependency: {dependencies}")
-    package_metadata = dict(project_version=metadata["project_version"], delivery_version=metadata["delivery_version"], module=module_info, dependencies=manifest, target_gpu_validation="pending")
+    gpu_validation = metadata.get("nvidia_execution_validation", "pending")
+    package_metadata = dict(project_version=metadata["project_version"], delivery_version=metadata["delivery_version"], module=module_info, dependencies=manifest,
+                            target_gpu_validation=gpu_validation, local_benchmark_validation=metadata.get("local_benchmark_validation", "pending"),
+                            validation_scope=metadata.get("functional_validation_scope", "Build and missing-dependency checks only"))
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
         archive.write(module, module.name)
         for path in sorted(dependency.rglob("*")):
             if path.is_file() and path.name not in {"manifest.json", "README.txt"}:
                 archive.write(path, path.relative_to(dependency).as_posix())
         archive.writestr("manifest.json", json.dumps(package_metadata, ensure_ascii=False, indent=2))
-        archive.writestr("README.txt", "Copy CQ_YOLO_TensorRT.dll and nvidia/ beside the paired x64 Worker, or set CQ_AI_NVIDIA_DIR to the nvidia directory. Base CPU/DirectML needs neither. Driver API >=12.8, SM >=7.5. nvcuda.dll comes from the system driver. TensorRT 10.13.3.9 / CUDA runtime12.8.90 / NVRTC12.8.93 / cuBLAS12.8.4.1. Target RTX2070 execution, FP16, Graph, cache and stability validation are pending.\n")
+        archive.writestr("README.txt", "Copy CQ_YOLO_TensorRT.dll and nvidia/ beside the paired x64 Worker, or set CQ_AI_NVIDIA_DIR to the nvidia directory. Standalone x64 first builds also need that directory in the process PATH for the vendor builder resource DLL; the acceptance script sets it locally. Base CPU/DirectML needs neither. Driver API >=12.8, SM >=7.5. nvcuda.dll comes from the system driver. TensorRT 10.13.3.9 / CUDA runtime12.8.90 / NVRTC12.8.93 / cuBLAS12.8.4.1. GPU execution validation: " + gpu_validation + ". See manifest.json for its exact scope; bus benchmarking does not certify five business windows.\n")
     names = check_zip(output)
     if "CQ_YOLO_TensorRT.dll" not in names or not any("licenses/tensorrt" in name for name in names):
         raise ValueError("Optional module/licenses missing from NVIDIA package")
@@ -201,7 +218,9 @@ def main():
     args.out = args.out or ROOT / 'outpush' / ('package-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S-%f'))
     args.validation = args.validation or ROOT / 'outpush' / (registered['delivery_version'] + '-validation')
     if args.reuse_current:
-        verify_current(ROOT)
+        # Copy the immutable published archive even while a task checkout is
+        # developing the next version. Rebuilding still verifies source hashes.
+        verify_current_delivery(ROOT)
         output = safe_output(args.out)
         if output.exists(): raise ValueError('Choose a fresh package output')
         output.mkdir(parents=True)
@@ -271,13 +290,17 @@ def main():
     copy(args.x64 / 'ai_engine_yolo_model_inspect.exe', tools / 'tools/ai_engine_yolo_model_inspect.exe')
     copy(ROOT / 'tools/yolo_model_tool.py', tools / 'tools/yolo_model_tool.py')
     copy(ROOT / 'configs/yolo-reference-sources.json', tools / 'tools/yolo-reference-sources.json')
-    for name in ("calibrate_yolo.py", "summarize_yolo_trace.py", "summarize_yolo_acceptance.py", "verify_yolo_optional_dependencies.py", "monitor_yolo_benchmark.py", "run_yolo_acceptance.ps1"):
+    for name in ("calibrate_yolo.py", "summarize_yolo_trace.py", "summarize_yolo_acceptance.py", "verify_yolo_optional_dependencies.py", "verify_yolo_calibration_restart.py", "monitor_yolo_benchmark.py", "run_yolo_acceptance.ps1"):
         copy(ROOT / "scripts" / name, tools / "tools" / name)
     for name in ("e_language_onnx_module.txt", "e_language_yolo_qpc.txt"):
         copy(ROOT / "examples" / name, tools / "examples" / name)
     delivery_doc = metadata.get('delivery_document', 'V23_6_DELIVERY_CN.md')
-    for name in ("YOLO_OPTIMIZATION_CN.md", "YOLO_VALIDATION_CN.md", "YOLO_MODEL_COMPATIBILITY_CN.md", delivery_doc):
+    for name in ("YOLO_OPTIMIZATION_CN.md", "YOLO_VALIDATION_CN.md", "YOLO_MODEL_COMPATIBILITY_CN.md", "YOLO26_LOCAL_20MS_CN.md", delivery_doc):
         copy(ROOT / "docs" / name, tools / name)
+    if metadata.get("local_benchmark_validation") == "passed":
+        for name in ("business-calibration.tsv", "v8-business-calibration.tsv", "local-benchmark-summary.json", "v8-local-summary.json"):
+            copy(args.validation / name, tools / "local-calibration" / name)
+        copy(ROOT / "docs/evidence/YOLO26_LOCAL_20MS_SUMMARY.json", tools / "evidence/YOLO26_LOCAL_20MS_SUMMARY.json")
     copy(args.model, tools / "validation/best.onnx")
     copy(args.image, tools / "validation" / args.image.name)
     for path in (ROOT / 'tests/fixtures/yolo').glob('*.bmp'):

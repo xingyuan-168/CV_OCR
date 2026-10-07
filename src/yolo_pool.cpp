@@ -2,6 +2,9 @@
 #include "yolo_model.h"
 #include "sha256.h"
 #include "error.h"
+#if defined(AIENGINE_EMBEDDED_ORT_RUNTIME)
+#include "runtime_bundle_loader.h"
+#endif
 #include <dxgi1_2.h>
 #include <algorithm>
 #include <cmath>
@@ -58,6 +61,14 @@ std::string runtime_fingerprint() {
     static const std::string fingerprint=[] {
         std::string result;
         wchar_t filename[32768]{};
+#if defined(AIENGINE_EMBEDDED_ORT_RUNTIME)
+        std::string error;
+        if (!ai_runtime::initialize_embedded_runtime(&error))
+            throw std::runtime_error("Cannot identify the embedded YOLO runtime: " + error);
+        // DirectML.dll is extracted lazily. The verified bundle identifies both
+        // payloads even before extraction, so cold/warm Workers share a key.
+        result = "embedded=" + ai_runtime::runtime_bundle_hash();
+#else
         HMODULE ort=GetModuleHandleW(L"onnxruntime.dll");
         if(ort &&GetModuleFileNameW(ort,filename,32768)) {
             auto directory=std::filesystem::path(filename).parent_path();
@@ -67,6 +78,7 @@ std::string runtime_fingerprint() {
                 result+=bytes.empty()?"missing":sha256(bytes.data(),bytes.size());
             }
         }
+#endif
         HMODULE own=nullptr;
         GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
             reinterpret_cast<LPCWSTR>(&yolo_device_name),&own);
@@ -78,7 +90,7 @@ std::string runtime_fingerprint() {
     }();return fingerprint;
 }
 std::string calibration_key(const std::vector<uint8_t>& model,const YoloParameters& p) {
-    const auto value="yolo-business-v5/layout=1/ort=1.24.4/trt=10.13.3.9/cuda=12.8.90/conf=0.5/nms=0.45/model="+
+    const auto value="yolo-business-v6/layout=1/ort=1.24.4/trt=10.13.3.9/cuda=12.8.90/conf=0.5/nms=0.45/model="+
         sha256(model.data(),model.size())+"/"+hardware_key()+"/input="+std::to_string(p.input_size)+
         "/slots="+std::to_string(p.session_count)+"/callers=5/workload="+p.workload_id+"/runtime="+runtime_fingerprint()+"/ordinal="+std::to_string(p.device_id);
     return sha256(value.data(),value.size());

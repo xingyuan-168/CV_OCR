@@ -16,6 +16,17 @@ returned `codex-os.exe` path (or the configured plugin MCP) for the actual gates
 command executes tests; keep its JSON result with the verification report.
 Do not replace a blocked result with a success assertion.
 
+For an unpromoted native task candidate, the Finish test command can pass
+`--candidate-metadata outpush/<task>/build-metadata.json` to check_governance.py.
+This requires a codex task branch, complete normalized source fingerprints,
+functional/ABI/protocol acceptance and matching actual candidate binaries. It
+still verifies all published archives/evidence and historical deliveries. Default
+checks continue to require source equality with the selected current delivery.
+Archive-only `package_delivery.py --reuse-current` verifies the immutable
+published archives independently of a development checkout. Neither operation
+promotes output or changes the current pointer; a candidate failing its declared limit stays
+unpromoted with its failed performance conclusion intact.
+
 `scripts/check_repository_hygiene.ps1` supports Windows PowerShell5.1 and7 and
 delegates portable checks to Python. User input and approved local build/cache
 directories are classified separately from tracked pollution.
