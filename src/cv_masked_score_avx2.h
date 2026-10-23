@@ -28,4 +28,10 @@ MaskedAccumulators masked_accumulate_avx2(
     const uint8_t* image_origin, const uint32_t* offsets,
     const uint32_t* template_bgr, size_t count);
 
+// Returns number of columns written. The final columns are handled scalarly
+// so packed BGR gathers cannot cross the last byte of the image allocation.
+int masked_pair_candidates_avx2(const uint8_t* origin, int channels, unsigned selected_channels,
+    const uint32_t* pair_offsets, size_t pairs, const float* numerator,
+    double error, double reject_factor, int columns, float* output);
+
 } // namespace ai::cv_detail

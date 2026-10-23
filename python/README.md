@@ -1,6 +1,6 @@
 # CQ_AI Python x64 离线库
 
-> 本轮Wheel版本为 **0.14.8 / v23.8 / Worker协议26**。本机固定图片五路20ms结果及稳定性状态见[交付说明](../docs/V23_8_DELIVERY_CN.md)，五业务窗口性能仍待验。当前正式选用的整套交付由`release/current.json`指定。
+> 当前已登记Wheel为 **0.14.8 / v23.8 / Worker协议26**。源码中的0.14.9为透明找图候选，尚未发布Wheel，状态见[候选验收](../docs/CV_TRANSPARENT_MASK_FIX_CN.md)。v23.8本机固定图片五路20ms结果及稳定性状态见[交付说明](../docs/V23_8_DELIVERY_CN.md)，五业务窗口性能仍待验。当前整套交付由`release/current.json`指定。
 
 `cq-ai-engine` 是 CQ_AI `0.14.8` 的 Windows x64 离线 Wheel。安装后由 64 位
 Python 直接加载包内 `CQ_AI_x64.dll`，OCR、YOLO 和 ONNX Runtime 都在当前

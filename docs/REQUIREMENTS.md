@@ -1,5 +1,31 @@
 # Requirements
 
+## REQ-CV-001 — Complete transparent matching with P95 <=5ms
+
+Fix the proven candidate loss in the transparent CV compatibility APIs from
+source fb4aa6c. Freeze input/1.bmp (95x81, SHA256
+b4c8df7314fb91fbbc6f118013d503d6c4ef281e24af1f07a397fca09036939c)
+and input/2.bmp (960x540, SHA256
+a6eab91fc30c641c618e2398b71b9205189c77257393467352128cd554cc0357).
+With FF00FF transparency, all322 visible pixels match at(596,165); color
+single/multiple calls must find the95x81 target with exact score1 at thresholds
+0.9/0.99/1. Gray single calls must match at0.9/0.99 with existing gray conversion.
+Only true masked CCOEFF_NORMED may exclude a candidate; failed exact checks must
+not suppress neighbors. Preserve60 signatures/aliases, protocol26, error/result
+contracts, modes and positive session_count semantics. No resize/rotation/PNG or
+lighting-policy extension; OCR/business YOLO investigations remain separate.
+
+Acceptance: independent integer exhaustive reference, synthetic CI regressions,
+real-image/ignored-background invariance, boundary/NMS/threshold/ZIP/stride/error
+and scalar/AVX2 equivalence. Both final x86/x64 production DLLs must achieve
+complete-call P95 <=5ms for every old/new scenario in each of three rounds,
+warmup64/sample1000, using nearest-rank percentiles and zero wrong results.
+Report P50/P95/P99/max/over5 fraction, cold calls and binary/input hashes.
+Run x86/x64 at1/4/16 callers for600seconds each, check lifetime/bounded workspace
+accounting, affected regressions, paired release checks and real Start/Finish
+gates. Input/history are immutable. Candidates failing any requirement remain
+unpromoted with measurements retained; no inheritance of old-binary acceptance.
+
 ## REQ-YOLO-003 — Local YOLO26 five-caller P95 <=20ms
 
 On the local E5-2696 v4 / RTX2070, five callers share one model handle through

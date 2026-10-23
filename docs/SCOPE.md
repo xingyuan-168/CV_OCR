@@ -1,6 +1,21 @@
 # Scope
 
-Current task: REQ-YOLO-003, local YOLO26/bus.jpg five-caller complete-call
+Current task: REQ-CV-001, transparent candidate completeness and local single
+caller P95 <=5ms on both x86/x64. Use codex/cv-transparent-mask-fix from fb4aa6c,
+stage only under outpush/cv-transparent-mask-fix, and preserve current v23.8 until
+the new candidate passes independent correctness, all old/new5ms scenarios,
+stability, paired-binary/document verification and actual governance gates.
+Reuse pinned OpenCV5.0/IPP/AVX2, true masked correlation and exact integer
+verification. Only accepted matches participate in NMS; no coarse-score pruning
+or candidate cap may discard a qualifying match. Preserve existing gray rules,
+ordinary CV paths, alpha-API score semantics and all public ABI/protocol facts.
+No scaling, rotation, PNG import, lighting strategy, OCR fixes or business YOLO
+tuning is part of this task. Published validation never applies to new binaries
+without fresh evidence. Planned candidate0.14.9/v23.9; failing5ms means no promotion.
+
+Prior delivered scope (REQ-YOLO-003):
+
+REQ-YOLO-003, local YOLO26/bus.jpg five-caller complete-call
 P95 <=20ms, revised by the user from15ms; pursue lower latency. Restore Git
 history without overwriting local files; use a codex/
 branch from the current source. Reuse the existing TensorRT ABI3 module and

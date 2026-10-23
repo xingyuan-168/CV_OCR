@@ -206,8 +206,9 @@ struct TemplateEntry {
     mutable std::mutex mask_mutex;
     mutable std::mutex spectrum_mutex;
     mutable std::shared_ptr<const ai::cv_detail::TemplateSpectrum> spectrum;
+    mutable std::shared_ptr<const ai::cv_detail::MaskedTemplateSpectrum> masked_spectrum;
+    mutable uint64_t masked_spectrum_key = UINT64_MAX;
     mutable std::unordered_map<uint64_t, std::shared_ptr<const cv::Mat>> transparent_masks;
-    mutable std::unordered_map<uint32_t, std::shared_ptr<const cv::Mat>> transparent_candidate_templates;
     mutable std::unordered_map<uint32_t, bool> transparent_color_presence;
 #endif
 };
@@ -1706,6 +1707,8 @@ struct CVWorkspace {
     OwnedImage gray;
     CVTemplateThreadScratch scratch;
     ai::cv_detail::CorrelationWorkspace correlation;
+    ai::cv_detail::MaskedCorrelationWorkspace masked_correlation;
+    int masked_image_mode = -1;
     bool correlation_image_valid = false;
     bool correlation_sums_valid = false;
 
@@ -1713,7 +1716,7 @@ struct CVWorkspace {
         const auto mat_bytes = [](const cv::Mat& mat) -> size_t {
             return mat.data ? static_cast<size_t>(mat.datalimit - mat.datastart) : 0;
         };
-        return correlation.retained_bytes() + color.pixels.capacity() + gray.pixels.capacity() +
+        return correlation.retained_bytes() + masked_correlation.retained_bytes() + color.pixels.capacity() + gray.pixels.capacity() +
             mat_bytes(scratch.score) + mat_bytes(scratch.local_max) + mat_bytes(scratch.peak_kernel) +
             scratch.peak_points.capacity() * sizeof(cv::Point) +
             (scratch.candidates.capacity() + scratch.selected.capacity()) * sizeof(CVMatchResult) +
@@ -1727,6 +1730,7 @@ struct CVWorkspace {
     void discard() noexcept {
         correlation_image_valid = correlation_sums_valid = false;
         correlation.discard();
+        masked_correlation.discard(); masked_image_mode = -1;
         std::vector<uint8_t>().swap(color.pixels);
         std::vector<uint8_t>().swap(gray.pixels);
         color.view = {}; gray.view = {};
@@ -1926,23 +1930,6 @@ bool template_contains_transparent_color(
     return inserted.first->second;
 }
 
-std::shared_ptr<const cv::Mat> get_transparent_candidate_template(
-    const std::shared_ptr<const TemplateEntry>& entry,
-    uint32_t transparent_rgb) {
-    {
-        std::lock_guard<std::mutex> lock(entry->mask_mutex);
-        const auto found = entry->transparent_candidate_templates.find(transparent_rgb);
-        if (found != entry->transparent_candidate_templates.end()) return found->second;
-    }
-    const auto mask = get_transparent_mask(entry, 1, transparent_rgb);
-    if (!mask) return nullptr;
-    auto created = std::make_shared<cv::Mat>(owned_image_mat(entry->gray).clone());
-    const cv::Scalar visible_mean = cv::mean(*created, *mask);
-    created->setTo(visible_mean, *mask == 0);
-    std::lock_guard<std::mutex> lock(entry->mask_mutex);
-    const auto inserted = entry->transparent_candidate_templates.emplace(transparent_rgb, created);
-    return inserted.first->second;
-}
 
 bool passes_color_bias(
     const cv::Mat& image,
@@ -2307,6 +2294,7 @@ int32_t find_cv_matches_opencv(
     cv_test_fault(1);
     if (refresh_bgr_cache(big_image, &workspace.color)) {
         workspace.correlation_image_valid = workspace.correlation_sums_valid = false;
+        workspace.masked_correlation.invalidate();
     }
     bool gray_ready=false;
     const auto prepare_gray=[&] {
@@ -2332,7 +2320,6 @@ int32_t find_cv_matches_opencv(
         CVTemplateThreadScratch& scratch = workspace.scratch;
 
         std::shared_ptr<const cv::Mat> mask_owner;
-        std::shared_ptr<const cv::Mat> candidate_template_owner;
         const cv::Mat* mask = nullptr;
         const cv::Mat* candidate_mask = nullptr;
         bool use_transparent_mask = transparent && template_contains_transparent_color(entry, transparent_rgb);
@@ -2343,25 +2330,115 @@ int32_t find_cv_matches_opencv(
             ;
         int method = best_only ? cv::TM_CCORR_NORMED : cv::TM_CCOEFF_NORMED;
         if (use_transparent_mask) {
-            prepare_gray(); candidate_image=owned_image_mat(workspace.gray);
             mask_owner = get_transparent_mask(entry, match_mode, transparent_rgb);
             if (!mask_owner) {
                 match_error.store(AI_ERR_INVALID_ARGUMENT, std::memory_order_relaxed);
                 return;
             }
             mask = mask_owner.get();
-            candidate_template_owner = get_transparent_candidate_template(entry, transparent_rgb);
-            if (!candidate_template_owner) {
-                match_error.store(AI_ERR_INVALID_ARGUMENT, std::memory_order_relaxed);
-                return;
-            }
-            candidate_templ = *candidate_template_owner;
         }
 
         std::vector<CVMatchResult>& candidates = scratch.candidates;
         candidates.clear();
         const cv::Mat& candidate_source = use_transparent_mask ? candidate_image : image;
         cv_test_fault(2);
+        if (use_transparent_mask) {
+            // Every excluded point has a mask-only Cauchy-Schwarz upper bound.
+            // Coarse filled-background peaks are never used to remove a point.
+            // The test oracle independently scans all coordinates with integers.
+            const auto masked_stats = prepare_masked_score(templ, *mask, image.step, &scratch.visible_pixels);
+            const uint64_t key = (static_cast<uint64_t>(transparent_rgb) << 1) | (match_mode == 1);
+            const int valid_width=image.cols-templ.cols+1,valid_height=image.rows-templ.rows+1;
+            const bool tiled=image.total()>512u*1024u;
+            const int tile_width=tiled?512:valid_width,tile_height=tiled?256:valid_height;
+            for(int tile_y=0;tile_y<valid_height;tile_y+=tile_height)for(int tile_x=0;tile_x<valid_width;tile_x+=tile_width){
+            const int columns=std::min(tile_width,valid_width-tile_x),rows=std::min(tile_height,valid_height-tile_y);
+            const cv::Mat tile=image(cv::Rect(tile_x,tile_y,columns+templ.cols-1,rows+templ.rows-1));
+            const auto geometry = ai::cv_detail::spectrum_geometry(tile.size());
+            std::shared_ptr<const ai::cv_detail::MaskedTemplateSpectrum> spectrum;
+            {
+                std::lock_guard<std::mutex> lock(entry->spectrum_mutex);
+                if (!entry->masked_spectrum || entry->masked_spectrum_key != key ||
+                    entry->masked_spectrum->geometry != geometry) {
+                    entry->masked_spectrum = std::make_shared<const ai::cv_detail::MaskedTemplateSpectrum>(
+                        ai::cv_detail::make_masked_spectrum(templ, *mask, geometry));
+                    entry->masked_spectrum_key = key;
+                }
+                spectrum = entry->masked_spectrum;
+            }
+            if (workspace.masked_image_mode != match_mode || tiled) {
+                workspace.masked_correlation.invalidate(); workspace.masked_image_mode = match_mode;
+            }
+            bool avx2 = false;
+#if defined(AIENGINE_CV_AVX2)
+            avx2 = match_mode == 0 && scratch.visible_pixels.size() <= 65535 &&
+                image.total() <= static_cast<size_t>(INT32_MAX / 3) && cv::checkHardwareSupport(CV_CPU_AVX2)
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                && !g_cv_force_scalar_masked
+#endif
+                ;
+            if (avx2) {
+                scratch.visible_offsets.resize(scratch.visible_pixels.size());
+                scratch.visible_bgr.resize(scratch.visible_pixels.size());
+                for (size_t k = 0; k < scratch.visible_pixels.size(); ++k) {
+                    const auto& p = scratch.visible_pixels[k]; scratch.visible_offsets[k] = p.offset;
+                    scratch.visible_bgr[k] = p.value[0] | (static_cast<uint32_t>(p.value[1]) << 8) |
+                        (static_cast<uint32_t>(p.value[2]) << 16);
+                }
+            }
+#endif
+            bool reference = false;
+#if defined(AIENGINE_CV_TEST_HOOKS)
+            reference = g_cv_reference;
+#endif
+            if (reference) {
+                scratch.score.create(rows,columns,CV_32F);
+                scratch.score.setTo(1);
+            } else {
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                const auto bounds_start=std::chrono::steady_clock::now();
+#endif
+                workspace.masked_correlation.upper_bounds(tile, *spectrum, min_score, scratch.score);
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                g_cv_transparent_profile.rough_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-bounds_start).count();
+#endif
+            }
+            const float floor = std::max(0.0f,min_score-1e-6f);
+            bool perfect = false;
+            for (int y = 0; y < scratch.score.rows && !perfect; ++y) {
+                const auto* row = scratch.score.ptr<float>(y);
+                for (int x = 0; x < scratch.score.cols; ++x) {
+                    if (row[x] < floor) continue;
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                    const auto exact_start=std::chrono::steady_clock::now();
+                    ++g_cv_transparent_profile.candidates;
+#endif
+                    const float score = reference ? exact_masked_ccoeff_score_at(tile,templ,*mask,x,y) :
+                        exact_masked_ccoeff_score_at_prepared(tile,scratch.visible_pixels,masked_stats,x,y,avx2,
+                            scratch.visible_offsets,scratch.visible_bgr);
+#if defined(AIENGINE_CV_TEST_HOOKS)
+                    g_cv_transparent_profile.exact_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-exact_start).count();
+#endif
+                    if (!std::isfinite(score) || score < min_score ||
+                        !passes_color_bias(tile,templ,mask,x,y,color_bias,min_score)) continue;
+                    candidates.push_back({x+tile_x,y+tile_y,templ.cols,templ.rows,score,static_cast<int32_t>(template_index)});
+                    if (best_only && score == 1.0f) { perfect = true; break; }
+                }
+            }
+            }
+            std::sort(candidates.begin(), candidates.end(), [](const CVMatchResult& a,const CVMatchResult& b) {
+                return a.sim != b.sim ? a.sim > b.sim : cv_result_screen_order(a,b);
+            });
+            scratch.selected.clear();
+            for (const auto& candidate : candidates) {
+                if (std::none_of(scratch.selected.begin(),scratch.selected.end(),[&](const CVMatchResult& accepted) {
+                    return cv_match_iou(accepted,candidate) > nms_iou;
+                })) scratch.selected.push_back(candidate);
+                if (best_only && !scratch.selected.empty()) break;
+            }
+            output->insert(output->end(),scratch.selected.begin(),scratch.selected.end());
+            return;
+        }
         if (!use_transparent_mask && match_mode == 0 && image.total() <= 512u * 1024u
 #if defined(AIENGINE_CV_TEST_HOOKS)
             && !g_cv_reference

@@ -55,6 +55,9 @@ def register(package, wheel, select=False):
             if (validation/name).is_file():
                 dest=stage/'evidence'/name; copy(validation/name,dest)
                 m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
+        for source in validation.glob('cv-*.json'):
+            dest=stage/'evidence'/source.name; copy(source,dest)
+            m['evidence'][source.name]=dict(file='evidence/'+source.name,size=dest.stat().st_size,sha256=digest(dest))
         local_detail=validation/'YOLO26_LOCAL_20MS_SUMMARY.json'
         if local_detail.is_file():
             dest=stage/'evidence'/local_detail.name; copy(local_detail,dest)

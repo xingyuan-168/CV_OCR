@@ -1,5 +1,6 @@
 #include "cv_correlation.h"
 #include "cv_normalize.h"
+#include "cv_masked_score_avx2.h"
 #include <algorithm>
 #include <cfloat>
 #include <chrono>
@@ -276,4 +277,153 @@ void CorrelationWorkspace::match(const cv::Mat &templ, const TemplateSpectrum &s
     timings[3] =
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - transformed).count();
 }
+MaskedTemplateSpectrum make_masked_spectrum(const cv::Mat& templ, const cv::Mat& mask,
+                                           cv::Size geometry) {
+    CV_Assert((templ.channels() == 1 || templ.channels() == 3) && templ.depth() == CV_8U &&
+              mask.size() == templ.size() && mask.depth() == CV_8U);
+    MaskedTemplateSpectrum result;
+    result.geometry = geometry;
+    result.extent = templ.size();
+    result.channels = templ.channels();
+    uint64_t sums[3]{}, squares[3]{};
+    for (int y = 0; y < templ.rows; ++y)
+        for (int x = 0; x < templ.cols; ++x) {
+            if (!mask.ptr<uint8_t>(y)[x * mask.channels()]) continue;
+            result.visible.push_back({x,y});
+            for (int c = 0; c < result.channels; ++c) {
+                const uint32_t v = templ.ptr<uint8_t>(y)[x * result.channels + c];
+                sums[c] += v; squares[c] += v * v;
+            }
+        }
+    result.count = result.visible.size();
+    if (!result.count) return result;
+    double channel_energy[3]{};
+    for(int c=0;c<result.channels;++c){channel_energy[c]=double(squares[c])-double(sums[c])*sums[c]/result.count;result.energy+=channel_energy[c];}
+    double absolute_sum = 0;
+    cv::Mat plane(geometry, CV_32F);
+    for (int c = 0; c < result.channels; ++c) {
+        const double mean = static_cast<double>(sums[c]) / result.count;
+        const double energy = static_cast<double>(squares[c]) - mean * sums[c];
+        if (energy <= 1e-12) continue;
+        result.active_channels |= 1u << c;
+        plane.setTo(0);
+        for (auto p : result.visible) {
+            const double v = templ.ptr<uint8_t>(p.y)[p.x * result.channels + c] - mean;
+            absolute_sum += std::abs(v);
+            plane.at<float>(p)=static_cast<float>(v);
+        }
+        cv::dft(plane, result.centered[c]);
+    }
+    // Conservative absolute guard for the float transform/multiply/inverse
+    // chain, including coefficient rounding. Low-information/threshold-boundary
+    // windows remain candidates rather than being rejected by a noisy estimate.
+    const double stages = std::max(1.0, std::ceil(std::log2(static_cast<double>(geometry.area()))));
+    const double epsilon=FLT_EPSILON;
+    result.numerator_error = 64.0 * epsilon * stages * stages * 128.0 * absolute_sum +
+        8.0 * epsilon * 255.0 * result.count;
+    // Disjoint pairs spread over the support, not the filled bounding box.
+    const size_t pair_count = std::min<size_t>(16, result.count / 2);
+    for (size_t k = 0; k < pair_count; ++k) {
+        const size_t a = k * result.count / (2 * pair_count);
+        const size_t b = result.count - 1 - a;
+        result.pairs.emplace_back(result.visible[a], result.visible[b]);
+    }
+    return result;
+}
+
+void MaskedCorrelationWorkspace::prepare(const cv::Mat& image, const MaskedTemplateSpectrum& templ) {
+    if (geometry != templ.geometry || channels != image.channels()) {
+        invalidate(); geometry = templ.geometry; channels = image.channels();
+    }
+    plane.create(geometry, CV_32F);
+    for (int c = 0; c < channels; ++c) {
+        if (!(templ.active_channels & (1u << c)) || (prepared_channels & (1u << c))) continue;
+        plane.setTo(0);
+        bool constant = true;
+        const uint8_t first_value = image.ptr<uint8_t>(0)[c];
+        for (int y = 0; y < image.rows; ++y) {
+            const auto* src = image.ptr<uint8_t>(y);
+            for (int x = 0; x < image.cols; ++x) {
+                const uint8_t v=src[x * channels + c];
+                plane.ptr<float>(y)[x]=float(int(v)-128);
+                constant &= v==first_value;
+            }
+        }
+        if (constant) constant_channels |= 1u << c;
+        else fft.transform(plane, spectra[c], false);
+        prepared_channels |= 1u << c;
+    }
+}
+
+void MaskedCorrelationWorkspace::upper_bounds(const cv::Mat& image,
+        const MaskedTemplateSpectrum& templ, float threshold, cv::Mat& output) {
+    CV_Assert(templ.geometry.width >= image.cols && templ.geometry.height >= image.rows);
+    prepare(image, templ);
+    output.create(image.rows - templ.extent.height + 1, image.cols - templ.extent.width + 1, CV_32F);
+    if (!templ.active_channels) { output.setTo(1); numerator.release(); return; }
+    if ((constant_channels & templ.active_channels) == templ.active_channels &&
+        threshold>1e-6f) {
+        // Every active channel is constant over the whole image. Its centered
+        // dot product is exactly zero for every mask/window, not an FFT estimate.
+        output.setTo(-1); return;
+    }
+    bool first = true;
+    for (int c = 0; c < channels; ++c) if ((templ.active_channels & (1u << c)) && !(constant_channels & (1u << c))) {
+        cv::mulSpectrums(spectra[c], templ.centered[c], product, 0, true);
+        if (first) { product.copyTo(accumulated); first = false; }
+        else cv::add(accumulated, product, accumulated);
+    }
+    if(first){numerator.create(templ.geometry,CV_32F);numerator.setTo(0);}
+    else fft.transform(accumulated, numerator, true);
+    const double effective = std::max(0.0, static_cast<double>(threshold) - 1e-6);
+    std::vector<uint32_t> pair_offsets;
+    for(const auto& p:templ.pairs){pair_offsets.push_back(static_cast<uint32_t>(p.first.y*image.step+p.first.x*channels));pair_offsets.push_back(static_cast<uint32_t>(p.second.y*image.step+p.second.x*channels));}
+    const double budget=effective*effective*templ.energy;
+    if(budget<=0){output.setTo(1);return;}
+    const double reject = budget;
+    for (int y = 0; y < output.rows; ++y) {
+        auto* dst = output.ptr<float>(y);
+        const auto* num = numerator.ptr<float>(y);
+        int first_x=0;
+#if defined(AIENGINE_CV_AVX2)
+        if(cv::checkHardwareSupport(CV_CPU_AVX2)&&image.total()<=static_cast<size_t>(INT32_MAX/3))
+            first_x=masked_pair_candidates_avx2(image.ptr<uint8_t>(y),channels,(1u<<channels)-1,pair_offsets.data(),templ.pairs.size(),num,
+                templ.numerator_error,reject,output.cols,dst);
+#endif
+        for (int x = first_x; x < output.cols; ++x) {
+            const double upper_num = num[x] + templ.numerator_error;
+            if (!std::isfinite(upper_num)) { dst[x] = 1; continue; }
+            if (upper_num < 0) { dst[x] = -1; continue; }
+            uint32_t subset_sums[3]{},subset_square_sum=0;size_t used=0;
+            bool excluded = false;
+            for (const auto& pair : templ.pairs) {
+                const auto* a = image.ptr<uint8_t>(y + pair.first.y) + (x + pair.first.x) * channels;
+                const auto* b = image.ptr<uint8_t>(y + pair.second.y) + (x + pair.second.x) * channels;
+                for (int c = 0; c < channels; ++c) {
+                    const uint32_t va=a[c],vb=b[c];subset_sums[c]+=va+vb;
+                    subset_square_sum+=va*va+vb*vb;
+                }
+                used+=2;double lower=subset_square_sum;
+                for(int c=0;c<channels;++c)lower-=double(subset_sums[c])*subset_sums[c]/used;
+                if (upper_num * upper_num < reject * std::max(0.,lower)) { excluded = true; break; }
+            }
+            if (excluded) { dst[x] = -1; continue; }
+            dst[x] = 1.0f;
+        }
+    }
+}
+
+void MaskedCorrelationWorkspace::discard() noexcept {
+    fft.discard();
+    for (auto& s : spectra) s.release();
+    plane.release(); product.release(); accumulated.release(); numerator.release();
+    prepared_channels = constant_channels = 0; geometry = {}; channels = 0;
+}
+
+size_t MaskedCorrelationWorkspace::retained_bytes() const noexcept {
+    size_t result = fft.retained_bytes() + bytes(plane) + bytes(product) + bytes(accumulated) + bytes(numerator);
+    for (const auto& s : spectra) result += bytes(s);
+    return result;
+}
+
 } // namespace ai::cv_detail

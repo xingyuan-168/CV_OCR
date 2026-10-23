@@ -59,6 +59,7 @@ jobs:
         run: |
           ./scripts/prepare_dependencies.ps1 -OpenCVArchitecture None -PythonExe python
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build native API and tests
         shell: pwsh
         run: |
@@ -79,4 +80,32 @@ jobs:
         shell: pwsh
         run: |
           ctest --test-dir build/${{ matrix.profile }} -C Release --output-on-failure -R 'ai_engine_(yolo_model|yolo_pipeline|yolo_transport|ocr_color_filter|ocr_reading_order)_test'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  masked-cv-regression:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore pinned static OpenCV
+        shell: pwsh
+        run: |
+          ./scripts/prepare_dependencies.ps1 -OpenCVArchitecture ${{ matrix.arch }} -SkipRuntime -PythonExe python
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build synthetic transparent-mask regressions
+        shell: pwsh
+        run: |
+          $platform = if ('${{ matrix.arch }}' -eq 'x86') { 'Win32' } else { 'x64' }
+          $x64Dll = if ('${{ matrix.arch }}' -eq 'x64') { 'ON' } else { 'OFF' }
+          cmake -S . -B build/ci-masked-${{ matrix.arch }} -G 'Visual Studio 17 2022' -A $platform -DAIENGINE_WITH_OPENCV=ON -DAIENGINE_OPENCV_DIR="${{ github.workspace }}/third_party/opencv-5.0.0-static-mt/${{ matrix.arch }}" -DAIENGINE_WITH_ONNXRUNTIME=OFF -DAIENGINE_BUILD_X64_DLL=$x64Dll -DAIENGINE_BUILD_WORKER=OFF -DAIENGINE_BUILD_TESTS=ON -DAIENGINE_CV_TEST_HOOKS=ON
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build/ci-masked-${{ matrix.arch }} --config Release --target ai_engine_cv_masked_correlation_test ai_engine_cv_transparent_completeness_test ai_engine_cv_correlation_test ai_engine_cv_masked_score_test ai_engine_cv_stability_test --parallel 4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build/ci-masked-${{ matrix.arch }} -C Release --output-on-failure -R '^ai_engine_cv_(masked_correlation|transparent_completeness|correlation|masked_score|stability)_test$'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

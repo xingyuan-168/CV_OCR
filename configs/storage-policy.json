@@ -298,7 +298,12 @@
     "outpush/yolo26-15ms-implementation/v8-module-c-20ms/selected-auto.json.resources.csv",
     "outpush/yolo26-15ms-implementation/v8-module-c-20ms/selected-auto.json.samples.csv",
     "outpush/yolo26-15ms-implementation/final-20ms/optional-dependency-checks/cpu-without-nvidia.json.resources.csv",
-    "outpush/yolo26-15ms-implementation/final-20ms/optional-dependency-checks/cpu-without-nvidia.json.samples.csv"
+    "outpush/yolo26-15ms-implementation/final-20ms/optional-dependency-checks/cpu-without-nvidia.json.samples.csv",
+    "outpush/cv-transparent-20261023/candidate_probe_x64.exe",
+    "outpush/cv-transparent-20261023/candidate_probe_x64.obj",
+    "outpush/cv-transparent-20261023/candidate_probe_x86.exe",
+    "outpush/cv-transparent-20261023/candidate_probe_x86.obj",
+    "outpush/cv-transparent-20261023/score-maps.npz"
   ],
   "build_targets": [
     "third_party/build",

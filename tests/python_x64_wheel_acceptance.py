@@ -68,7 +68,11 @@ def _process_memory_mib() -> dict[str, float]:
 
 def _installed_package_checks() -> dict[str, object]:
     assert struct.calcsize("P") * 8 == 64
-    assert cq_ai_engine.__version__ == "0.14.8"
+    # Validate the installed package against the source being accepted, rather
+    # than silently accepting a previous delivery's Wheel.
+    import tomllib
+    expected = tomllib.loads((PROJECT_ROOT / "python" / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    assert cq_ai_engine.__version__ == expected
     with Engine() as engine:
         assert engine.version() == "CQ_AI_x64/" + cq_ai_engine.__version__
         assert engine.dll_path.name == "CQ_AI_x64.dll"

@@ -87,6 +87,8 @@ def native_checks(args, folder, metadata):
 
 
 def verified_reports(args, binaries, metadata):
+    from verify_cv_acceptance import verify_candidate_cv
+    verify_candidate_cv(metadata, args.validation, binaries)
     reports = {}
     timing_reports = []
     for name in ("delivery-build.json", "continuous.json", "simultaneous.json", "soak-30min.json"):
@@ -214,6 +216,7 @@ def main():
     parser.add_argument("--python-only", action="store_true")
     parser.add_argument("--no-zip", action="store_true")
     args = parser.parse_args()
+    validation_explicit = args.validation is not None
     registered_path, registered = current_manifest(ROOT)
     args.out = args.out or ROOT / 'outpush' / ('package-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S-%f'))
     args.validation = args.validation or ROOT / 'outpush' / (registered['delivery_version'] + '-validation')
@@ -239,6 +242,17 @@ def main():
     metadata_path = args.metadata or registered_path
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     source_metadata(ROOT / "include/ai_engine.h", ROOT / "src/worker_protocol.h", metadata_path)
+    # Apply the CV gate before every new package path, including Wheel-only and
+    # optional-module packaging. Those paths must not bypass failed acceptance.
+    from verify_cv_acceptance import required as cv_required, verify_candidate_cv
+    if cv_required(metadata):
+        if args.metadata is not None and not validation_explicit:
+            args.validation = args.metadata.resolve().parent
+        from release_manifest import verify_sources
+        verify_sources(ROOT, metadata)
+        if metadata.get("cv_x64_sha256") != digest(args.x64 / "CQ_AI_x64.dll"):
+            raise ValueError("CV evidence used a different x64 DLL")
+        verify_candidate_cv(metadata, args.validation, metadata["binary_fingerprints"])
     if args.nvidia_only:
         package = nvidia_package(args, metadata)
         args.nvidia_zip.with_suffix(".manifest.json").write_text(json.dumps(package, indent=2), encoding="utf-8")

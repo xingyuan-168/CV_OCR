@@ -2,6 +2,36 @@
 
 ## Requirement
 
+requirement_id: REQ-CV-001
+summary: Fix loss of exact transparent matches while requiring local x86/x64 complete-call P95 <=5ms in old and new scenarios.
+scope: masked correlation, candidate selection/NMS, numerical reference tests, resource accounting and binary-bound delivery checks
+updated_at: 2026-10-23
+
+## Candidates
+
+### Existing OpenCV5.0 masked template matching
+
+- Source: https://docs.opencv.org/4.13.0/df/dfb/group__imgproc__object.html and the pinned OpenCV5.0 static core/imgproc already used by this repository.
+- License: existing OpenCV Apache-2.0 distribution; no new runtime dependency.
+- Evidence:322 visible pixels in1.bmp exactly match2.bmp at(596,165), but both current product architectures miss. Direct full masked matching finds it, taking263-300ms in single-call diagnostics.
+- Limits: changing only ignored target-background pixels makes the current DLL find score1.0. Mean-filled gray coarse scoring and suppression of failed neighbors violate mask invariance. Direct OpenCV masked matching is a correctness cross-check, not evidence of5ms performance.
+
+### Existing correlation workspaces and masked scalar/AVX2 accumulator
+
+- Source: src/cv_correlation.cpp, src/cv_masked_score_avx2.cpp, src/ai_engine.cpp and tests/cv_real_transparent_benchmark.cpp.
+- Reuse: per-workspace IPP transform plans, verified frame-content reuse, immutable template snapshots, bounded idle memory and integer exact masked score.
+- Extension: true masked window moments/correlation, safe numerical candidate bounds, exact score ordering and accepted-match-only NMS. Independent exhaustive tests replace shared-heuristic equivalence as the completeness oracle.
+- Limits:32-bit FFT estimates must not silently reject boundary/low-energy candidates. Track every new retained buffer; production builds exclude test hooks. Current two gray conversions remain unchanged.
+
+## Decision
+
+decision: extract
+reason: Extend the existing native primitives with complete masked candidate evaluation, preserving scores and public contracts. First establish independent correctness, then measure and optimize toward the user-confirmed5ms hard gate. A candidate failing correctness or any5ms round remains unpromoted; no finite candidate cap, old coarse suppression or relaxed threshold is an acceptable performance shortcut. Diagnosis evidence is outpush/cv-transparent-20261023/ROOT_CAUSE_AND_REPAIR_PLAN_CN.md.
+
+## Prior research — REQ-YOLO-003
+
+## Requirement
+
 requirement_id: REQ-YOLO-003
 summary: Reach local YOLO26/bus five-caller complete-call P95 <=20ms with unchanged public contracts; the user revised acceptance from15ms on2026-10-07.
 scope: optional NVIDIA runtime recovery, native preprocessing, calibration/acceptance, RTX2070 evidence and paired delivery

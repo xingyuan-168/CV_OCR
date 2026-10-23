@@ -379,6 +379,11 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
     fingerprints = metadata.get("binary_fingerprints", {})
     hashes = "".join(f"<tr><td>{html.escape(name)}</td><td><code>{html.escape(fact['sha256'])}</code></td></tr>" for name, fact in sorted(fingerprints.items()))
     summary = html.escape(metadata.get("validation_summary", "本版功能测试正在执行；目标机GPU性能待验。"))
+    cv_validation = ""
+    cohort_label = "候选" if metadata.get("delivery_status") == "unpromoted" else "交付"
+    if "cv_transparent_validation" in metadata:
+        cv_status = html.escape(metadata["cv_transparent_validation"])
+        cv_validation = f"<p><b>透明找图候选验收：</b>{cv_status}；x86、x64旧/新场景每轮完整调用P95须≤5ms。正确性通过不代表速度达标；未全部通过时不替换output、不更新当前交付指针。当前使用版本仍以release/current.json为准。</p>"
     local_validation = ""
     target_followup = "目标机尚需验证TensorRT FP32运行、缓存损坏重建、FP16识别一致性、Graph收益、显存及五窗口30分钟GPU稳定性。每路完整调用未达到20/30ms时，报告必须标为未达标；通信P95&gt;2ms时才进入共享内存图像槽优化。"
     if metadata.get("local_benchmark_validation") == "passed":
@@ -388,7 +393,8 @@ def html_page(exports, project_version: str, delivery_version: str, worker_proto
     qpc_example = html.escape((Path(__file__).resolve().parents[1] / "examples/e_language_yolo_qpc.txt").read_text(encoding="utf-8"))
     command = html.escape("powershell -NoProfile -ExecutionPolicy Bypass -File tools/run_yolo_acceptance.ps1 -ImagesDir D:/五窗口变化BMP -Model D:/模型/best.onnx -RuntimeDir D:/业务程序目录 -BusinessWindowsActive")
     sections.append(f"""<section id='yolo_delivery' class='doc-section'><h1 class='func-title'>YOLO部署与五路调用</h1>
-<p><b>本次交付：</b>{project_version} / {delivery_version} / Worker协议{worker_protocol}。功能验证状态：{html.escape(metadata.get('functional_validation', 'pending'))}；E5-2696 v4、128GB、RTX2070五窗口完整调用每路P50≤20ms、P95≤30ms仍须目标机实测。</p>
+<p><b>本次{cohort_label}：</b>{project_version} / {delivery_version} / Worker协议{worker_protocol}。功能验证状态：{html.escape(metadata.get('functional_validation', 'pending'))}；E5-2696 v4、128GB、RTX2070五窗口完整调用每路P50≤20ms、P95≤30ms仍须目标机实测。</p>
+{cv_validation}
 {local_validation}
 <h2>三个核心文件</h2><p>将CQ_X86.dll、CQ_AI_worker.exe及本HTML一起放入业务目录，业务EXE加载32位DLL，DLL自动启动同目录64位Worker。Windows须为64位。模型路径由调用方传入，接口签名及现有CV/OCR功能保留。停止本程序的调用后成套替换文件，重建旧YOLO句柄。</p>
 <h2>启用NVIDIA TensorRT</h2><p>将本版ABI3模块CQ_YOLO_TensorRT.dll放到Worker旁，固定NVIDIA运行库的nvidia/目录也放到Worker旁。既有v23.6外部NVIDIA归档的nvidia/依赖可复用，但旧模块须换为本版ABI3模块。也可设置CQ_AI_NVIDIA_DIR为nvidia目录绝对路径。模块为x64，由Worker加载。基础CPU/DirectML无需NVIDIA包。GPU初始化失败时使用AI_GetLastError读取具体原因；设备3显式失败会返回错误。</p>
