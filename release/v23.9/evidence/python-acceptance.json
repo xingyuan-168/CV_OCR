@@ -1,0 +1,258 @@
+{
+  "package": {
+    "version": "CQ_AI_x64/0.14.9",
+    "dll": "D:\\codex-toolchains\\CV_OCR\\wheel-v23.9-20261024\\Lib\\site-packages\\cq_ai_engine\\_native\\CQ_AI_x64.dll"
+  },
+  "cv": {
+    "source": "tests\\fixtures\\cv\\base\\大图1.bmp",
+    "single": {
+      "box": {
+        "x": 364,
+        "y": 28,
+        "w": 27,
+        "h": 22
+      },
+      "score": 1.0,
+      "template_index": 0
+    },
+    "multi_count": 4
+  },
+  "ocr_cpu": {
+    "text": "ABC123",
+    "runtime": {
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-toolchains\\CV_OCR\\wheel-v23.9-20261024\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "mixed_cpu_fallback": false,
+      "selection_basis": "",
+      "calibration_key": "",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 0,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": ""
+    }
+  },
+  "yolo": {
+    "path_detections": 1,
+    "memory_detections": 1,
+    "path_runtime": {
+      "handle": 1,
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-toolchains\\CV_OCR\\wheel-v23.9-20261024\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "mixed_cpu_fallback": false,
+      "selection_basis": "explicit",
+      "calibration_key": "988c87e363e79333f1d1601fc08c8d8d9a7ae8fea1917ce4c718d50794f32e8d",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 2,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": "",
+      "session_count": 2,
+      "intra_op_threads": 4,
+      "input_width": 320,
+      "input_height": 320
+    },
+    "memory_runtime": {
+      "handle": 2,
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-toolchains\\CV_OCR\\wheel-v23.9-20261024\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "cpu",
+      "active": "cpu",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "",
+      "mixed_cpu_fallback": false,
+      "selection_basis": "explicit",
+      "calibration_key": "988c87e363e79333f1d1601fc08c8d8d9a7ae8fea1917ce4c718d50794f32e8d",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 2,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": "",
+      "session_count": 2,
+      "intra_op_threads": 4,
+      "input_width": 320,
+      "input_height": 320
+    }
+  },
+  "directml_soak": {
+    "iterations": 20,
+    "elapsed_seconds": 4.645,
+    "stable_output": true,
+    "released_and_reloaded": true,
+    "runtime": {
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-toolchains\\CV_OCR\\wheel-v23.9-20261024\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "directml",
+      "active": "directml",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "NVIDIA GeForce RTX 2070",
+      "mixed_cpu_fallback": true,
+      "selection_basis": "",
+      "calibration_key": "",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 0,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": ""
+    },
+    "reload_runtime": {
+      "runtime_flavor": "core",
+      "ort_version": "1.24.4",
+      "ort_path": "D:\\codex-toolchains\\CV_OCR\\wheel-v23.9-20261024\\Lib\\site-packages\\cq_ai_engine\\_native\\onnxruntime.dll",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "requested": "directml",
+      "active": "directml",
+      "degraded": false,
+      "device_id": 0,
+      "adapter_name": "NVIDIA GeForce RTX 2070",
+      "mixed_cpu_fallback": true,
+      "selection_basis": "",
+      "calibration_key": "",
+      "cpu_calibration_ms": -1.0,
+      "directml_calibration_ms": -1.0,
+      "precision": "fp32",
+      "tensorrt_version": "",
+      "cuda_version": 0,
+      "driver_version": 0,
+      "driver_file_version": "",
+      "driver_binary_sha256": "",
+      "execution_slots": 0,
+      "engine_cache_hit": false,
+      "cuda_graph": false,
+      "engine_build_us": 0,
+      "engine_cache_key": "",
+      "reason": ""
+    },
+    "private_mib_min": 338.355,
+    "private_mib_max": 349.961,
+    "private_mib_delta": -9.356,
+    "samples": [
+      {
+        "iteration": 0,
+        "working_set_mib": 313.719,
+        "private_mib": 348.961
+      },
+      {
+        "iteration": 2,
+        "working_set_mib": 314.828,
+        "private_mib": 349.961
+      },
+      {
+        "iteration": 4,
+        "working_set_mib": 303.246,
+        "private_mib": 338.355
+      },
+      {
+        "iteration": 6,
+        "working_set_mib": 303.281,
+        "private_mib": 338.355
+      },
+      {
+        "iteration": 8,
+        "working_set_mib": 303.367,
+        "private_mib": 338.355
+      },
+      {
+        "iteration": 10,
+        "working_set_mib": 303.449,
+        "private_mib": 338.355
+      },
+      {
+        "iteration": 12,
+        "working_set_mib": 303.539,
+        "private_mib": 338.355
+      },
+      {
+        "iteration": 14,
+        "working_set_mib": 303.637,
+        "private_mib": 338.355
+      },
+      {
+        "iteration": 16,
+        "working_set_mib": 303.73,
+        "private_mib": 338.438
+      },
+      {
+        "iteration": 18,
+        "working_set_mib": 303.82,
+        "private_mib": 338.52
+      },
+      {
+        "iteration": 20,
+        "working_set_mib": 303.922,
+        "private_mib": 339.605
+      }
+    ]
+  }
+}

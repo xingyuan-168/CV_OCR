@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "architecture": "x86",
+  "test_hooks": false,
+  "dll_sha256": "ac95afeb21e5e4d20a06e9d88a60796db590a7e2559602ed06d203f84c6e7d17",
+  "warmup": 64,
+  "samples": 1000,
+  "rounds": 3,
+  "limit_ms": 5,
+  "cases": [
+    {
+      "name": "changing_multi",
+      "rounds": [
+        {
+          "p50_ms": 2.4679,
+          "p95_ms": 4.3852,
+          "p99_ms": 4.5674,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 6.8127,
+          "over5_fraction": 0.002
+        },
+        {
+          "p50_ms": 2.4571,
+          "p95_ms": 4.0381,
+          "p99_ms": 4.4942,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 5.6885,
+          "over5_fraction": 0.002
+        },
+        {
+          "p50_ms": 2.4504,
+          "p95_ms": 4.3096,
+          "p99_ms": 4.5317,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.7482,
+          "over5_fraction": 0.0
+        }
+      ],
+      "prewarm_first_call_ms": [
+        2.5199,
+        2.4587,
+        2.3411
+      ]
+    },
+    {
+      "name": "changing_transparent",
+      "rounds": [
+        {
+          "p50_ms": 2.4729,
+          "p95_ms": 4.3787,
+          "p99_ms": 4.5294,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.9899,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.4651,
+          "p95_ms": 4.4308,
+          "p99_ms": 4.5307,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.9248,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.4437,
+          "p95_ms": 4.1703,
+          "p99_ms": 4.4821,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 6.7489,
+          "over5_fraction": 0.002
+        }
+      ],
+      "prewarm_first_call_ms": [
+        4.0453,
+        4.0791,
+        3.8459
+      ]
+    },
+    {
+      "name": "multi_text",
+      "rounds": [
+        {
+          "p50_ms": 1.8508,
+          "p95_ms": 3.0392,
+          "p99_ms": 3.2043,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.3936,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8975,
+          "p95_ms": 3.0955,
+          "p99_ms": 3.2707,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.419,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8456,
+          "p95_ms": 2.7481,
+          "p99_ms": 3.1761,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.892,
+          "over5_fraction": 0.0
+        }
+      ],
+      "prewarm_first_call_ms": [
+        3.9809,
+        3.6828,
+        3.7405
+      ]
+    },
+    {
+      "name": "single",
+      "rounds": [
+        {
+          "p50_ms": 2.4371,
+          "p95_ms": 2.924,
+          "p99_ms": 2.9895,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 5.5687,
+          "over5_fraction": 0.003
+        },
+        {
+          "p50_ms": 2.3967,
+          "p95_ms": 2.9121,
+          "p99_ms": 2.9653,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.8761,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.2563,
+          "p95_ms": 2.9117,
+          "p99_ms": 3.3143,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 6.4145,
+          "over5_fraction": 0.001
+        }
+      ],
+      "prewarm_first_call_ms": [
+        6.2794,
+        14.3011,
+        6.1692
+      ]
+    },
+    {
+      "name": "threshold_single",
+      "rounds": [
+        {
+          "p50_ms": 3.6471,
+          "p95_ms": 4.3894,
+          "p99_ms": 5.3805,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 8.8084,
+          "over5_fraction": 0.012
+        },
+        {
+          "p50_ms": 3.6321,
+          "p95_ms": 4.2428,
+          "p99_ms": 4.4271,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.7501,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 3.3453,
+          "p95_ms": 4.3513,
+          "p99_ms": 4.4336,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 7.9751,
+          "over5_fraction": 0.007
+        }
+      ],
+      "prewarm_first_call_ms": [
+        3.4886,
+        3.5958,
+        3.2549
+      ]
+    },
+    {
+      "name": "transparent_multi_text",
+      "rounds": [
+        {
+          "p50_ms": 1.8361,
+          "p95_ms": 3.1145,
+          "p99_ms": 3.2983,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.498,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8094,
+          "p95_ms": 2.5749,
+          "p99_ms": 3.0874,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.2816,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8193,
+          "p95_ms": 2.7073,
+          "p99_ms": 3.1825,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.262,
+          "over5_fraction": 0.0
+        }
+      ],
+      "prewarm_first_call_ms": [
+        1.8199,
+        2.02,
+        1.8457
+      ]
+    },
+    {
+      "name": "transparent_single",
+      "rounds": [
+        {
+          "p50_ms": 2.4169,
+          "p95_ms": 2.5416,
+          "p99_ms": 2.6191,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 2.9894,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.4162,
+          "p95_ms": 2.8958,
+          "p99_ms": 2.9636,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 6.4199,
+          "over5_fraction": 0.003
+        },
+        {
+          "p50_ms": 2.2163,
+          "p95_ms": 2.8728,
+          "p99_ms": 2.925,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 5.2663,
+          "over5_fraction": 0.001
+        }
+      ],
+      "prewarm_first_call_ms": [
+        2.5233,
+        2.4163,
+        2.9326
+      ]
+    }
+  ],
+  "accepted_5ms": true
+}

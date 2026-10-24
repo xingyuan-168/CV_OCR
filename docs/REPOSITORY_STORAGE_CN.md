@@ -1,5 +1,12 @@
 # 仓库容量与依赖恢复
 
+2026-10-24 v23.9透明找图交付后，841项构建和重复测试运行库（1026.152MiB）逐文件SHA验证后，
+可逆移至`D:/codex-delivery/CV_OCR/cv-transparent-5ms-20261024/`，保留原相对路径和恢复索引。
+未删除这些产物，不计作物理空间释放；147项input、output、历史release、models和回滚保护文件验证未变。
+交付登记提交前仓库含Git为1.374GiB，提交后再次核对1.5GiB门槛；最终计量保存在
+`outpush/cv-transparent-mask-fix/qualified-20261024/storage-after-commit.json`。
+详情见[交付审计](evidence/CV_TRANSPARENT_5MS_DELIVERY_20261024.json)。
+
 2026-10-08 v23.8交付后，按登记路径清理本轮构建、重复包、隔离运行库和采样CSV。清理后、最终交付提交前，含`.git`实测1.433GiB；提交后继续核对1.5GiB上限，实际记录在`outpush/yolo26-15ms-implementation/storage-after-cleanup-actual.json`。49项input、历史release及旧output回滚保护记录通过；没有删除原有用户交付和回滚。
 
 原始证据和构建ZIP保留在`D:/codex-delivery/CV_OCR/v23.8/`，通过CRC与CSV逐文件SHA验证，失败尝试也保留。目录及哈希见[v23.8说明](V23_8_DELIVERY_CN.md)与[本轮存储审计](evidence/STORAGE_V23_8_SUMMARY.json)。工程检查虚拟环境逐文件核对后移至`D:/codex-toolchains/CV_OCR/aios-venv`，源码留在`.cache/aios-source`，可通过下式运行真实AIOS检查：

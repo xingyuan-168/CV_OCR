@@ -1,0 +1,237 @@
+{
+  "schema": 1,
+  "architecture": "x86",
+  "test_hooks": false,
+  "dll_sha256": "ac95afeb21e5e4d20a06e9d88a60796db590a7e2559602ed06d203f84c6e7d17",
+  "warmup": 64,
+  "samples": 1000,
+  "rounds": 3,
+  "limit_ms": 5,
+  "cases": [
+    {
+      "name": "changing_multi",
+      "rounds": [
+        {
+          "p50_ms": 2.4941,
+          "p95_ms": 4.3506,
+          "p99_ms": 4.4775,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.7865,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.5052,
+          "p95_ms": 4.0466,
+          "p99_ms": 4.4559,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.6566,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.5151,
+          "p95_ms": 4.4446,
+          "p99_ms": 4.5841,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 6.3614,
+          "over5_fraction": 0.002
+        }
+      ]
+    },
+    {
+      "name": "changing_transparent",
+      "rounds": [
+        {
+          "p50_ms": 2.5022,
+          "p95_ms": 4.4155,
+          "p99_ms": 4.5364,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.9246,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.5048,
+          "p95_ms": 4.3459,
+          "p99_ms": 4.5403,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.8669,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.5291,
+          "p95_ms": 4.41,
+          "p99_ms": 4.5113,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.8669,
+          "over5_fraction": 0.0
+        }
+      ]
+    },
+    {
+      "name": "multi_text",
+      "rounds": [
+        {
+          "p50_ms": 1.8954,
+          "p95_ms": 2.7342,
+          "p99_ms": 3.0424,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.9525,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8838,
+          "p95_ms": 3.0416,
+          "p99_ms": 3.1486,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.3728,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8557,
+          "p95_ms": 2.9745,
+          "p99_ms": 3.0779,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.8749,
+          "over5_fraction": 0.0
+        }
+      ]
+    },
+    {
+      "name": "single",
+      "rounds": [
+        {
+          "p50_ms": 2.2264,
+          "p95_ms": 2.8829,
+          "p99_ms": 3.0319,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 5.7747,
+          "over5_fraction": 0.004
+        },
+        {
+          "p50_ms": 2.2483,
+          "p95_ms": 2.4729,
+          "p99_ms": 2.5592,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 2.9732,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.3122,
+          "p95_ms": 2.9557,
+          "p99_ms": 5.2219,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 6.5115,
+          "over5_fraction": 0.012
+        }
+      ]
+    },
+    {
+      "name": "threshold_single",
+      "rounds": [
+        {
+          "p50_ms": 3.332,
+          "p95_ms": 3.6467,
+          "p99_ms": 3.7977,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.236,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 3.3102,
+          "p95_ms": 3.6219,
+          "p99_ms": 3.792,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.2011,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 3.3674,
+          "p95_ms": 3.6674,
+          "p99_ms": 3.8028,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 4.2258,
+          "over5_fraction": 0.0
+        }
+      ]
+    },
+    {
+      "name": "transparent_multi_text",
+      "rounds": [
+        {
+          "p50_ms": 1.852,
+          "p95_ms": 2.9979,
+          "p99_ms": 3.138,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.7048,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8612,
+          "p95_ms": 3.0876,
+          "p99_ms": 3.2829,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.5065,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 1.8486,
+          "p95_ms": 3.0121,
+          "p99_ms": 3.102,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.2151,
+          "over5_fraction": 0.0
+        }
+      ]
+    },
+    {
+      "name": "transparent_single",
+      "rounds": [
+        {
+          "p50_ms": 2.1844,
+          "p95_ms": 2.8814,
+          "p99_ms": 2.9543,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.876,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.2579,
+          "p95_ms": 2.4916,
+          "p99_ms": 2.5765,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 3.0253,
+          "over5_fraction": 0.0
+        },
+        {
+          "p50_ms": 2.2161,
+          "p95_ms": 2.9202,
+          "p99_ms": 2.9721,
+          "count": 1000,
+          "errors": 0,
+          "max_ms": 5.5736,
+          "over5_fraction": 0.005
+        }
+      ]
+    }
+  ],
+  "accepted_5ms": true
+}

@@ -1,0 +1,467 @@
+{
+  "worker_protocol": 26,
+  "public_exports": 60,
+  "project_version": "0.14.9",
+  "delivery_version": "v23.9",
+  "formal_release": false,
+  "delivery_status": "qualified",
+  "functional_validation": "passed",
+  "target_performance_validation": "pending",
+  "local_benchmark_validation": "not_run",
+  "cv_transparent_validation": "passed",
+  "cv_transparent_p95_limit_ms": 5,
+  "cv_independent_reference_validation": "passed",
+  "build_base_revision": "dd60f5ffec2afec3f0fa8b6247437ac40069f84b",
+  "source_revision": "dd60f5f + normalized candidate source snapshot",
+  "build_working_tree_modified": true,
+  "delivery_document": "CV_TRANSPARENT_5MS_RESULT_CN.md",
+  "validation_summary": "透明找图在(596,165)正确命中95×81目标，322个有效彩色像素相同、精算1.0；x86/x64共120000个正式样本零错误，每架构20场景各三轮P95均≤5ms。六项十分钟变化帧压力和新DLL/Worker三十分钟CPU配对稳定性完成；业务YOLO问题未恢复调查。",
+  "git_source_sha256": {
+    "CMakeLists.txt": "d6a5299960b8c8d48904ada4896d908f403779f381fd25306a253da567fc6615",
+    "include/ai_engine.h": "1fc074ab46f26159f099bf04ad0dc591abfb3cadf971ee68ba86a965219b0bff",
+    "src/ai_engine.cpp": "bd334e20c159263a725277d1bd23e72e9e2e05e07f4147a4fe85438a6dddea69",
+    "src/backend_onnxruntime.cpp": "2ce013ff325a9fedbd6111161d7b07cec0f320dbd738da22d28c46f2767a386f",
+    "src/backend_onnxruntime.h": "ad10c182248ca167b050593a99769794d0432c1a754b27750fc6272c674da908",
+    "src/backend_tensorrt.cpp": "bd825f1d40fac89240194df930c2316b2383c4ff2fac526b505b69cc63c60d33",
+    "src/backend_tensorrt.h": "2259f258080e454f90c69b7a65b275c6bd2029cbd282150c1fed72830bb5714b",
+    "src/backends.cpp": "e9deb3d1ff61f68522981751bad8b95a8a68877ebf42e456a75e7f1ac2f296d1",
+    "src/backends.h": "e90c0d2a80dc6388780c5994c127d27e2b3e53d0307ec2ba1e6c44a9ba82d2ad",
+    "src/bmp_view.h": "e1f9f78713ac2e935831507f6473f34e795b38cca3c5b9fabf8cc2b83ed82b72",
+    "src/compact_result_format.h": "fa4e8b2716d4ec3b0407398551795f4eef215b0ff8381208659c2ce9dda668bb",
+    "src/config.cpp": "47b95304840c893ac89614b8f86abc51d24b2539e4750c3aee311dea77f6935f",
+    "src/config.h": "5e16fe693ef4b212e1db995fad3bd75ec493fb62bad065f08b1a6e7c4a03ba74",
+    "src/coordinate_offset.h": "4b4545f8f63522c639f308a97f1b766e81f650b50803d1f031c2832adcbe68fd",
+    "src/cv_correlation.cpp": "6538f753ff0fea88f22e5fc250fc6e9c50d5c17eafc9c29c0dcc9a20c2f1d563",
+    "src/cv_correlation.h": "c3ff3264a37beec183534feb9eca5ab3539e74030bc77542635bc33f14dd4910",
+    "src/cv_fast.cpp": "294a7e10bd7e1f441a2ce7620e7c6173d12b2fe4741f8c981112c17b8f54fa2d",
+    "src/cv_fast.h": "344011bdabf37936ff72afca300a72af10607625304e87019789975027c76c9e",
+    "src/cv_masked_score_avx2.cpp": "2c5e7b5f67b319f008653a579412610a8b71b382967456399e56f682aac522e6",
+    "src/cv_masked_score_avx2.h": "c57746a7df1dd95ac9488d97023096d14e24688cf4caae1306c8aee401f2b17f",
+    "src/cv_normalize.h": "9a88f42466f38ce34342162b7b9fb459f4baea3717a99253661ca91159f21316",
+    "src/cv_normalize_avx2.cpp": "03ae0a6ac06e44ca2e9d4ef0805000d94befd7b778d8e7e4adfefcb681bb94bc",
+    "src/cv_test_hooks.h": "3ac04647f8b51fadfae3490d324c1c6bcc915146bf76a989b02970448552a3c0",
+    "src/embedded_assets.cpp": "dabda5c8442357f44e05ebaea0a8cdd3689e22eccbeb300f236e6fb89ec035b6",
+    "src/embedded_assets.h": "0dc91bf57dc1513bc16e42ef7ce315207e6e2b64d998ef4028dab4d34d3841dc",
+    "src/embedded_assets.rc.in": "b0ae5ffb388b200d7be875c5b439e5f3a9b7b78f1c1e3529c0cf00adf17f7208",
+    "src/embedded_ocr_assets.rc.in": "3f125e284665cb508166cfacfa1e8b93f2517b50430231463648e1d82e58b090",
+    "src/embedded_runtime.rc.in": "51ef0a54dd6cdce65ecbda5ed0ca1f4f9e82aae3cdea126a429ee8d968782cb8",
+    "src/engine.cpp": "07b00c7c8cdbb487ee63ddbed77a4ccf52e23238d3cc9d42aad49e01799e2db5",
+    "src/engine.h": "39d0eefee467b875618274846422df10ac59424fd790b9ff7a790bb5f94f14ca",
+    "src/error.cpp": "16dadbb4d8aafbd3598d179ffe97d4044da6c92b592befb36c7ae3d0f7a06ee7",
+    "src/error.h": "8fe708c8ace13e6604219ff8e1bb545d29316d70b6940cfc122e4192c40cd85d",
+    "src/image_view.h": "828d8d935e3e0b99b0e7af90d9d0f0e3aceb57ffdc8f119e4fe5c876d9158fb5",
+    "src/memory_zip.cpp": "f3ad17b66aefd8422982f8b4686f2ae5c903dac373b68ffb404dd7e8561859ab",
+    "src/memory_zip.h": "8ba3fce192de12eb14e554811cbbcdb9069b54c3f5b16dc80d02a9a929789e66",
+    "src/ocr_color_filter.cpp": "7bb0b5f9af0ed2231da04a9a1ad99a758d724c9325e3ca48a3a28cc2786e201d",
+    "src/ocr_color_filter.h": "a895490494776e0b0897008a11514254b3f8a68661988009bddf2e3bea1f81ce",
+    "src/ocr_reading_order.cpp": "7e0f4da1f1b5d31de30fb72f4e01aff76fe28a5b0703d4c1be05186de3684d4c",
+    "src/ocr_reading_order.h": "d9ca8231eab8180686d7eac4869388fe895db32451aea4c69ce2c015c24b3a0e",
+    "src/pipe_io.h": "663b0c0b4e948a63198f67586f136ca57002f79b39a3776794796ea844cc0514",
+    "src/runtime_bundle_format.h": "f727c6d7e8231c04e232206d6d8f95ef7f64c6925afe2eb03d729a82e48490bc",
+    "src/runtime_bundle_loader.cpp": "119b9240f90b5064208efd0aa194d6363b8431a66f1f3510a790843ecd49ee9d",
+    "src/runtime_bundle_loader.h": "cd34080497df35791ca4e08a0bafff3130838a459675512415693a760a2528fe",
+    "src/runtime_status.cpp": "53cbfc3c81a68db9c0d570ed9e282d347d6c3ec32ccfae01d88e8015e281c0ea",
+    "src/runtime_status.h": "a3900b225261f21bdf8c10f84a34aee64d9822dde6e680ffb78e6ec0bb747df1",
+    "src/sha256.h": "89ab813a40bd176de05178adeb3367fd6a53d5b1526175a82120d004ea14b968",
+    "src/tensorrt_module.cpp": "294837b54c55c955f66706e6b893f6dae55af1d6ff4de5a6080fd857eb478bf3",
+    "src/tensorrt_module_api.h": "7f004a7d3b35adeca4dbb39c8d96e677bd19f2a31daff4d359ba123e4b26d4d0",
+    "src/timer.h": "ba950622e084c5d3c04ded99ce4fd06e74f0e65d76afb05ba28925c8f5427505",
+    "src/worker_main.cpp": "d13739b481f4895380395446ce1d370ec6dcf9c0bf083e8a90c5ee1547542a2f",
+    "src/worker_protocol.h": "40b3851e171205a170804a39b995319c38c9e56c50f4dde1fc51a458596c5aff",
+    "src/yolo_decode.h": "2c6a2eee37753086657f635f0b575b702df31497a8e35e1754f74a47e3dd13be",
+    "src/yolo_diagnostics.h": "9380d8b8fab5e7f68dbb01e30ab0479d629b5ac6c004a34a661d2d8b929ff1fe",
+    "src/yolo_model.h": "113d9e86fa9bb0ab77cfc85d23d021088ec7b62eb64a1bb7437edbb7a13490ce",
+    "src/yolo_pool.cpp": "bf8e01482eef9ea84edd469efeb482f6b15f1ff035e5184d9f6351c81a2ed51b",
+    "src/yolo_pool.h": "1ab4438b9271fed0d9617283362ce65189a554de95da8ed33e5dd8094bcc46c2",
+    "src/yolo_preprocess.h": "3709f151c0053169e25ede5fbdf89661cba3daabf0687b9d3b21455afb4c3820"
+  },
+  "binary_fingerprints": {
+    "CQ_X86.dll": {
+      "size": 9999360,
+      "sha256": "ac95afeb21e5e4d20a06e9d88a60796db590a7e2559602ed06d203f84c6e7d17"
+    },
+    "CQ_AI_worker.exe": {
+      "size": 24556544,
+      "sha256": "d426bc2e4aabdc726966f0753b72b61c28034b9fb77bb5daa0261f6616486c1c"
+    }
+  },
+  "candidate_runtime_directory": "D:\\codex-project\\OpenCV\\build\\cv-cascade-x86-production",
+  "functional_evidence": {
+    "file": "cv-transparent-mask-fix/qualified-20261024/delivery-build.json",
+    "size": 2461,
+    "sha256": "16a5ffd96dc361e46cc96cbd694d3ced8af71aa3ba8cbdfd9f8cc4f8b0e37602"
+  },
+  "cv_x64_sha256": "0adbc48c0c52d9d33b2e2c7ca0a594f511cbb50fe3170e3dcc936b19e008f869",
+  "cv_input_sha256": {
+    "1.bmp": "b4c8df7314fb91fbbc6f118013d503d6c4ef281e24af1f07a397fca09036939c",
+    "2.bmp": "a6eab91fc30c641c618e2398b71b9205189c77257393467352128cd554cc0357"
+  },
+  "cv_stress_validation": "not_run_after_failed_5ms_gate",
+  "new_binary_30min_validation": "not_run_after_failed_5ms_gate",
+  "cv_transparent_evidence": {
+    "timing_x86": {
+      "file": "cv-timing-x86.json",
+      "size": 5358,
+      "sha256": "8e7012456f21ce99356070144b599f04a1d39fbcfe891a3772033ad0dc942c65"
+    },
+    "legacy_x86": {
+      "file": "cv-legacy-timing-x86.json",
+      "size": 6135,
+      "sha256": "f17d09da6cf2b74629b800c8ed67892a563c4a94c236269c0a34434b42ea09b2"
+    },
+    "stress_x86_1": {
+      "file": "cv-stress-x86-1.json",
+      "size": 702,
+      "sha256": "9eb91f392531cdacd49e59b833dc8c8663ca117834ba98e72c8437cf7b23d958"
+    },
+    "stress_x86_4": {
+      "file": "cv-stress-x86-4.json",
+      "size": 711,
+      "sha256": "181b5f7bbf5a51c3bee7a3ce2d13d8fddd6166fc0599eb54609eb3d58f01cc9e"
+    },
+    "stress_x86_16": {
+      "file": "cv-stress-x86-16.json",
+      "size": 705,
+      "sha256": "bb51cfc1f543ca33d6591388a161a56a9c2edf0fbfa91801f5075204bf87561a"
+    },
+    "timing_x64": {
+      "file": "cv-timing-x64.json",
+      "size": 5368,
+      "sha256": "a62dce32ea26c0b93e8ca2643459f97a8e83cec5deefc65b020a1da6f2cb1afb"
+    },
+    "legacy_x64": {
+      "file": "cv-legacy-timing-x64.json",
+      "size": 6121,
+      "sha256": "b77ccc0b211095f794ca2eb4319421bd2fa189eaafbc7ca395f1ff55d7a8e7dc"
+    },
+    "stress_x64_1": {
+      "file": "cv-stress-x64-1.json",
+      "size": 710,
+      "sha256": "ba8f1700d77fb2595a29b010e5025870fc10a86a97cfb23c3ca5ada310d98e76"
+    },
+    "stress_x64_4": {
+      "file": "cv-stress-x64-4.json",
+      "size": 703,
+      "sha256": "a389ca7821537e555987c6123e0e0444d4b2682cdf6ac2816ffe10128d4cce0e"
+    },
+    "stress_x64_16": {
+      "file": "cv-stress-x64-16.json",
+      "size": 702,
+      "sha256": "72b62fd2bbfd5696464828f99ca3708d4444a81f7078d12721614c12710ae8ea"
+    }
+  },
+  "candidate_archive_directory": "D:\\codex-delivery\\CV_OCR\\cv-transparent-mask-fix-20261023\\build\\cv-mask-x86-production",
+  "candidate_x64_archive_directory": "D:\\codex-delivery\\CV_OCR\\cv-transparent-mask-fix-20261023\\build\\cv-mask-x64-production",
+  "runtime_retention": "verified_external_move_after_failed_finish_gate; restore build paths before rerunning paired candidate checks",
+  "functional_validation_scope": "透明找图在(596,165)正确命中95×81目标，322个有效彩色像素相同、精算1.0；x86/x64共120000个正式样本零错误，每架构20场景各三轮P95均≤5ms。六项十分钟变化帧压力和新DLL/Worker三十分钟CPU配对稳定性完成；业务YOLO问题未恢复调查。",
+  "source_committed_revision": "c913177221d7b63245bd53a4e4c5c6f293b2dc12",
+  "source_snapshot_verified": true,
+  "created_utc": "2026-10-24T10:45:46.947951+00:00",
+  "core_directory": null,
+  "output_directory": "D:\\codex-project\\OpenCV\\output",
+  "output_promotion": "pending",
+  "files": {
+    "CQ_AI_worker.exe": {
+      "size": 24556544,
+      "sha256": "d426bc2e4aabdc726966f0753b72b61c28034b9fb77bb5daa0261f6616486c1c"
+    },
+    "CQ_X86.dll": {
+      "size": 9999360,
+      "sha256": "ac95afeb21e5e4d20a06e9d88a60796db590a7e2559602ed06d203f84c6e7d17"
+    },
+    "易语言_DLL_API_说明.html": {
+      "size": 155007,
+      "sha256": "12935ff44b04ff772dc8ade14dfc1fdf5d2a754fedba80c3bf3ca8fad02aed4b"
+    }
+  },
+  "worker_probe": {
+    "runtime_flavor": "core",
+    "ort_version": "1.24.4",
+    "ort_path": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-7e5517caf3b8a2649dcba9fbb8655bab479a03c485dfb0a35cdefd41c2771eda\\onnxruntime.dll",
+    "available_providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "requested": "probe",
+    "active": "none",
+    "degraded": false,
+    "mixed_cpu_fallback": false,
+    "device_id": 0,
+    "adapter_name": "",
+    "selection_basis": "",
+    "calibration_key": "",
+    "cpu_calibration_ms": -1.0,
+    "directml_calibration_ms": -1.0,
+    "active_requests": 0,
+    "live_connections": 0,
+    "precision": "fp32",
+    "tensorrt_version": "",
+    "cuda_version": 0,
+    "driver_version": 0,
+    "driver_file_version": "",
+    "driver_binary_sha256": "",
+    "execution_slots": 0,
+    "engine_cache_hit": false,
+    "cuda_graph": false,
+    "engine_build_us": 0,
+    "engine_cache_key": "",
+    "reason": "",
+    "worker_protocol": 26,
+    "runtime_cache": "C:\\Users\\Administrator\\AppData\\Local\\CQ_AI\\runtime\\v23.8\\ort-dml-1.24.4-7e5517caf3b8a2649dcba9fbb8655bab479a03c485dfb0a35cdefd41c2771eda",
+    "runtime_bundle_sha256": "7e5517caf3b8a2649dcba9fbb8655bab479a03c485dfb0a35cdefd41c2771eda",
+    "directml_cached": true
+  },
+  "validation_reports": {
+    "delivery-build.json": {
+      "path": "D:\\codex-project\\OpenCV\\outpush\\cv-transparent-mask-fix\\qualified-20261024\\delivery-build.json",
+      "size": 2461,
+      "sha256": "16a5ffd96dc361e46cc96cbd694d3ced8af71aa3ba8cbdfd9f8cc4f8b0e37602"
+    },
+    "continuous.json": {
+      "path": "D:\\codex-project\\OpenCV\\outpush\\cv-transparent-mask-fix\\qualified-20261024\\continuous.json",
+      "size": 4961,
+      "sha256": "1f4ea35966d7f997f65f9d2bc65d9f5e7370a3fd7207dfd236b020c559d237aa"
+    },
+    "simultaneous.json": {
+      "path": "D:\\codex-project\\OpenCV\\outpush\\cv-transparent-mask-fix\\qualified-20261024\\simultaneous.json",
+      "size": 4956,
+      "sha256": "cc913c93e63bd44c5d89d7c3c70277dec787292f6abbec04c9e104ff5e20cca5"
+    },
+    "soak-30min.json": {
+      "path": "D:\\codex-project\\OpenCV\\outpush\\cv-transparent-mask-fix\\qualified-20261024\\soak-30min.json",
+      "size": 2933,
+      "sha256": "3e4b5f1f926eb6fdad582101fff0b02690a39d8e8405c97fdd87760950feec9f"
+    }
+  },
+  "build_configuration": {
+    "x86": {
+      "AIENGINE_BUILD_TENSORRT_MODULE:BOOL": "OFF",
+      "AIENGINE_BUILD_TESTS:BOOL": "ON",
+      "AIENGINE_BUILD_WORKER:BOOL": "OFF",
+      "AIENGINE_BUILD_X64_DLL:BOOL": "OFF",
+      "AIENGINE_CUDA_INCLUDE_DIR:PATH": "D:/codex-project/OpenCV/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include",
+      "AIENGINE_CV_TEST_HOOKS:BOOL": "OFF",
+      "AIENGINE_EMBED_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_CHARSET:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/ppocrv6_tiny_dict.txt",
+      "AIENGINE_EMBED_OCR_DET_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/det.fp32.onnx",
+      "AIENGINE_EMBED_OCR_REC_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/rec.fp32.onnx",
+      "AIENGINE_EMBED_YOLO_LABELS:FILEPATH": "D:/codex-project/OpenCV/models/yolo/smc.txt",
+      "AIENGINE_EMBED_YOLO_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/yolo/smc.onnx",
+      "AIENGINE_ONNXRUNTIME_DIR:PATH": "",
+      "AIENGINE_OPENCV_DIR:PATH": "D:/codex-project/OpenCV/third_party/opencv-5.0.0-static-mt/x86",
+      "AIENGINE_TENSORRT_INCLUDE_DIR:PATH": "D:/codex-project/OpenCV/third_party/nvidia-headers",
+      "AIENGINE_WITH_ONNXRUNTIME:BOOL": "OFF",
+      "AIENGINE_WITH_OPENCV:BOOL": "ON",
+      "CMAKE_BUILD_TYPE:STRING": "Release",
+      "CMAKE_CXX_COMPILER:UNINITIALIZED": "C:/cq-ai-msvc-14.44/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x86/cl.exe",
+      "CMAKE_GENERATOR:INTERNAL": "Ninja",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": ""
+    },
+    "worker": {
+      "AIENGINE_BUILD_TENSORRT_MODULE:BOOL": "OFF",
+      "AIENGINE_BUILD_TESTS:BOOL": "OFF",
+      "AIENGINE_BUILD_WORKER:BOOL": "ON",
+      "AIENGINE_BUILD_X64_DLL:BOOL": "OFF",
+      "AIENGINE_CUDA_INCLUDE_DIR:PATH": "D:/codex-project/OpenCV/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include",
+      "AIENGINE_CV_TEST_HOOKS:BOOL": "OFF",
+      "AIENGINE_EMBED_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_ASSETS:BOOL": "ON",
+      "AIENGINE_EMBED_OCR_CHARSET:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/ppocrv6_tiny_dict.txt",
+      "AIENGINE_EMBED_OCR_DET_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/det.fp32.onnx",
+      "AIENGINE_EMBED_OCR_REC_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/rec.fp32.onnx",
+      "AIENGINE_EMBED_YOLO_LABELS:FILEPATH": "D:/codex-project/OpenCV/models/yolo/smc.txt",
+      "AIENGINE_EMBED_YOLO_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/yolo/smc.onnx",
+      "AIENGINE_ONNXRUNTIME_DIR:PATH": "D:/codex-project/OpenCV/third_party/runtime/ort-directml-1.24.4",
+      "AIENGINE_OPENCV_DIR:PATH": "",
+      "AIENGINE_TENSORRT_INCLUDE_DIR:PATH": "D:/codex-project/OpenCV/third_party/nvidia-headers",
+      "AIENGINE_WITH_ONNXRUNTIME:BOOL": "ON",
+      "AIENGINE_WITH_OPENCV:BOOL": "OFF",
+      "CMAKE_BUILD_TYPE:STRING": "Release",
+      "CMAKE_CXX_COMPILER:UNINITIALIZED": "C:/cq-ai-msvc-14.44/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+      "CMAKE_GENERATOR:INTERNAL": "Ninja",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": ""
+    },
+    "x64": {
+      "AIENGINE_BUILD_TENSORRT_MODULE:BOOL": "OFF",
+      "AIENGINE_BUILD_TESTS:BOOL": "ON",
+      "AIENGINE_BUILD_WORKER:BOOL": "OFF",
+      "AIENGINE_BUILD_X64_DLL:BOOL": "ON",
+      "AIENGINE_CUDA_INCLUDE_DIR:PATH": "D:/codex-project/OpenCV/third_party/nvidia-cuda-runtime-12.8.90/nvidia/cuda_runtime/include",
+      "AIENGINE_CV_TEST_HOOKS:BOOL": "OFF",
+      "AIENGINE_EMBED_ASSETS:BOOL": "OFF",
+      "AIENGINE_EMBED_OCR_ASSETS:BOOL": "ON",
+      "AIENGINE_EMBED_OCR_CHARSET:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/ppocrv6_tiny_dict.txt",
+      "AIENGINE_EMBED_OCR_DET_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/det.fp32.onnx",
+      "AIENGINE_EMBED_OCR_REC_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/ocr_ppocrv6/rec.fp32.onnx",
+      "AIENGINE_EMBED_YOLO_LABELS:FILEPATH": "D:/codex-project/OpenCV/models/yolo/smc.txt",
+      "AIENGINE_EMBED_YOLO_MODEL:FILEPATH": "D:/codex-project/OpenCV/models/yolo/smc.onnx",
+      "AIENGINE_ONNXRUNTIME_DIR:PATH": "D:/codex-project/OpenCV/third_party/runtime/ort-directml-1.24.4",
+      "AIENGINE_OPENCV_DIR:PATH": "D:/codex-project/OpenCV/third_party/opencv-5.0.0-static-mt/x64",
+      "AIENGINE_TENSORRT_INCLUDE_DIR:PATH": "D:/codex-project/OpenCV/third_party/nvidia-headers",
+      "AIENGINE_WITH_ONNXRUNTIME:BOOL": "ON",
+      "AIENGINE_WITH_OPENCV:BOOL": "ON",
+      "CMAKE_BUILD_TYPE:STRING": "Release",
+      "CMAKE_CXX_COMPILER:UNINITIALIZED": "C:/cq-ai-msvc-14.44/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+      "CMAKE_GENERATOR:INTERNAL": "Ninja",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": ""
+    }
+  },
+  "artifacts": {
+    "easy_language_zip": {
+      "file": "CQ_AI_e_language_v23.9.zip",
+      "size": 27541033,
+      "sha256": "f4eaa734a357502697746f253e1f188f032c48c3df8cb3909562153efc75e0f8"
+    },
+    "python_wheel": {
+      "file": "cq_ai_engine-0.14.9-py3-none-win_amd64.whl",
+      "size": 27366090,
+      "sha256": "79eadf2b6a3eb1f214fee800cb46abff16b5f6bbd9e6e91a8be1495885106136"
+    }
+  },
+  "historical_release": "release/v23.5 retained unchanged",
+  "staging_cleaned": true,
+  "schema": 2,
+  "evidence": {
+    "delivery-build.json": {
+      "file": "evidence/delivery-build.json",
+      "size": 2461,
+      "sha256": "16a5ffd96dc361e46cc96cbd694d3ced8af71aa3ba8cbdfd9f8cc4f8b0e37602"
+    },
+    "continuous.json": {
+      "file": "evidence/continuous.json",
+      "size": 4961,
+      "sha256": "1f4ea35966d7f997f65f9d2bc65d9f5e7370a3fd7207dfd236b020c559d237aa"
+    },
+    "simultaneous.json": {
+      "file": "evidence/simultaneous.json",
+      "size": 4956,
+      "sha256": "cc913c93e63bd44c5d89d7c3c70277dec787292f6abbec04c9e104ff5e20cca5"
+    },
+    "soak-30min.json": {
+      "file": "evidence/soak-30min.json",
+      "size": 2933,
+      "sha256": "3e4b5f1f926eb6fdad582101fff0b02690a39d8e8405c97fdd87760950feec9f"
+    },
+    "summary.json": {
+      "file": "evidence/summary.json",
+      "size": 617,
+      "sha256": "4a2025d12c886b0cc5c788cdd8c4aa00b1e28783262af62e18742937e249720c"
+    },
+    "frozen-detections.json": {
+      "file": "evidence/frozen-detections.json",
+      "size": 123,
+      "sha256": "05d6ae23db550aa279bd520067c14eba1c915c598bfc59ab94b8f820294c432a"
+    },
+    "html-interactions.json": {
+      "file": "evidence/html-interactions.json",
+      "size": 389,
+      "sha256": "87f1c80e03bb41b054dc961624d5dc09b60018fd81eda10df2b1d0360430c2b2"
+    },
+    "native-regression.json": {
+      "file": "evidence/native-regression.json",
+      "size": 1957,
+      "sha256": "e90ff24a7e054e2b82a8730b075144adde58f2c18b270b10e5be6893c50d4624"
+    },
+    "python-acceptance.json": {
+      "file": "evidence/python-acceptance.json",
+      "size": 7488,
+      "sha256": "d80456087034abd6dc13da010541038003f36acffe0128c724088186fc131929"
+    },
+    "finish-candidate.json": {
+      "file": "evidence/finish-candidate.json",
+      "size": 5783,
+      "sha256": "7b110f963dff60545c012dae351c10673fe64c2b4f5d5208757499f3b69799af"
+    },
+    "cv-acceptance-summary.json": {
+      "file": "evidence/cv-acceptance-summary.json",
+      "size": 56794,
+      "sha256": "6db28091fa174fbcfb4195cbb4e34a2c976ec7c3debd9fd1c86e2ce5aef1201e"
+    },
+    "cv-cold-summary.json": {
+      "file": "evidence/cv-cold-summary.json",
+      "size": 1352,
+      "sha256": "cb20a6eac39678cb63154bd92b16c1ba6b18d97b8d65385f24cd6d76c5f982dc"
+    },
+    "cv-legacy-timing-x64.json": {
+      "file": "evidence/cv-legacy-timing-x64.json",
+      "size": 6121,
+      "sha256": "b77ccc0b211095f794ca2eb4319421bd2fa189eaafbc7ca395f1ff55d7a8e7dc"
+    },
+    "cv-legacy-timing-x86.json": {
+      "file": "evidence/cv-legacy-timing-x86.json",
+      "size": 6135,
+      "sha256": "f17d09da6cf2b74629b800c8ed67892a563c4a94c236269c0a34434b42ea09b2"
+    },
+    "cv-stress-smoke-x64.json": {
+      "file": "evidence/cv-stress-smoke-x64.json",
+      "size": 372,
+      "sha256": "d073181ab3996e69cf2801cabe35e9a05a7d9b85182325ca31e066bdb3fe05e9"
+    },
+    "cv-stress-smoke-x86.json": {
+      "file": "evidence/cv-stress-smoke-x86.json",
+      "size": 372,
+      "sha256": "281a9d5c01f271af74530e7adc2c207916063b04b0188e8a5fed1c96aa298a52"
+    },
+    "cv-stress-x64-1.json": {
+      "file": "evidence/cv-stress-x64-1.json",
+      "size": 710,
+      "sha256": "ba8f1700d77fb2595a29b010e5025870fc10a86a97cfb23c3ca5ada310d98e76"
+    },
+    "cv-stress-x64-16.json": {
+      "file": "evidence/cv-stress-x64-16.json",
+      "size": 702,
+      "sha256": "72b62fd2bbfd5696464828f99ca3708d4444a81f7078d12721614c12710ae8ea"
+    },
+    "cv-stress-x64-4.json": {
+      "file": "evidence/cv-stress-x64-4.json",
+      "size": 703,
+      "sha256": "a389ca7821537e555987c6123e0e0444d4b2682cdf6ac2816ffe10128d4cce0e"
+    },
+    "cv-stress-x86-1.json": {
+      "file": "evidence/cv-stress-x86-1.json",
+      "size": 702,
+      "sha256": "9eb91f392531cdacd49e59b833dc8c8663ca117834ba98e72c8437cf7b23d958"
+    },
+    "cv-stress-x86-16.json": {
+      "file": "evidence/cv-stress-x86-16.json",
+      "size": 705,
+      "sha256": "bb51cfc1f543ca33d6591388a161a56a9c2edf0fbfa91801f5075204bf87561a"
+    },
+    "cv-stress-x86-4.json": {
+      "file": "evidence/cv-stress-x86-4.json",
+      "size": 711,
+      "sha256": "181b5f7bbf5a51c3bee7a3ce2d13d8fddd6166fc0599eb54609eb3d58f01cc9e"
+    },
+    "cv-timing-x64.json": {
+      "file": "evidence/cv-timing-x64.json",
+      "size": 5368,
+      "sha256": "a62dce32ea26c0b93e8ca2643459f97a8e83cec5deefc65b020a1da6f2cb1afb"
+    },
+    "cv-timing-x86.json": {
+      "file": "evidence/cv-timing-x86.json",
+      "size": 5358,
+      "sha256": "8e7012456f21ce99356070144b599f04a1d39fbcfe891a3772033ad0dc942c65"
+    },
+    "cv-toolchain-provenance.json": {
+      "file": "evidence/cv-toolchain-provenance.json",
+      "size": 30367,
+      "sha256": "0dc2eaed98595a08d3440e5a48d2f5ae2e76c3a01ed5b1df1c20264e41b2ee29"
+    },
+    "legacy-timing-x64.json": {
+      "file": "evidence/legacy-timing-x64.json",
+      "size": 5460,
+      "sha256": "f7a399ec766b3531ab7e06e813758bacac2c815516155d8309ffa308464fbfb0"
+    },
+    "legacy-timing-x86.json": {
+      "file": "evidence/legacy-timing-x86.json",
+      "size": 5465,
+      "sha256": "7b14c1e7aca59bff335d34722e4dd18b4653ed74a0b1b8042cacdafc2e0e375c"
+    },
+    "delivery-staged.json": {
+      "file": "evidence/delivery-staged.json",
+      "size": 2535,
+      "sha256": "170aca4dab9852502f0b46f9cfe0c781655c920b77913e035ea8c1ae9f9536ae"
+    }
+  }
+}

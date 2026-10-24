@@ -1,0 +1,24 @@
+{
+  "functional_passed": true,
+  "memory_growth_detected": false,
+  "local_benchmark_accepted": false,
+  "cv_accepted_5ms": true,
+  "paired_memory": {
+    "client_private_mib": {
+      "min": 114.5625,
+      "max": 114.69921875,
+      "initial_mean": 114.5625,
+      "final_mean": 114.5625,
+      "growth": 0.0
+    },
+    "worker_private_mib": {
+      "min": 209.52734375,
+      "max": 209.625,
+      "initial_mean": 209.53736979166666,
+      "final_mean": 209.546875,
+      "growth": 0.009505208333337123
+    },
+    "continuous_growth_detected": false,
+    "samples_after_warmup": 1544
+  }
+}

@@ -1,0 +1,1 @@
+{"schema":1,"architecture":"x86","test_hooks":false,"dll_sha256":"ac95afeb21e5e4d20a06e9d88a60796db590a7e2559602ed06d203f84c6e7d17","threads":4,"elapsed_s":3.0250842,"calls":1055,"errors":0,"error_text":"","changed_cases":7,"peak_private_bytes":290160640,"template_release_passed":true,"retained_latency_samples":1055,"retained_p95_ms":37.833,"retained_max_ms":279.3097}

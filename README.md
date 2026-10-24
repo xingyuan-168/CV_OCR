@@ -1,15 +1,15 @@
-# CQ_AI v23.8
+# CQ_AI v23.9
 
-> 当前可用版为 **0.14.8 / v23.8 / Worker协议26**。本机固定bus及V8图片的五线程P95≤20ms已通过；YOLO26连续30分钟最差单路P95为16.503ms，五业务窗口仍待验。最新三文件位于 `output/`，参数及范围见 [v23.8交付说明](docs/V23_8_DELIVERY_CN.md)和[本机测速报告](docs/YOLO26_LOCAL_20MS_CN.md)。
+> 当前可用版为 **0.14.9 / v23.9 / Worker协议26**。透明找图漏检已修复；x86/x64各20场景、每场景三轮完整调用P95均≤5ms，最差分别为4.8787/4.3739ms。最新三文件位于 `output/`，正确性、压力测试和验收范围见[透明找图报告](docs/CV_TRANSPARENT_5MS_RESULT_CN.md)。
 
 CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
-透明找图0.14.9/v23.9候选已完成x86/x64各20场景三轮P95≤5ms和长期稳定性验收，
-结果见[透明找图报告](docs/CV_TRANSPARENT_5MS_RESULT_CN.md)。安装版本仍以`release/current.json`为准。
+安装版本以`release/current.json`及实际文件哈希为准。此前v23.8的YOLO20ms实测保留在
+[历史测速报告](docs/YOLO26_LOCAL_20MS_CN.md)；本轮YOLO仅做新二进制兼容性与30分钟稳定性回归，业务性能调查未恢复。
 
 | 项目版本 | 交付版本 | Worker协议 | 公开函数 |
 | --- | --- | --- | --- |
-| `0.14.8` | `v23.8` | `26` | `60` |
+| `0.14.9` | `v23.9` | `26` | `60` |
 
 32位易语言使用 `CQ_X86.dll`；OCR/YOLO由同目录 `CQ_AI_worker.exe` 处理，CV在DLL内执行。Python x64直接加载 `CQ_AI_x64.dll`。
 
@@ -17,7 +17,7 @@ CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
 `output/` 固定只放 `CQ_X86.dll`、`CQ_AI_worker.exe`、`易语言_DLL_API_说明.html`。当前ZIP、Wheel及验证证据由 `release/current.json` 选择。NVIDIA大包仅在独立交付目录保留一份，诊断包及本机审计留在 `outpush/`。TensorRT/FP16/Graph及五窗口20/30ms性能必须由E5-2696 v4＋RTX2070实测。
 
-`release/v23.5/`、`release/v23.6/`与`release/v23.7/`的原ZIP、Wheel、manifest及证据保持不变。
+`release/v23.5/`至`release/v23.8/`的原ZIP、Wheel、manifest及证据保持不变。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify_current_release.ps1 -AllowSourceCandidate
@@ -50,7 +50,7 @@ powershell -File scripts/build_delivery.ps1 -PythonExe python
 容量目标、归档、清理和缓存恢复见[仓库容量说明](docs/REPOSITORY_STORAGE_CN.md)。
 基础交付可通过`python scripts/package_delivery.py --reuse-current --out outpush/verified-copy`独立导出。
 
-生成交付前先完成 [v23.8验证步骤](docs/V23_8_DELIVERY_CN.md)。统一打包入口验证新DLL/Worker及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
+生成交付前先完成[当前验收要求](docs/REQUIREMENTS.md)和[门禁流程](docs/GOVERNANCE_RULES.md)。统一打包入口验证新DLL/Worker、逐场景5ms及新30分钟报告，生成三文件ZIP和工具包，再备份并整体更新 `output/`：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.ps1
@@ -58,4 +58,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_e_language.p
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_python_x64.ps1
 ```
 
-占用或验证失败会保留、恢复原配套文件；回滚三文件与原哈希保存在 `outpush/rollback/`。新版本以 `promote_release.ps1` 注册；已注册版本不可替换。NVIDIA SDK准备、可选模块构建与真实BMP校准见 [YOLO说明](docs/YOLO_OPTIMIZATION_CN.md)。
+占用或验证失败会保留、恢复原配套文件；回滚三文件与原哈希保存在 `outpush/rollback/`。新版本使用 `promote_verified_delivery.py` 完成登记、输出/指针事务与实际后验；已注册版本不可替换。NVIDIA SDK准备、可选模块构建与真实BMP校准见 [YOLO说明](docs/YOLO_OPTIMIZATION_CN.md)。

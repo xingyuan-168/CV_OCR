@@ -1,0 +1,54 @@
+{
+  "passed": true,
+  "scope": "Fresh x86/x64 native, scalar/AVX2 independent reference, no-OpenCV, lifecycle/budget and script regressions",
+  "setup_retries": [
+    "x86 no-OpenCV proxy needed freshly built paired Worker in owned test directory",
+    "PowerShell cleanup safety test required a process-local execution policy switch; host policy unchanged"
+  ],
+  "logs": {
+    "hooks-x86.txt": {
+      "size": 529,
+      "sha256": "49a6d24cfcf69bfd6d68e6be8c4220c5f3fe066efc4fd93fd42121655c24560a"
+    },
+    "hooks-x64.txt": {
+      "size": 529,
+      "sha256": "0ec8b07dd7c74abc4f1f6a4dd1dbc00a7603c75949a8ca812ed8cb7d9724a261"
+    },
+    "native-x86.txt": {
+      "size": 1302,
+      "sha256": "9dc3068500d7c192fe714c181ace6da0720af9b0b2c5fbcb9e0a0dba559c8689"
+    },
+    "native-x64.txt": {
+      "size": 1297,
+      "sha256": "b997cc758e07523cecac1e58bbcfefe0648cb27da363afbf3beefa47b99a97ab"
+    },
+    "no-opencv-x86.txt": {
+      "size": 950,
+      "sha256": "dd07f410e26d9f8f8592fbba5798426ec676d72a370ad9dfe4b9291209c4ef40"
+    },
+    "no-opencv-x64.txt": {
+      "size": 461,
+      "sha256": "4251a1c1ff8f12b71b672583f967908e623d765d3d91e31d7d60d68e0df7d252"
+    },
+    "no-opencv-x86-proxy-retry.txt": {
+      "size": 258,
+      "sha256": "f9141daca7b8326fc8a8451d52949681424306bc54603e1118ec2a2eca975974"
+    },
+    "legacy-reference-x86.log": {
+      "size": 918,
+      "sha256": "5d1f31363c3e161afc8279549a2b5c0acaa79381250727ed1213f7fb1a4152a6"
+    },
+    "legacy-reference-x64.log": {
+      "size": 918,
+      "sha256": "8c6e14d96053f00bc25ec25fe8ce22cfaa6497c6686ce120780b48fdde02c28e"
+    },
+    "python-regression.log": {
+      "size": 1210,
+      "sha256": "dad5576032a3b5cbf28c3131ac072eec48499d6dc4837c00f26a182200b1b3ab"
+    },
+    "python-regression-retry.log": {
+      "size": 878,
+      "sha256": "4f1e4ff25a274bfc205c211e5553b7f25afdd72f101fea3c8e182ee1e57589e1"
+    }
+  }
+}

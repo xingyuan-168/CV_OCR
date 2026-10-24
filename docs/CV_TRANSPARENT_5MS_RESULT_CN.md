@@ -32,7 +32,7 @@
 全场景最差P95：x86 **4.8787ms**，x64 **4.3739ms**。
 最大单次调用分别为12.9793ms和8.9163ms；P95通过不代表每次调用都≤5ms。完整P50/P95/P99、最大值及超5ms比例保存在[逐轮证据](evidence/CV_TRANSPARENT_5MS_20261024_SUMMARY.json)。
 
-透明基准只计完整DLL调用；旧普通基准额外包含逐次结果比较，因此计时略保守。文件读取和模板加载在计时外。冷调用另用每场景全新进程测量，未套用预热后的5ms门槛。
+透明基准只计完整DLL调用；旧普通基准额外包含逐次结果比较，因此计时略保守。文件读取和模板加载在计时外。13个掩码场景的冷调用分别用全新进程测量；7个旧普通场景记录预热前调用，前者与后者明确区分。冷调用未套用预热后的5ms门槛。
 
 ## 原因与修复
 
@@ -58,3 +58,17 @@
 新二进制另完成两种模式各三轮五路回归（共30000样本）、配对加载125次并发、30分钟多帧CPU稳定性验证，零错误；60个签名及stdcall别名、协议26、正整数session_count保持兼容。此处CPU YOLO运行用于交付兼容性，不构成业务YOLO20ms验收。OCR、业务YOLO、光效容忍、缩放/旋转和PNG导入保持独立待办。
 
 全部正式报告绑定实际DLL/Worker哈希；生产DLL无私有测试导出。历史交付和原图保留，晋升通过事务同时切换三文件output与当前指针；加载或真实Finish失败即恢复两者。
+
+## 实际交付
+
+v23.9已登记并事务晋升至`output/`；晋升后的实际加载器与真实Finish均通过。
+`release/current.json`指向`release/v23.9/manifest.json`，核心ZIP及x64 Wheel与实测DLL哈希一致。
+60个stdcall别名实际导出检查通过，安装后Wheel的CV/OCR/YOLO及DirectML释放/重载回归通过。
+交付与保护核对见[登记证据](evidence/CV_TRANSPARENT_5MS_DELIVERY_20261024.json)，
+实际后验见[Finish](evidence/CV_TRANSPARENT_5MS_FINISH_CURRENT_20261024.json)。
+
+旧output保留在`outpush/rollback/before-v23.9-20261024-104816-630403/`。
+841项构建与重复测试运行库已逐文件SHA校验后可逆移至
+`D:/codex-delivery/CV_OCR/cv-transparent-5ms-20261024/`；原相对路径及恢复索引保留，未声称释放物理磁盘空间。
+正式逐轮报告、压力报告与原始采样仍留在`outpush/cv-transparent-mask-fix/qualified-20261024/`。
+复测需先按`retention-final-plan.json`恢复相应构建目录，并核对DLL及测试程序哈希。

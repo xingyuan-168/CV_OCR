@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "architecture": "x64",
+  "test_hooks": false,
+  "dll_sha256": "0adbc48c0c52d9d33b2e2c7ca0a594f511cbb50fe3170e3dcc936b19e008f869",
+  "threads": 16,
+  "elapsed_s": 600.5176794,
+  "calls": 334173,
+  "errors": 0,
+  "error_text": "",
+  "changed_cases": 7,
+  "peak_private_bytes": 358297600,
+  "template_release_passed": true,
+  "retained_latency_samples": 160000,
+  "retained_p95_ms": 99.8238,
+  "retained_max_ms": 476.0066,
+  "memory_samples_after_warmup": 85,
+  "initial_mean_private_bytes": 347695445.3333333,
+  "final_mean_private_bytes": 348633429.3333333,
+  "memory_growth_bytes": 937984.0,
+  "memory_growth_detected": false,
+  "memory_warmup_seconds": 180
+}

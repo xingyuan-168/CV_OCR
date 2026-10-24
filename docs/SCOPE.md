@@ -1,6 +1,11 @@
 # Scope
 
-Current task: REQ-CV-001, transparent candidate completeness and local single
+2026-10-24: REQ-CV-001 acceptance completed and v23.9 transactionally promoted.
+Every required single-caller P95 round passed5ms; six ten-minute CV stress runs
+and the new paired thirty-minute compatibility soak passed. Actual output loader
+and real Finish passed after promotion. See [results](CV_TRANSPARENT_5MS_RESULT_CN.md).
+
+Completed task scope: REQ-CV-001, transparent candidate completeness and local single
 caller P95 <=5ms on both x86/x64. Use codex/cv-transparent-mask-fix from fb4aa6c,
 stage only under outpush/cv-transparent-mask-fix, and preserve current v23.8 until
 the new candidate passes independent correctness, all old/new5ms scenarios,

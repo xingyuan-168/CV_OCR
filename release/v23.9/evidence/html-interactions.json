@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "html_sha256": "12935ff44b04ff772dc8ade14dfc1fdf5d2a754fedba80c3bf3ca8fad02aed4b",
+  "sections": 63,
+  "navigation_links": 63,
+  "offline_assets": true,
+  "navigation": true,
+  "search": true,
+  "hash_navigation": true,
+  "method": "actual inline JavaScript with deterministic DOM fixture",
+  "visual_browser_preview": "not performed by this deterministic DOM test"
+}

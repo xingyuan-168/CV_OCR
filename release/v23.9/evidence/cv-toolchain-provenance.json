@@ -1,0 +1,749 @@
+{
+  "files": {
+    "C:\\cq-ai-msvc-14.44\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x86\\cl.exe": {
+      "size": 677736,
+      "sha256": "303bfbe5523af2e925871a1bc7fd2ec5f199a69208a3b6716724c3e6d6b6962d"
+    },
+    "C:\\cq-ai-msvc-14.44\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x86\\link.exe": {
+      "size": 3252576,
+      "sha256": "83b11a6a9b1674472fe069a8d315a6ac6d6dfe3670d39cb55c2cda303544b1d6"
+    },
+    "C:\\cq-ai-msvc-14.44\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe": {
+      "size": 677776,
+      "sha256": "fe251ef50a1545b1b0835ee17b1e785459712b38d79e45b5c1d3d28970a36619"
+    },
+    "C:\\cq-ai-msvc-14.44\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\link.exe": {
+      "size": 3252616,
+      "sha256": "a364af801a8539e4324d9489313dbf001d959128451fc99a27b24676bbac058f"
+    },
+    "C:\\Users\\Administrator\\.cache\\cq-ai-tools\\portable-build\\cmake\\data\\bin\\cmake.exe": {
+      "size": 13465160,
+      "sha256": "3a329667300846abc8dffccbdcb1c8c2d4a6cebe342d499181825205ea8c766c"
+    },
+    "build/cv-cascade-x86-production/CMakeCache.txt": {
+      "size": 17537,
+      "sha256": "4ab766635f768626c33928cd9ccbcb6e166bfb37bf23f898b7678a8fa32f7d8f"
+    },
+    "build/cv-cascade-x86-production/build.ninja": {
+      "size": 111892,
+      "sha256": "bd2899efdaec5279213262ffcfb79ec67278f962b860f770bcc10bde549955d6"
+    },
+    "build/cv-cascade-x86-production/ai_engine_cv_transparent_acceptance.exe": {
+      "size": 296960,
+      "sha256": "0fd4a1f766cf325c94f2476def17dbb22c57438b7131dafeab3913e0d5be9456"
+    },
+    "build/cv-cascade-x86-production/ai_engine_cv_business_benchmark.exe": {
+      "size": 113664,
+      "sha256": "f097a39c7a2a939c3d05bd7a1cd3a274ef021b6a97b8febc38969cd0324c5f92"
+    },
+    "build/cv-cascade-x86-production/ai_engine_cv_changing_benchmark.exe": {
+      "size": 66048,
+      "sha256": "7cdf4f68a9980aec3032abeb92d22dce67ea9b190f003d0810b3dc8f5e0ec288"
+    },
+    "build/cv-cascade-x86-production/ai_engine_yolo_benchmark.exe": {
+      "size": 296448,
+      "sha256": "272eb5392092a039c760ba9a06ca4b7098592b6f66842873b13a9a2a97781003"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/ipphal.lib": {
+      "size": 123674,
+      "sha256": "3255ef355b061743446bd5fd6a3bdaba08d802dee039b63cf9767123ea4b09d0"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/ippicvmt.lib": {
+      "size": 45717842,
+      "sha256": "76fd361b80395122fda5f247659483b1f153c618f154755bdbc5149632f5da83"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/ippiw.lib": {
+      "size": 234386,
+      "sha256": "6080e50fe83298a9be64049b088eecd2773b068b0be8822b58a1f50b4376621a"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/ittnotify.lib": {
+      "size": 176770,
+      "sha256": "76f1d87edfa383ff1c76ea57428a18453c05eb551774a1613c7ffa6a4e31a953"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libclapack.lib": {
+      "size": 396144,
+      "sha256": "0e71e344dd89898216c6793efb639db6875e5c60ece8391495028d34f54463c6"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libjpeg-turbo.lib": {
+      "size": 735576,
+      "sha256": "f50449d3831abfbe5468049e19eff0f6d9135339f0eed621b39bff630feaa85d"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libopenjp2.lib": {
+      "size": 601120,
+      "sha256": "81bf180c93db83c6af648801a32c47f6e9677ab885d942c42fac0e6069bf43f9"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libpng.lib": {
+      "size": 397558,
+      "sha256": "b6519f9245c95d4dfdfa8d6c56e6583c12e2eeaf2ede24e15e69ba3289112df5"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libprotobuf.lib": {
+      "size": 8268514,
+      "sha256": "2402e6a6f82735e87bcf4f6c0e14c5307a93fbf52ca4ecdd0a124406212cecd9"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libtiff.lib": {
+      "size": 1015346,
+      "sha256": "cabf85a83bd0887d02e23e6c0146690ede21dcbe695b94c2530a9bcac78a3e5a"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/libwebp.lib": {
+      "size": 902496,
+      "sha256": "e484987b91758389a731897b5b177b6312747dd0665cda91d57d435982d69761"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/opencv_core500.lib": {
+      "size": 15936686,
+      "sha256": "e5caf15a5ac730416810c3b15dcb1ac45dbb1421725ad77049743e7dec909629"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/opencv_flann500.lib": {
+      "size": 3254492,
+      "sha256": "e9b688f96237b04d66af0bc7e81f3cc7386d65d83a5e700dfa5d2c34e10fd016"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/opencv_geometry500.lib": {
+      "size": 8300648,
+      "sha256": "de2496d1f36288341a1763717539eeb54c9ec45eabb72e65499f83b87293de69"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/opencv_imgproc500.lib": {
+      "size": 23518110,
+      "sha256": "22bd5be6640f808c93b5b5a1081440c67d1e307113105e1f1146aaa63a95e7a4"
+    },
+    "third_party/opencv-5.0.0-static-mt/x86/x86/vc17/staticlib/zlib.lib": {
+      "size": 119140,
+      "sha256": "7ff3cd5fc5667b34d861484a3e4616986cd14b2489f39452618bb9387b016221"
+    },
+    "build/cv-cascade-x64-production/CMakeCache.txt": {
+      "size": 17597,
+      "sha256": "325895fffc19a276c4f6569ade1a1d242d1bcf6a0d3ceabd2322841a2ea54abb"
+    },
+    "build/cv-cascade-x64-production/build.ninja": {
+      "size": 114429,
+      "sha256": "23acf02c6541ef2649820fa86141cf9fd032f2fba1a3d02c068c4309ac8b2e26"
+    },
+    "build/cv-cascade-x64-production/ai_engine_cv_transparent_acceptance.exe": {
+      "size": 360960,
+      "sha256": "92513094115e02bfa924dbaa1417ac1911c18e8f8059caa42ef241dd1a1bf3df"
+    },
+    "build/cv-cascade-x64-production/ai_engine_cv_business_benchmark.exe": {
+      "size": 125440,
+      "sha256": "9f471f95b8219bad39f23620713f6054e75149e06e718093161105170e29e06d"
+    },
+    "build/cv-cascade-x64-production/ai_engine_cv_changing_benchmark.exe": {
+      "size": 72704,
+      "sha256": "3ba7e29b3549e9f882f7e37d7df799f787783079e676429f89433554412d9631"
+    },
+    "build/cv-cascade-x64-production/ai_engine_yolo_benchmark.exe": {
+      "size": 360960,
+      "sha256": "52b83654f6a06f3c53ce1298ee017d3c52e7876f487fc726f9020083727df777"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/ipphal.lib": {
+      "size": 192532,
+      "sha256": "b211bad8e4c401bdbeecfa1408fda97e9077812e6c8f99c5ef065b106b5e239a"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/ippicvmt.lib": {
+      "size": 70347044,
+      "sha256": "b840a0370b54b3075bb493a2783582080661f53a7b3c5183147b03f0d8542980"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/ippiw.lib": {
+      "size": 403502,
+      "sha256": "6700f6a0fadda76ac6206d5248b4bb4cf7678369cfd428e5f05545bfee69c049"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/ittnotify.lib": {
+      "size": 280618,
+      "sha256": "251c4167f7b523b018188999769600e63966cb5219b9f1fe3e68ef32ec648a9f"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libclapack.lib": {
+      "size": 578004,
+      "sha256": "0578aedaf8b868ec09312ffcb843c68baffff84ef49ea4254cd08244c390ad2e"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libjpeg-turbo.lib": {
+      "size": 1213724,
+      "sha256": "5ef8863a5aa3c63b13bdefa83f1f828ee9d0f1ef44a0905fc514f7cafdcd0259"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libopenjp2.lib": {
+      "size": 887346,
+      "sha256": "b5464528668a24d4d6be6e979fa9ebdb40af859a0c32be1288535388c71e799e"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libpng.lib": {
+      "size": 641130,
+      "sha256": "18ba8f34623a6b2db46649f25c51aeb09d45f845b29e15c32155ccacd9775f41"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libprotobuf.lib": {
+      "size": 12681394,
+      "sha256": "2163f154dacd6954e47e53d70cda00a8bbff4c7cd05e38e1f0b27a8a363751e5"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libtiff.lib": {
+      "size": 1383430,
+      "sha256": "9ec88656354ee73a56720eb00129f3d77773c70c1c315fc32648b64eeb06e951"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/libwebp.lib": {
+      "size": 1607136,
+      "sha256": "68b91e22d054148a35ce87bf18d9231bd78aa3e6bf687c1f94aff0cfc6122b80"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/opencv_core500.lib": {
+      "size": 24414082,
+      "sha256": "66bcc667ad09f37bd835459105ce47175e57701a18ff7da1a729191ec351b0f3"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/opencv_flann500.lib": {
+      "size": 4739104,
+      "sha256": "ee616b09fd38f606e5579f718ee22ab08d4475026309c99587930432b64470e6"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/opencv_geometry500.lib": {
+      "size": 12139880,
+      "sha256": "57e0579daf93b32bd773553a4564a521b92a598de5f97796678e73a416c274f6"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/opencv_imgproc500.lib": {
+      "size": 31858962,
+      "sha256": "d4662fabc484c43ba60d57a2abf45201d5c08a27938d7d30294511776de632a6"
+    },
+    "third_party/opencv-5.0.0-static-mt/x64/x64/vc17/staticlib/zlib.lib": {
+      "size": 194216,
+      "sha256": "bf476928ae9dc859bd39f68d852f4d6686a0ad8b4fb51cad5f75e3b6a2e0e1c8"
+    },
+    "src/ai_engine.cpp": {
+      "size": 254210,
+      "sha256": "43dc8948795677b6dc69a63f66aad1760d6442a6051a301ff0dace15b37d3155"
+    },
+    "src/backends.cpp": {
+      "size": 10796,
+      "sha256": "21702cc9de8ac3c37b336138b47a14150ca1d55cfded8c21608eb583ed6eb041"
+    },
+    "src/backends.h": {
+      "size": 3598,
+      "sha256": "e90c0d2a80dc6388780c5994c127d27e2b3e53d0307ec2ba1e6c44a9ba82d2ad"
+    },
+    "src/backend_onnxruntime.cpp": {
+      "size": 113586,
+      "sha256": "ad918dd0df22f6266c1c0142e61ec9dd258fd0419fb00104020fd82bcd4535b5"
+    },
+    "src/backend_onnxruntime.h": {
+      "size": 497,
+      "sha256": "ad10c182248ca167b050593a99769794d0432c1a754b27750fc6272c674da908"
+    },
+    "src/backend_tensorrt.cpp": {
+      "size": 7680,
+      "sha256": "bd825f1d40fac89240194df930c2316b2383c4ff2fac526b505b69cc63c60d33"
+    },
+    "src/backend_tensorrt.h": {
+      "size": 140,
+      "sha256": "2259f258080e454f90c69b7a65b275c6bd2029cbd282150c1fed72830bb5714b"
+    },
+    "src/bmp_view.h": {
+      "size": 1527,
+      "sha256": "e1f9f78713ac2e935831507f6473f34e795b38cca3c5b9fabf8cc2b83ed82b72"
+    },
+    "src/compact_result_format.h": {
+      "size": 827,
+      "sha256": "fa4e8b2716d4ec3b0407398551795f4eef215b0ff8381208659c2ce9dda668bb"
+    },
+    "src/config.cpp": {
+      "size": 6620,
+      "sha256": "47b95304840c893ac89614b8f86abc51d24b2539e4750c3aee311dea77f6935f"
+    },
+    "src/config.h": {
+      "size": 1413,
+      "sha256": "5e16fe693ef4b212e1db995fad3bd75ec493fb62bad065f08b1a6e7c4a03ba74"
+    },
+    "src/coordinate_offset.h": {
+      "size": 4820,
+      "sha256": "4b4545f8f63522c639f308a97f1b766e81f650b50803d1f031c2832adcbe68fd"
+    },
+    "src/cv_correlation.cpp": {
+      "size": 26058,
+      "sha256": "41e20a0307995879c2b4b277463481c432c6f265a0e2465d3a0e2aac32ffcc33"
+    },
+    "src/cv_correlation.h": {
+      "size": 3282,
+      "sha256": "c3ff3264a37beec183534feb9eca5ab3539e74030bc77542635bc33f14dd4910"
+    },
+    "src/cv_fast.cpp": {
+      "size": 39467,
+      "sha256": "294a7e10bd7e1f441a2ce7620e7c6173d12b2fe4741f8c981112c17b8f54fa2d"
+    },
+    "src/cv_fast.h": {
+      "size": 2279,
+      "sha256": "344011bdabf37936ff72afca300a72af10607625304e87019789975027c76c9e"
+    },
+    "src/cv_masked_score_avx2.cpp": {
+      "size": 11890,
+      "sha256": "1f92ab2e05bf4013b5c99a67436c59e98f259e2c1bd6a4eebb89a118feb025ca"
+    },
+    "src/cv_masked_score_avx2.h": {
+      "size": 1625,
+      "sha256": "c57746a7df1dd95ac9488d97023096d14e24688cf4caae1306c8aee401f2b17f"
+    },
+    "src/cv_normalize.h": {
+      "size": 734,
+      "sha256": "9a88f42466f38ce34342162b7b9fb459f4baea3717a99253661ca91159f21316"
+    },
+    "src/cv_normalize_avx2.cpp": {
+      "size": 8632,
+      "sha256": "03ae0a6ac06e44ca2e9d4ef0805000d94befd7b778d8e7e4adfefcb681bb94bc"
+    },
+    "src/cv_test_hooks.h": {
+      "size": 971,
+      "sha256": "3ac04647f8b51fadfae3490d324c1c6bcc915146bf76a989b02970448552a3c0"
+    },
+    "src/embedded_assets.cpp": {
+      "size": 2002,
+      "sha256": "dabda5c8442357f44e05ebaea0a8cdd3689e22eccbeb300f236e6fb89ec035b6"
+    },
+    "src/embedded_assets.h": {
+      "size": 675,
+      "sha256": "0dc91bf57dc1513bc16e42ef7ce315207e6e2b64d998ef4028dab4d34d3841dc"
+    },
+    "src/engine.cpp": {
+      "size": 12990,
+      "sha256": "8bc35b2de0ea6d1f9464f6961b23270889f390de82dc627eacc1648c619abb4c"
+    },
+    "src/engine.h": {
+      "size": 3838,
+      "sha256": "39d0eefee467b875618274846422df10ac59424fd790b9ff7a790bb5f94f14ca"
+    },
+    "src/error.cpp": {
+      "size": 1096,
+      "sha256": "16dadbb4d8aafbd3598d179ffe97d4044da6c92b592befb36c7ae3d0f7a06ee7"
+    },
+    "src/error.h": {
+      "size": 534,
+      "sha256": "79d9b49fd2e122887e389460dec97f580028962327fa4739fc29720512884e4e"
+    },
+    "src/image_view.h": {
+      "size": 3365,
+      "sha256": "828d8d935e3e0b99b0e7af90d9d0f0e3aceb57ffdc8f119e4fe5c876d9158fb5"
+    },
+    "src/memory_zip.cpp": {
+      "size": 13590,
+      "sha256": "f3ad17b66aefd8422982f8b4686f2ae5c903dac373b68ffb404dd7e8561859ab"
+    },
+    "src/memory_zip.h": {
+      "size": 632,
+      "sha256": "8ba3fce192de12eb14e554811cbbcdb9069b54c3f5b16dc80d02a9a929789e66"
+    },
+    "src/ocr_color_filter.cpp": {
+      "size": 52300,
+      "sha256": "7bb0b5f9af0ed2231da04a9a1ad99a758d724c9325e3ca48a3a28cc2786e201d"
+    },
+    "src/ocr_color_filter.h": {
+      "size": 4244,
+      "sha256": "a895490494776e0b0897008a11514254b3f8a68661988009bddf2e3bea1f81ce"
+    },
+    "src/ocr_reading_order.cpp": {
+      "size": 9749,
+      "sha256": "7e0f4da1f1b5d31de30fb72f4e01aff76fe28a5b0703d4c1be05186de3684d4c"
+    },
+    "src/ocr_reading_order.h": {
+      "size": 1157,
+      "sha256": "d9ca8231eab8180686d7eac4869388fe895db32451aea4c69ce2c015c24b3a0e"
+    },
+    "src/pipe_io.h": {
+      "size": 794,
+      "sha256": "663b0c0b4e948a63198f67586f136ca57002f79b39a3776794796ea844cc0514"
+    },
+    "src/runtime_bundle_format.h": {
+      "size": 870,
+      "sha256": "f727c6d7e8231c04e232206d6d8f95ef7f64c6925afe2eb03d729a82e48490bc"
+    },
+    "src/runtime_bundle_loader.cpp": {
+      "size": 28010,
+      "sha256": "ec78f4469f4e8156f1d732d2c4c53d24c654b6b077fd1d4a8a8b5d676d21d19b"
+    },
+    "src/runtime_bundle_loader.h": {
+      "size": 844,
+      "sha256": "cd34080497df35791ca4e08a0bafff3130838a459675512415693a760a2528fe"
+    },
+    "src/runtime_status.cpp": {
+      "size": 804,
+      "sha256": "53cbfc3c81a68db9c0d570ed9e282d347d6c3ec32ccfae01d88e8015e281c0ea"
+    },
+    "src/runtime_status.h": {
+      "size": 1109,
+      "sha256": "a3900b225261f21bdf8c10f84a34aee64d9822dde6e680ffb78e6ec0bb747df1"
+    },
+    "src/sha256.h": {
+      "size": 1459,
+      "sha256": "89d537dbbe03df1d8ca75bda63627f24a031556e7b76c102c5e5629019b0d0e4"
+    },
+    "src/tensorrt_module.cpp": {
+      "size": 26580,
+      "sha256": "294837b54c55c955f66706e6b893f6dae55af1d6ff4de5a6080fd857eb478bf3"
+    },
+    "src/tensorrt_module_api.h": {
+      "size": 1126,
+      "sha256": "7f004a7d3b35adeca4dbb39c8d96e677bd19f2a31daff4d359ba123e4b26d4d0"
+    },
+    "src/timer.h": {
+      "size": 821,
+      "sha256": "ba950622e084c5d3c04ded99ce4fd06e74f0e65d76afb05ba28925c8f5427505"
+    },
+    "src/worker_main.cpp": {
+      "size": 99174,
+      "sha256": "48ba2506e8d9234bd64ee38e9d469217346d8847300b4965a47ef1b67a7e1a7b"
+    },
+    "src/worker_protocol.h": {
+      "size": 1919,
+      "sha256": "58d27fe9a33bd25d7fda8733d5f8f2c21385000b84ff4a5c33fc383dabf89af9"
+    },
+    "src/yolo_decode.h": {
+      "size": 7323,
+      "sha256": "880352c1d4aacb9797b9d9d4d1445d10de32d704838dfaf88e3683c3f703de54"
+    },
+    "src/yolo_diagnostics.h": {
+      "size": 3154,
+      "sha256": "9380d8b8fab5e7f68dbb01e30ab0479d629b5ac6c004a34a661d2d8b929ff1fe"
+    },
+    "src/yolo_model.h": {
+      "size": 17005,
+      "sha256": "113d9e86fa9bb0ab77cfc85d23d021088ec7b62eb64a1bb7437edbb7a13490ce"
+    },
+    "src/yolo_pool.cpp": {
+      "size": 20532,
+      "sha256": "b73cac9e7aa6b72453467aefee0fc5d6181e3ddfb371cdd26844a15756d2001d"
+    },
+    "src/yolo_pool.h": {
+      "size": 1590,
+      "sha256": "1ab4438b9271fed0d9617283362ce65189a554de95da8ed33e5dd8094bcc46c2"
+    },
+    "src/yolo_preprocess.h": {
+      "size": 2936,
+      "sha256": "3709f151c0053169e25ede5fbdf89661cba3daabf0687b9d3b21455afb4c3820"
+    },
+    "include/ai_engine.h": {
+      "size": 23509,
+      "sha256": "423c105b176892cd35fc7cf1a8277ee70c67cc641f3eb3725f5c51792e27b07a"
+    },
+    "tests/acp_compat_test.cpp": {
+      "size": 4473,
+      "sha256": "e89caf00d3337c84419be517839862af9c746a0506b2d24127c5ac72dad0f6a6"
+    },
+    "tests/cleanup_safety_test.ps1": {
+      "size": 2301,
+      "sha256": "d60f1cfd282f844a0037d90807f56f727081a1a6ca40fc8047e9a20ccbbc6258"
+    },
+    "tests/compact_result_test.cpp": {
+      "size": 1214,
+      "sha256": "26a855204b7da778cba4d6bc2e51ed88884cec46d722c22d418a85edaee94726"
+    },
+    "tests/compact_result_test_utils.h": {
+      "size": 2320,
+      "sha256": "40f68f9dfbc3e8dd861e23f4b9ed81c31300c75f86261fac01308d87a282f8ea"
+    },
+    "tests/cv_benchmark_report.h": {
+      "size": 862,
+      "sha256": "aa5a72430bafb9b248962e460a144b33cba7cf2cfb5a8584f58fd85d1dd4f76b"
+    },
+    "tests/cv_business_benchmark.cpp": {
+      "size": 19066,
+      "sha256": "812cffc147356abc9a48dfb722cc92d53c1670c85b1436e65e17d6123e02b7c5"
+    },
+    "tests/cv_changing_benchmark.cpp": {
+      "size": 9120,
+      "sha256": "4c26d3746de176bd74ddb5f79a275a429d5f0f5d8518995f6f1e09cd23b6723a"
+    },
+    "tests/cv_correlation_test.cpp": {
+      "size": 4829,
+      "sha256": "2dea87a8df70a441dd3a35e3a0698769c120a9fcc75740f97e698e6ba971eb93"
+    },
+    "tests/cv_masked_correlation_test.cpp": {
+      "size": 5999,
+      "sha256": "6ca0e95af12227ea48c0291ee2f81941d0c26ed10b077becddcc60739b2fb9b9"
+    },
+    "tests/cv_masked_score_test.cpp": {
+      "size": 4683,
+      "sha256": "1f839b6ea23fc7caa9a49310b553a06b85b5ce2559073583cfe1180e67bf41c6"
+    },
+    "tests/cv_real_transparent_benchmark.cpp": {
+      "size": 12981,
+      "sha256": "66b5bcb2f1e5e5ca056fd8acff927ae21b3628d673bca7236387004b28ac3e30"
+    },
+    "tests/cv_stability_test.cpp": {
+      "size": 12540,
+      "sha256": "4a92b4cb507e70a2d11206d101154ec53371d9b87ece5bf6f25d069a48b2f1b7"
+    },
+    "tests/cv_transparent_acceptance.cpp": {
+      "size": 16538,
+      "sha256": "3723390f72e99d6f8c70524d5b04356f74e644822373d9fd04c45e6a98e70e70"
+    },
+    "tests/cv_transparent_completeness_test.cpp": {
+      "size": 7662,
+      "sha256": "af34e27eb91b2aca3772114cb4f731ce5f850b3845d49f2a8737ba89d3e2f4c9"
+    },
+    "tests/delivery_verify.cpp": {
+      "size": 9598,
+      "sha256": "f75fa80a04721b0b03f1b9ab3ab09f4f391622fd6a3912ad6ded32dde47953ab"
+    },
+    "tests/embedded_benchmark.cpp": {
+      "size": 7700,
+      "sha256": "071c56e8a975dbd7b5537b5cd095a27ee396e455f8522aadcda408a03c5f51f5"
+    },
+    "tests/e_api_smoke.cpp": {
+      "size": 506,
+      "sha256": "08e11654e923e9483e231e8a14dadd4595101d08d81af144e73a5e7c58f41a3f"
+    },
+    "tests/ocr_business_test.cpp": {
+      "size": 11362,
+      "sha256": "45acd9bd93bd51c7a2c331f98fe69cab4104eecf36997c5c7c0c54b25cfec17a"
+    },
+    "tests/ocr_color_filter_test.cpp": {
+      "size": 13636,
+      "sha256": "9165d98b143558e68c5656559cf158a06acb62be8c9fe8ef9ae0c2107acec267"
+    },
+    "tests/ocr_reading_order_business_test.cpp": {
+      "size": 6964,
+      "sha256": "9c2f3a1f418ba76405ee5563d5570fdc648d2fbd2b4d92eb90cd317ffe72abb9"
+    },
+    "tests/ocr_reading_order_test.cpp": {
+      "size": 3009,
+      "sha256": "e1a21affac74580e10bebf8e20a4bb93f6e351f5578286fade1e3dedb9600507"
+    },
+    "tests/ocr_robustness_test.cpp": {
+      "size": 12285,
+      "sha256": "04e079fb03803cf7c923269ab8a9f7019265d4f5e06afe065a7a50996b34272c"
+    },
+    "tests/ocr_small_multiline_regression.cpp": {
+      "size": 5970,
+      "sha256": "70cd3073e8aba0d792d84354525702e48f7bb2438b8fa8b36a5c65a0a5025f57"
+    },
+    "tests/origin_zip_test.cpp": {
+      "size": 18570,
+      "sha256": "720ab4bf7d8199a666d9bc59b600d7b5f797537fd180bf06bfeec718f8110105"
+    },
+    "tests/proxy_worker_smoke.cpp": {
+      "size": 30952,
+      "sha256": "4ee22f18d505bd30fcaa069db6edc721a9005be3c798685eb3fa2a5629e55b31"
+    },
+    "tests/python_wrapper_test.py": {
+      "size": 1418,
+      "sha256": "28da8433d525a206d4e29c78d6de1910f7fa1eadb47f212565e23d1d514c83e0"
+    },
+    "tests/python_x64_wheel_acceptance.py": {
+      "size": 10864,
+      "sha256": "88f1a76c83af5a90178178eb0f4423d20396bb9dd64b8a1992acf85cc28d1ffd"
+    },
+    "tests/runtime_probe.cpp": {
+      "size": 5615,
+      "sha256": "5f3c2747bc192b1232b876a9c8b73f6e9a28a9c94a3c108d105543a8efb712e0"
+    },
+    "tests/smoke_test.cpp": {
+      "size": 4591,
+      "sha256": "2ac23966624ab8e4f2ee1094fa90700d2a405baac46ccf5bdebc038412bbbed0"
+    },
+    "tests/test_cv_acceptance.py": {
+      "size": 6271,
+      "sha256": "0a90d308246ecc9403770472f209157d5519d8901b7f93e4386886b16e24eb41"
+    },
+    "tests/test_delivery_transaction.py": {
+      "size": 2790,
+      "sha256": "fe24a7152612eaa449719c94e098366a9b2052e1c591a50d6097fa0c483a87c3"
+    },
+    "tests/test_governance.py": {
+      "size": 7401,
+      "sha256": "a894bb927faa9a25ff4fadf2be12f770d072a445aea3bd6c755b0298f7282830"
+    },
+    "tests/test_packaging.py": {
+      "size": 4729,
+      "sha256": "1b8eaffbb3bdb33c493eaec9a370c37ae0040c5b4dc55ee7499d6ddb10a53d05"
+    },
+    "tests/test_repository_storage.py": {
+      "size": 2887,
+      "sha256": "a9dc60e2e9ec56bf92b1a46f3d63f2c30a649da06f725da976575993fe7177dc"
+    },
+    "tests/test_yolo_acceptance.py": {
+      "size": 3247,
+      "sha256": "731f2163427ae1a5d942b01f9d9c70aa5e0ac91120c340c68594cc7020c0174b"
+    },
+    "tests/test_yolo_calibration.py": {
+      "size": 4033,
+      "sha256": "a00afd1770e0dd30888f568b4eb4a0647195b2e721b6bfdc12de0a30ea1f7fb7"
+    },
+    "tests/test_yolo_model_tool.py": {
+      "size": 3323,
+      "sha256": "7bf1662a0778bedfaa228036c1316c919d7baadf1aebc0b2fd15c5b5912d12fd"
+    },
+    "tests/verify_opencv_ipp_test.ps1": {
+      "size": 1663,
+      "sha256": "3835d82a520e0d61f9828181fe2b9903d84be1690f3b544488b4471c603e7b29"
+    },
+    "tests/yolo_benchmark.cpp": {
+      "size": 16237,
+      "sha256": "a952262e80c71a313a9cd0bbaea56fcc8365f34ad43a1f0c30b116ed9b9f615d"
+    },
+    "tests/yolo_model_test.cpp": {
+      "size": 6982,
+      "sha256": "ab523ebfe319ade1c117d7d15f35ec558279f535a839d804b3b3f009dbc76603"
+    },
+    "tests/yolo_pipeline_test.cpp": {
+      "size": 6945,
+      "sha256": "0f544ad8d744cca6f073e4f6b2c4055f19f901f9f8f731d963f390c690a31748"
+    },
+    "tests/yolo_real_model_integration.py": {
+      "size": 5671,
+      "sha256": "ff5752e41231ab0ffc87bc319d09b685d0d7f211bbc88f67c865792d56b26768"
+    },
+    "tests/yolo_transport_test.cpp": {
+      "size": 5977,
+      "sha256": "74e5459744b39b7fc038e750e9102ee1eb88e8b03ae92fcc2871c432a381d38c"
+    },
+    "tools/cv_diagnostics/build-phase.ps1": {
+      "size": 1488,
+      "sha256": "083483864e4891a407f1ade41c4e832c789355c79bc9f318630574bd3db6f01f"
+    },
+    "tools/cv_diagnostics/phase_probe.cpp": {
+      "size": 5766,
+      "sha256": "7f2aaeda2e7ee55abf20f8fd0482206e7405dc60a29d455e051e8a7d66d95e97"
+    },
+    "tools/cv_diagnostics/run_cold_calls.py": {
+      "size": 2004,
+      "sha256": "25295cd1d354194dab2c1255e376aacd83782762299dab17bdd3abd2bc25004f"
+    },
+    "tools/cv_diagnostics/run_legacy_acceptance.py": {
+      "size": 4167,
+      "sha256": "4bf8ce4084647fcf8e7f4b0c1632bb2d5e18e26b8cc6af6f661cc6f7bcca2e26"
+    },
+    "tools/cv_diagnostics/run_stress.py": {
+      "size": 4923,
+      "sha256": "346a4f36a6904dff4a297f3473d543949783628200dbd4ff70ad335b84da1c37"
+    },
+    "tools/cv_diagnostics/summarize_diagnosis.py": {
+      "size": 3261,
+      "sha256": "542ad18e5f9221dd5d8d4675f6781d31711622ffe7a6223261b4912ca12089a8"
+    },
+    "tools/cv_diagnostics/summarize_qualified.py": {
+      "size": 11142,
+      "sha256": "11d0b4e64f14e3fd896f90732b5af24e4dbc170790f5eb85c999b6cebae59614"
+    },
+    "scripts/build_delivery.ps1": {
+      "size": 1667,
+      "sha256": "0bb0d9eea0cb6bac6d51670ea203ef6ff23f408c04526a11b45f587aab072035"
+    },
+    "scripts/calibrate_yolo.py": {
+      "size": 16337,
+      "sha256": "10df819852b8d4ff56966a864e060937973378dc1ece52ac08d145a85212ebca"
+    },
+    "scripts/check_governance.py": {
+      "size": 8225,
+      "sha256": "3144960c45254dd0ba64521bd18641525ab04f43023035076203f5ab41fd26bf"
+    },
+    "scripts/check_repository_hygiene.ps1": {
+      "size": 414,
+      "sha256": "81bda91f67ddfe5ec9ed27b50e25c9f7de3b07aeee21c9a8412a5c82827e6b89"
+    },
+    "scripts/clean_repository.ps1": {
+      "size": 1862,
+      "sha256": "1963577457d30624e0d5dd123746b31fbb753f52b5a2082b53dd290f5a393918"
+    },
+    "scripts/compare_yolo_versions.py": {
+      "size": 4739,
+      "sha256": "2b6e53ac76286b0604fd2ff44e1233e748fe69db7b0190dd846c90e610a1bb1c"
+    },
+    "scripts/dependency_cache.py": {
+      "size": 2388,
+      "sha256": "575e657fb48400601d64df7287a4a931c7a3ba055cefdb336c83287b6303ffbe"
+    },
+    "scripts/export_yolo_reference_models.py": {
+      "size": 4792,
+      "sha256": "289396dcd95ec885d5a07d7a7dd8bcd519b37a9644435475b21ab86377d7f697"
+    },
+    "scripts/generate_e_language_api_doc.py": {
+      "size": 54746,
+      "sha256": "b79fedb3f31939a50ddc4f18403600bbd5d3fc660c7dc4c37cb2dc723612599b"
+    },
+    "scripts/monitor_yolo_benchmark.py": {
+      "size": 1212,
+      "sha256": "b15240e88ccf90ab53b49b7d8180a96ea5079502eb24243d927e253894438a61"
+    },
+    "scripts/package_common.py": {
+      "size": 629,
+      "sha256": "090f0eb805b9394ddd5878346fb1f1b8bbd49fdf6f99e91ca16be359b7a79c77"
+    },
+    "scripts/package_delivery.py": {
+      "size": 25156,
+      "sha256": "7a6ebba4b2b303afcaa66dc1ac5bf8d15f63542d88abaebba40e72117a7e3653"
+    },
+    "scripts/package_e_language.ps1": {
+      "size": 7917,
+      "sha256": "563c3d0598e19435ed12534801b8ae2aa27ee7f308d025210e0f365bb4519eca"
+    },
+    "scripts/package_python_x64.ps1": {
+      "size": 5585,
+      "sha256": "d825ffc5e7b4a433ea62f946578fe2508408c58142afb309b4bed7fc725f188f"
+    },
+    "scripts/package_yolo_candidate.py": {
+      "size": 211,
+      "sha256": "5dafdd346dbb4cfa1032ae56c15944d8a957cf29db458e25095a8a329ff94790"
+    },
+    "scripts/prepare_dependencies.ps1": {
+      "size": 17536,
+      "sha256": "0c443aec6f7c0acb57d489f466774d33283bf7694e161b75f9404c94fed93420"
+    },
+    "scripts/prepare_governance.ps1": {
+      "size": 2637,
+      "sha256": "3906172208db5d2125d959074a6f4aed83b1a8a07223a8550a7b06e92b9a3287"
+    },
+    "scripts/prepare_nvidia_headers.py": {
+      "size": 4281,
+      "sha256": "b365e0e6e8caeb667ac63cdc9f3c63b69ac19e89ff1a4349bb0360c469fdff6e"
+    },
+    "scripts/promote_release.ps1": {
+      "size": 488,
+      "sha256": "ad8d130bdcbbd8ee99eacd8759b08e05289aa7c654de7d6643cdf47cf0f13123"
+    },
+    "scripts/promote_verified_delivery.py": {
+      "size": 6731,
+      "sha256": "6c1aa399efa424c097ee5907d56dd8f370150e7166be2cc58d491c9034ab7f32"
+    },
+    "scripts/register_release.py": {
+      "size": 6066,
+      "sha256": "a4dce24c31e3a66573c2b2daae6f4dc01a2ceaff5e6b86e26ba9e8880b06b8b2"
+    },
+    "scripts/release_manifest.py": {
+      "size": 7295,
+      "sha256": "86542308cfc369ff8a2344ff70584ffe8ef759c7bc4c0c8f16a53fe8edb12b26"
+    },
+    "scripts/repository_storage.py": {
+      "size": 9234,
+      "sha256": "69fbc1908cc1f6f180117ee685a7c6207652d8dbb6e33dea96568be637953076"
+    },
+    "scripts/run_yolo_acceptance.ps1": {
+      "size": 13899,
+      "sha256": "e31b5ff382f1fc6ca07ea02beab702866aab8743b3ee608464d953860c43541d"
+    },
+    "scripts/summarize_cv_acceptance.py": {
+      "size": 2824,
+      "sha256": "7fba39692b73032dd712cf48f5f0aee9bf7498756b48a482d2383e629b3d08a6"
+    },
+    "scripts/summarize_yolo_acceptance.py": {
+      "size": 6309,
+      "sha256": "57c46da342f6e5d261f600b6367ac00eed7bcab51b53bdd8fbfbc4bd6b800c75"
+    },
+    "scripts/summarize_yolo_trace.py": {
+      "size": 2566,
+      "sha256": "7f8a731fa49a77937024903103a66f9fde27c0800aed197daa15d4b1728414f2"
+    },
+    "scripts/verify_current_release.ps1": {
+      "size": 351,
+      "sha256": "0f661bd60c3f39b143ac4c32ebea81048faf9ac5b95db4ba3aac0d024637f313"
+    },
+    "scripts/verify_cv_acceptance.py": {
+      "size": 5683,
+      "sha256": "4bdeab09b1bc0f5dd4a478e7fd5040a4db481d0112a12fb912e20e3fa498aaef"
+    },
+    "scripts/verify_opencv_ipp.ps1": {
+      "size": 826,
+      "sha256": "6f5f7a45d535e24402e879b9484e387b76e28eb90d06c564b60f6c3f4e678fa9"
+    },
+    "scripts/verify_yolo_calibration_restart.py": {
+      "size": 3804,
+      "sha256": "b11098b4999d9a78aecf37855411a7d98e80fc2d162738721246be9d74c2c806"
+    },
+    "scripts/verify_yolo_compatibility.py": {
+      "size": 10057,
+      "sha256": "97422e9533504e2d8c8c7e5a5d54dd62b7ac0061dc3ed784e3259e00ec5afaed"
+    },
+    "scripts/verify_yolo_optional_dependencies.py": {
+      "size": 3439,
+      "sha256": "32b5af5479f2a0dc1ebde3e7f24961c0d7e08d1da2e453164c2dbd9b50373fc9"
+    },
+    "scripts/verify_yolo_x86_models.py": {
+      "size": 3395,
+      "sha256": "5394d5dbc56a66b1b57d75ca9457da4687cb90e2c699857d42b106b8b1858414"
+    }
+  },
+  "base_revision": "dd60f5ffec2afec3f0fa8b6247437ac40069f84b"
+}

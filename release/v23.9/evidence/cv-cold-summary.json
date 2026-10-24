@@ -1,0 +1,41 @@
+{
+  "scope": "Each case in a new process; file read and template loading outside call; no5ms cold-call gate",
+  "architectures": {
+    "x86": {
+      "dll_sha256": "ac95afeb21e5e4d20a06e9d88a60796db590a7e2559602ed06d203f84c6e7d17",
+      "first_matching_call_ms": {
+        "new_color": 14.0633,
+        "new_gray": 10.8969,
+        "new_multi": 14.8801,
+        "new_changed_color": 15.0202,
+        "new_changed_multi": 15.2009,
+        "new_changed_gray": 11.4552,
+        "new_miss": 11.8551,
+        "new_gray_miss": 8.8054,
+        "new_multi_miss": 15.5905,
+        "old_fixed_hit": 12.038,
+        "old_fixed_miss": 10.0355,
+        "old_changed_hit": 12.4421,
+        "old_changed_miss": 10.7722
+      }
+    },
+    "x64": {
+      "dll_sha256": "0adbc48c0c52d9d33b2e2c7ca0a594f511cbb50fe3170e3dcc936b19e008f869",
+      "first_matching_call_ms": {
+        "new_color": 13.3664,
+        "new_gray": 10.4879,
+        "new_multi": 13.5189,
+        "new_changed_color": 13.7937,
+        "new_changed_multi": 13.1493,
+        "new_changed_gray": 11.0164,
+        "new_miss": 11.3471,
+        "new_gray_miss": 9.747,
+        "new_multi_miss": 11.4165,
+        "old_fixed_hit": 12.5725,
+        "old_fixed_miss": 10.4884,
+        "old_changed_hit": 10.8275,
+        "old_changed_miss": 9.0219
+      }
+    }
+  }
+}
