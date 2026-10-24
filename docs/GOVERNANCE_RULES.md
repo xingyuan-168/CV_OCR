@@ -27,6 +27,13 @@ published archives independently of a development checkout. Neither operation
 promotes output or changes the current pointer; a candidate failing its declared limit stays
 unpromoted with its failed performance conclusion intact.
 
+For a fully qualified cohort, `scripts/promote_verified_delivery.py` registers
+the immutable package, swaps the three-file output and current pointer, then
+runs the actual output loader and supplied real Finish command. Failure restores
+both output and pointer; the old cohort and rejected candidate are retained.
+Its `--post-check-json` argument is an argv array, not a shell command string.
+Post-promotion evidence stays outside the already registered immutable archive.
+
 `scripts/check_repository_hygiene.ps1` supports Windows PowerShell5.1 and7 and
 delegates portable checks to Python. User input and approved local build/cache
 directories are classified separately from tracked pollution.

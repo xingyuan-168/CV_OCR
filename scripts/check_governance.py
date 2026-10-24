@@ -130,7 +130,7 @@ def main() -> None:
     if len(parse_exports(ROOT / "include/ai_engine.h")) != manifest["public_exports"]:
         raise ValueError("Header declaration count differs")
     if args.all:
-        for pattern in ("test_governance.py", "test_repository_storage.py", "test_packaging.py", "test_cv_acceptance.py", "test_yolo_calibration.py", "test_yolo_acceptance.py", "test_yolo_model_tool.py", "python_wrapper_test.py"):
+        for pattern in ("test_governance.py", "test_repository_storage.py", "test_packaging.py", "test_cv_acceptance.py", "test_delivery_transaction.py", "test_yolo_calibration.py", "test_yolo_acceptance.py", "test_yolo_model_tool.py", "python_wrapper_test.py"):
             subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "tests"), "-p", pattern], cwd=ROOT, check=True)
     print(json.dumps(dict(passed=True, **result), ensure_ascii=False))
 

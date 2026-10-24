@@ -2,8 +2,41 @@
 
 #include <immintrin.h>
 #include <intrin.h>
+#include <cfloat>
 
 namespace ai::cv_detail {
+
+int masked_projection_candidates_avx2(const uint8_t* origin,
+        const uint32_t* offsets,const int32_t* differences,const MaskedProjectionLimit* stages,
+        size_t stage_count,int columns,float* output) {
+    const auto zero=_mm256_setzero_si256();const auto zero_f=_mm256_setzero_ps();
+    int x=0;
+    // Eight adjacent planar bytes correspond to eight legal windows, including
+    // the final group at the right edge. No four-byte pixel gather is used.
+    for(;x+8<=columns;x+=8) {
+        auto squares=zero,dots=zero;auto excluded=zero_f;size_t k=0;
+        for(size_t level=0;level<stage_count&&_mm256_movemask_ps(excluded)!=255;++level) {
+            const auto& stage=stages[level];
+            for(;k<stage.end;++k){const auto*a=origin+x+offsets[2*k],*b=origin+x+offsets[2*k+1];
+                const auto va=_mm256_cvtepu8_epi32(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(a)));
+                const auto vb=_mm256_cvtepu8_epi32(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(b)));
+                const auto v=_mm256_sub_epi32(vb,va);
+                squares=_mm256_add_epi32(squares,_mm256_mullo_epi32(v,v));
+                dots=_mm256_add_epi32(dots,_mm256_mullo_epi32(v,_mm256_set1_epi32(differences[k])));
+            }
+            // Q and C are exact signed32 integer accumulations: at most1536
+            // disjoint channel pairs, each contribution at most65025. There
+            // is no subtractive covariance cancellation. Enclose conversion
+            // and multiplication with outward factors before rejecting.
+            const auto q=_mm256_cvtepi32_ps(squares),c=_mm256_max_ps(zero_f,_mm256_cvtepi32_ps(dots));
+            const auto lhs=_mm256_mul_ps(c,c);
+            const auto rhs=_mm256_mul_ps(q,_mm256_set1_ps(stage.vector));
+            excluded=_mm256_or_ps(excluded,_mm256_cmp_ps(lhs,rhs,_CMP_LT_OQ));
+            excluded=_mm256_or_ps(excluded,_mm256_castsi256_ps(_mm256_cmpeq_epi32(squares,zero)));
+        }
+        _mm256_storeu_ps(output+x,_mm256_blendv_ps(_mm256_set1_ps(1),_mm256_set1_ps(-1),excluded));
+    }return x;
+}
 
 int masked_pair_candidates_avx2(const uint8_t* origin, int channels, unsigned selected_channels,
         const uint32_t* offsets, size_t pairs, const float* numerator, double error,

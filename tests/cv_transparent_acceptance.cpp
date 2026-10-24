@@ -17,6 +17,10 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <psapi.h>
 
 using Bytes=std::vector<uint8_t>;
 void require(bool b,const char* s){if(!b)throw std::runtime_error(s);}
@@ -40,21 +44,24 @@ struct Api {
     using One=int32_t(AIENGINE_CALL*)(int32_t,const char*,const uint8_t*,int32_t,float,int32_t,const char*,CVMatchResult*,int32_t,int32_t);
     using Multi=const char*(AIENGINE_CALL*)(int32_t,const char*,const uint8_t*,int32_t,const char*,float,const char*,int32_t,int32_t);
     HMODULE dll=nullptr;int32_t handle=0;One one;Multi multi;
+    using NormalMulti=const char*(AIENGINE_CALL*)(int32_t,const char*,const uint8_t*,int32_t,const char*,float,int32_t,int32_t,int32_t);
+    NormalMulti normal_multi;
     decltype(&CV_Release) release;decltype(&AI_GetLastError) error;
     Api(const std::filesystem::path& p,const std::filesystem::path& templates){
         AddDllDirectory(p.parent_path().c_str());dll=LoadLibraryExW(p.c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         require(dll!=nullptr,"Cannot load DLL");auto create=fn<decltype(&CV_Create)>(dll,"CV_Create");auto load=fn<decltype(&CV_LoadTemplateDir)>(dll,"CV_LoadTemplateDir");
         release=fn<decltype(&CV_Release)>(dll,"CV_Release");error=fn<decltype(&AI_GetLastError)>(dll,"AI_GetLastError");one=fn<One>(dll,"CV_FindTransparentOne");multi=fn<Multi>(dll,"CV_FindTransparentMultiText");
+        normal_multi=fn<NormalMulti>(dll,"CV_FindMultiText");
         require(create(&handle)==0,"CV_Create failed");require(load(handle,templates.string().c_str(),0)>0,"Template loading failed");
     }
     ~Api(){if(handle)release(handle);if(dll)FreeLibrary(dll);}
 };
-struct Case {std::string name,templ;std::vector<Bmp> frames;std::vector<std::pair<int,int>> expected;int mode=0;bool multi=false;};
+struct Case {std::string name,templ;std::vector<Bmp> frames;std::vector<std::pair<int,int>> expected;int mode=0;bool multi=false;bool normal=false;std::vector<std::string> text;};
 void check(Api& api,const Case& c,size_t index,float threshold=.9f,double* latency=nullptr){
     const auto& b=c.frames[index%c.frames.size()];const auto xy=c.expected[index%c.expected.size()];
     LARGE_INTEGER begin{},end{};static const double frequency=[]{LARGE_INTEGER f{};QueryPerformanceFrequency(&f);return double(f.QuadPart);}();
-    if(c.multi){if(latency)QueryPerformanceCounter(&begin);const char* p=api.multi(api.handle,c.templ.c_str(),b.bytes.data(),int(b.bytes.size()),"",threshold,"FF00FF",0,0);if(latency){QueryPerformanceCounter(&end);*latency=1000.0*(end.QuadPart-begin.QuadPart)/frequency;}require(p!=nullptr,"Null multi result");
-        const auto expected=xy.first<0?std::string():"0,"+std::to_string(xy.first)+","+std::to_string(xy.second);require(p==expected,"Multi result mismatch");
+    if(c.multi){if(latency)QueryPerformanceCounter(&begin);const char* p=c.normal?api.normal_multi(api.handle,c.templ.c_str(),b.bytes.data(),int(b.bytes.size()),"",threshold,0,0,0):api.multi(api.handle,c.templ.c_str(),b.bytes.data(),int(b.bytes.size()),"",threshold,"FF00FF",0,0);if(latency){QueryPerformanceCounter(&end);*latency=1000.0*(end.QuadPart-begin.QuadPart)/frequency;}require(p!=nullptr,"Null multi result");
+        const auto expected=!c.text.empty()?c.text[index%c.text.size()]:(xy.first<0?std::string():"0,"+std::to_string(xy.first)+","+std::to_string(xy.second));require(p==expected,"Multi result mismatch");
     }else{CVMatchResult r{};if(latency)QueryPerformanceCounter(&begin);const int n=api.one(api.handle,c.templ.c_str(),b.bytes.data(),int(b.bytes.size()),threshold,c.mode,"FF00FF",&r,0,0);if(latency){QueryPerformanceCounter(&end);*latency=1000.0*(end.QuadPart-begin.QuadPart)/frequency;}
         require(n==(xy.first<0?0:1),"Single status mismatch");if(n>0){require(r.x==xy.first&&r.y==xy.second,"Single position mismatch");
             if(c.name.rfind("new_",0)==0){require(r.w==95&&r.h==81,"Single dimensions mismatch");require(std::isfinite(r.sim)&&r.sim>=threshold,"Single score mismatch");if(c.mode==0)require(r.sim==1.f,"Identical visible pixels must score1");}}}
@@ -96,7 +103,63 @@ int wmain(int argc,wchar_t**argv){try{
             int px=324,py=105;if(i%2){for(int y=0;y<t.h;++y)memcpy(f.row(105+y)+324*3,f.row(180+y)+600*3,t.w*3);px=30+(i*17)%250;py=30+(i*13)%100;paste(f,t,px,py);}changed.frames.push_back(std::move(f));changed.expected.emplace_back(px,py);}
         cases.push_back(changed);changed.name="old_changed_miss";changed.templ="miss.bmp";changed.expected.assign(32,{-1,-1});cases.push_back(std::move(changed));
     }
+    if(a.count(L"--stress-seconds")) {
+        // Exercise the ordinary tiled path as well as actual transparent masks.
+        // Expected text comes from placement, never a cached product result.
+        const auto fixtures=root.parent_path()/"tests/fixtures/cv/base";
+        Bmp ta(read(fixtures/std::filesystem::u8path(u8"电.bmp"))),tb(read(fixtures/std::filesystem::u8path(u8"游.bmp")));
+        Bmp base(read(fixtures/std::filesystem::u8path(u8"大图1.bmp")));
+        write(temp/"tile-a.bmp",ta.bytes);write(temp/"tile-b.bmp",tb.bytes);
+        Case tiled{"old_changed_tiled","tile-a.bmp|tile-b.bmp",{},{{0,0}},0,true,true};
+        uint32_t state=0x7654321;
+        for(int i=0;i<16;++i){Bmp f=base;
+            for(int y=0;y<f.h;++y)for(int x=0;x<f.w*3;++x){state=1664525u*state+1013904223u;f.row(y)[x]=uint8_t(state>>27);}
+            int x=150+i%5,y=155+i%3;paste(f,ta,x,y);paste(f,tb,580,290);
+            tiled.frames.push_back(std::move(f));tiled.text.push_back("0,"+std::to_string(x)+","+std::to_string(y)+"|1,580,290");
+        }
+        cases.push_back(tiled);tiled.normal=false;tiled.name="old_changed_tiled_transparent";cases.push_back(std::move(tiled));
+    }
+    if(a.count(L"--case")) {
+        const std::string wanted=std::filesystem::path(a[L"--case"]).string();
+        cases.erase(std::remove_if(cases.begin(),cases.end(),[&](const Case& c){return c.name!=wanted;}),cases.end());
+        require(cases.size()==1,"Unknown case filter");
+    }
     Api api(dll,temp);
+    if(a.count(L"--stress-seconds")) {
+        const int seconds=std::stoi(a[L"--stress-seconds"]),thread_count=a.count(L"--threads")?std::stoi(a[L"--threads"]):1;
+        require(seconds>0&&thread_count>0&&thread_count<=64,"Invalid stress options");
+        std::vector<const Case*> changing;for(const auto& c:cases)if(c.name.find("changed")!=std::string::npos)changing.push_back(&c);
+        require(!changing.empty(),"Stress requires changing cases");
+        for(auto c:changing)for(size_t i=0;i<c->frames.size();++i)check(api,*c,i);
+        std::atomic<bool> go{false};std::atomic<uint64_t> calls{0},errors{0};
+        std::vector<std::vector<double>> samples(thread_count);std::vector<std::thread> workers;
+        std::mutex error_mutex;std::string error_text;
+        std::chrono::steady_clock::time_point began,deadline;
+        for(int t=0;t<thread_count;++t)workers.emplace_back([&,t]{
+            while(!go.load(std::memory_order_acquire))std::this_thread::yield();
+            uint64_t n=0;do{try{double ms;const Case& c=*changing[(n+t)%changing.size()];check(api,c,(n/changing.size()+t)%c.frames.size(),.9f,&ms);
+                    auto& v=samples[t];if(v.size()<10000)v.push_back(ms);else v[n%10000]=ms;
+                }catch(const std::exception& e){++errors;std::lock_guard<std::mutex> lock(error_mutex);if(error_text.empty())error_text=e.what();}
+                ++n;++calls;
+            }while(std::chrono::steady_clock::now()<deadline);
+        });
+        began=std::chrono::steady_clock::now();deadline=began+std::chrono::seconds(seconds);go.store(true,std::memory_order_release);
+        uint64_t peak_bytes=0;
+        do{std::this_thread::sleep_for(std::chrono::seconds(1));PROCESS_MEMORY_COUNTERS_EX counters{};
+            if(K32GetProcessMemoryInfo(GetCurrentProcess(),reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),sizeof(counters)))peak_bytes=std::max<uint64_t>(peak_bytes,counters.PrivateUsage);
+        }while(std::chrono::steady_clock::now()<deadline);
+        for(auto& worker:workers)worker.join();
+        const double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-began).count();
+        std::vector<double> retained;for(const auto& v:samples)retained.insert(retained.end(),v.begin(),v.end());std::sort(retained.begin(),retained.end());
+        const auto bytes=read(dll);const bool hooks=GetProcAddress(api.dll,"CVTest_Stats")!=nullptr;
+        require(api.release(api.handle)==0,"Stress template/handle release failed");api.handle=0;
+        std::ofstream report(out);report<<std::setprecision(10)<<"{\"schema\":1,\"architecture\":"<<quoted(sizeof(void*)==4?"x86":"x64")<<",\"test_hooks\":"<<(hooks?"true":"false")
+            <<",\"dll_sha256\":"<<quoted(ai::sha256(bytes.data(),bytes.size()))<<",\"threads\":"<<thread_count<<",\"elapsed_s\":"<<elapsed<<",\"calls\":"<<calls.load()<<",\"errors\":"<<errors.load()
+            <<",\"error_text\":"<<quoted(error_text)<<",\"changed_cases\":"<<changing.size()<<",\"peak_private_bytes\":"<<peak_bytes<<",\"template_release_passed\":true,\"retained_latency_samples\":"<<retained.size()
+            <<",\"retained_p95_ms\":"<<(retained.empty()?0:retained[size_t(std::ceil(.95*retained.size()))-1])<<",\"retained_max_ms\":"<<(retained.empty()?0:retained.back())<<"}\n";
+        std::cout<<"stress threads="<<thread_count<<" elapsed_s="<<elapsed<<" calls="<<calls<<" errors="<<errors<<std::endl;
+        return errors?2:0;
+    }
     std::ofstream report(out),raw(out.wstring()+L".samples.csv");raw<<"case,round,sample,total_ms\n";
     const auto dll_bytes=read(dll);
     const auto small_bytes=read(root/L"1.bmp"),big_bytes=read(root/L"2.bmp");

@@ -1,5 +1,6 @@
 #include "ai_engine.h"
 #include "compact_result_test_utils.h"
+#include "cv_benchmark_report.h"
 #if defined(AIENGINE_CV_TEST_HOOKS)
 #include "cv_test_hooks.h"
 #endif
@@ -196,6 +197,9 @@ int main(int argc, char **argv) {
 #else
     assert(!reference_timing);
 #endif
+    const auto cold=std::chrono::steady_clock::now();
+    assert(find(frames[0],transparent!=0)==frames[0].expected[transparent]);
+    cv_benchmark_cold_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-cold).count();
     for (int i = 0; i < 64; ++i)
       assert(find(frames[i], transparent != 0) ==
              frames[i].expected[transparent]);
@@ -209,8 +213,9 @@ int main(int argc, char **argv) {
                             .count());
       assert(actual == frame.expected[transparent]);
     }
+    cv_benchmark_report(transparent ? "changing_transparent" : "changing_multi",samples);
     std::sort(samples.begin(), samples.end());
-    const auto p95 = samples[static_cast<size_t>(0.95 * (samples.size() - 1))];
+    const auto p95 = samples[static_cast<size_t>(std::ceil(0.95 * samples.size()))-1];
     std::cout << (reference_timing ? "reference_" : "")
               << (transparent ? "changing_transparent" : "changing_multi")
               << " samples=" << samples.size()

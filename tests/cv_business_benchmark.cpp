@@ -1,5 +1,6 @@
 #include "ai_engine.h"
 #include "compact_result_test_utils.h"
+#include "cv_benchmark_report.h"
 #if defined(AIENGINE_CV_TEST_HOOKS)
 #include "cv_test_hooks.h"
 #endif
@@ -40,12 +41,15 @@ std::vector<uint8_t> read_bytes(const std::filesystem::path& path) {
 double percentile(std::vector<double> values, double ratio) {
     std::sort(values.begin(), values.end());
     const size_t index = std::min(values.size() - 1,
-        static_cast<size_t>(ratio * static_cast<double>(values.size() - 1)));
+        static_cast<size_t>(std::ceil(ratio * values.size()))-1);
     return values[index];
 }
 
 template <typename Function>
 std::vector<double> measure(int iterations, Function&& function) {
+    auto cold=std::chrono::steady_clock::now();function();
+    cv_benchmark_cold_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-cold).count();
+    for (int i=0;i<64;++i) function();
     std::vector<double> samples;
     samples.reserve(static_cast<size_t>(iterations));
     for (int i = 0; i < iterations; ++i) {
@@ -59,6 +63,7 @@ std::vector<double> measure(int iterations, Function&& function) {
 }
 
 void print_stats(const char* name, const std::vector<double>& samples) {
+    cv_benchmark_report(name,samples);
     double total = 0.0;
     for (double value : samples) total += value;
     std::cout << std::fixed << std::setprecision(3)
@@ -264,6 +269,7 @@ int main(int argc, char** argv) {
         threshold_single = measure(iterations, [&] {
             assert(CV_FindOne(threshold_handle, u8"电.bmp", threshold_big.data(),
                 static_cast<int32_t>(threshold_big.size()), 0.95f, 0, &threshold_perf) == 1);
+            assert(threshold_perf.x==502 && threshold_perf.y==22 && threshold_perf.sim==1.f);
         });
         print_stats("threshold_single", threshold_single);
     }
@@ -327,6 +333,14 @@ int main(int argc, char** argv) {
     assert(text != nullptr);
     assert(compact_test::contains(text, 0, 364, 28));
     assert(compact_test::contains(text, 1, 302, 18));
+    const std::string expected_multi=text;
+#if defined(AIENGINE_CV_TEST_HOOKS)
+    CVTest_Reference(1);
+    const std::string reference_multi=CV_FindMultiText(cv_handle,u8"电.bmp|游.bmp",big.data(),
+        static_cast<int32_t>(big.size()),"",.4f,0);
+    CVTest_Reference(0);
+    assert(expected_multi==reference_multi);
+#endif
 
     for (int i = 0; i < 50; ++i) {
         assert(CV_FindOne(cv_handle, u8"电.bmp", big.data(), static_cast<int32_t>(big.size()), 0.4f, 0, &one) == 1);
@@ -356,11 +370,13 @@ int main(int argc, char** argv) {
     if (target == "all" || target == "single") {
         single = measure(iterations, [&] {
             assert(CV_FindOne(cv_handle, u8"电.bmp", big.data(), static_cast<int32_t>(big.size()), 0.4f, 0, &one) == 1);
+            assert(one.x==364 && one.y==28 && one.sim==1.f);
         });
         print_stats("single", single);
         transparent_single = measure(iterations, [&] {
             assert(CV_FindTransparentOne(cv_handle, u8"电.bmp", big.data(), static_cast<int32_t>(big.size()),
                 0.4f, 0, "FF00FF", &transparent_one) == 1);
+            assert(transparent_one.x==364 && transparent_one.y==28 && transparent_one.sim==1.f);
         });
         print_stats("transparent_single", transparent_single);
     }
@@ -370,6 +386,7 @@ int main(int argc, char** argv) {
                 cv_handle, u8"电.bmp|游.bmp", big.data(), static_cast<int32_t>(big.size()),
                 "", 0.4f, 0);
             assert(value != nullptr && value[0] != '\0');
+            assert(expected_multi==value);
         });
         print_stats("multi_text", multi_text);
         transparent_multi_text = measure(iterations, [&] {
@@ -377,6 +394,7 @@ int main(int argc, char** argv) {
                 cv_handle, u8"电.bmp|游.bmp", big.data(), static_cast<int32_t>(big.size()),
                 "", 0.4f, "FF00FF");
             assert(value != nullptr && value[0] != '\0');
+            assert(expected_multi==value);
         });
         print_stats("transparent_multi_text", transparent_multi_text);
     }

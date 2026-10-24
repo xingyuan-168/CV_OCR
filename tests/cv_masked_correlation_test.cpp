@@ -57,5 +57,30 @@ int main() {
         assert(oracle(image,t,mask,hit.x,hit.y)==1&&bound.at<float>(hit)>=.99f);
         workspace.discard();assert(workspace.retained_bytes()==0);
     }
+    // Projection directions must handle local constants, near-constants,
+    // positive affine matches and score rounding near the requested threshold.
+    for(int channels:{1,3})for(int seed=0;seed<8;++seed){
+        cv::Mat t(17,19,CV_MAKETYPE(CV_8U,channels)),mask(t.size(),CV_8U,cv::Scalar(255));
+        rng.fill(t,cv::RNG::UNIFORM,0,80);
+        if(seed<2){t.setTo(cv::Scalar::all(254));t.ptr<uint8_t>(8)[9*channels]=253;}
+        if(seed==2)mask.setTo(0);
+        if(seed==3)for(int y=0;y<t.rows;++y)for(int x=0;x<t.cols;++x)if((x+y)%3)mask.at<uint8_t>(y,x)=0;
+        cv::Mat image(23,29,t.type(),cv::Scalar::all(seed%2?255:0));
+        for(int y=0;y<t.rows;++y)for(int x=0;x<t.cols;++x)if(mask.at<uint8_t>(y,x))for(int c=0;c<channels;++c){int v=t.ptr<uint8_t>(y)[x*channels+c];image.ptr<uint8_t>(y+3)[(x+4)*channels+c]=uint8_t(seed>=4?2*v+3:v);}
+        auto spectrum=ai::cv_detail::make_masked_spectrum(t,mask,ai::cv_detail::spectrum_geometry(image.size()));
+        ai::cv_detail::MaskedCorrelationWorkspace workspace;
+        std::vector<float> thresholds={.9f,.99f,1.f,std::nextafter(1.f,0.f)};
+        for(int y=0;y<=image.rows-t.rows;++y)for(int x=0;x<=image.cols-t.cols;++x){float v=float(oracle(image,t,mask,x,y));if(v>0&&v<1){thresholds.push_back(v);thresholds.push_back(std::nextafter(v,0.f));thresholds.push_back(std::nextafter(v,1.f));}}
+        for(bool optimized:{false,true}){cv::setUseOptimized(optimized);workspace.invalidate();
+            for(float threshold:thresholds){cv::Mat bound;workspace.upper_bounds(image,spectrum,threshold,bound);
+                for(int y=0;y<bound.rows;++y)for(int x=0;x<bound.cols;++x){float expected=float(oracle(image,t,mask,x,y));if(expected>=threshold)assert(bound.at<float>(y,x)>=0);}}
+        }
+        // Change content without changing the allocation and explicitly signal
+        // invalidation, as the public byte-comparison cache does every frame.
+        image.setTo(cv::Scalar::all(73));workspace.invalidate();cv::Mat bound;workspace.upper_bounds(image,spectrum,.9f,bound);
+        for(int y=0;y<bound.rows;++y)for(int x=0;x<bound.cols;++x)if(float(oracle(image,t,mask,x,y))>=.9f)assert(bound.at<float>(y,x)>=0);
+        workspace.discard();assert(workspace.retained_bytes()==0);
+    }
+    cv::setUseOptimized(true);
     std::cout<<"Independent exhaustive masked upper-bound and invariance checks passed\n";
 }

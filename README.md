@@ -4,6 +4,9 @@
 
 CQ_AI 是面向 Windows 的 OpenCV、OCR 和 YOLO 视觉组件。
 
+透明找图0.14.9/v23.9候选已完成x86/x64各20场景三轮P95≤5ms和长期稳定性验收，
+结果见[透明找图报告](docs/CV_TRANSPARENT_5MS_RESULT_CN.md)。安装版本仍以`release/current.json`为准。
+
 | 项目版本 | 交付版本 | Worker协议 | 公开函数 |
 | --- | --- | --- | --- |
 | `0.14.8` | `v23.8` | `26` | `60` |

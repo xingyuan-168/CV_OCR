@@ -298,7 +298,7 @@ MaskedTemplateSpectrum make_masked_spectrum(const cv::Mat& templ, const cv::Mat&
     result.count = result.visible.size();
     if (!result.count) return result;
     double channel_energy[3]{};
-    for(int c=0;c<result.channels;++c){channel_energy[c]=double(squares[c])-double(sums[c])*sums[c]/result.count;result.energy+=channel_energy[c];}
+    for(int c=0;c<result.channels;++c){channel_energy[c]=double(squares[c])-double(sums[c])*sums[c]/result.count;result.energy+=channel_energy[c];result.energy_error+=16*DBL_EPSILON*(double(squares[c])+1);}
     double absolute_sum = 0;
     cv::Mat plane(geometry, CV_32F);
     for (int c = 0; c < result.channels; ++c) {
@@ -327,6 +327,24 @@ MaskedTemplateSpectrum make_masked_spectrum(const cv::Mat& templ, const cv::Mat&
         const size_t a = k * result.count / (2 * pair_count);
         const size_t b = result.count - 1 - a;
         result.pairs.emplace_back(result.visible[a], result.visible[b]);
+    }
+    // Disjoint same-channel differences are orthogonal to each other and to
+    // every per-channel DC component. Pair opposite extremes, then visit the
+    // largest template-energy directions first. This needs only two integer
+    // moments per candidate, without source means or a full-image transform.
+    if (result.count <= 1024 && result.energy > 1e-12) {
+        struct Pair{cv::Point a,b;int channel,difference;};std::vector<Pair> ordered;
+        for(int c=0;c<result.channels;++c){auto points=result.visible;
+            std::stable_sort(points.begin(),points.end(),[&](cv::Point a,cv::Point b){return templ.ptr<uint8_t>(a.y)[a.x*result.channels+c]<templ.ptr<uint8_t>(b.y)[b.x*result.channels+c];});
+            for(size_t k=0;k<points.size()/2;++k){auto a=points[k],b=points[points.size()-1-k];
+                int difference=int(templ.ptr<uint8_t>(b.y)[b.x*result.channels+c])-templ.ptr<uint8_t>(a.y)[a.x*result.channels+c];
+                if(difference)ordered.push_back({a,b,c,difference});}
+        }
+        std::stable_sort(ordered.begin(),ordered.end(),[](const Pair&a,const Pair&b){return a.difference>b.difference;});
+        double energy=0;
+        for(size_t k=0;k<ordered.size();++k){auto p=ordered[k];result.projection_pairs.emplace_back(p.a,p.b);result.projection_channels.push_back(p.channel);result.projection_differences.push_back(p.difference);energy+=p.difference*p.difference;
+            const size_t n=k+1;if((n&(n-1))==0||n==ordered.size()){MaskedProjectionStage stage;stage.end=n;stage.energy=energy;result.projection_stages.push_back(stage);}
+        }
     }
     return result;
 }
@@ -358,6 +376,48 @@ void MaskedCorrelationWorkspace::prepare(const cv::Mat& image, const MaskedTempl
 void MaskedCorrelationWorkspace::upper_bounds(const cv::Mat& image,
         const MaskedTemplateSpectrum& templ, float threshold, cv::Mat& output) {
     CV_Assert(templ.geometry.width >= image.cols && templ.geometry.height >= image.rows);
+    if(!templ.projection_stages.empty() && threshold>1e-6f && image.total()<=static_cast<size_t>(INT32_MAX/3)) {
+        // The public scorer rounds tofloat and snaps scores above1-1e-6 to1.
+        // Also cover its double moment arithmetic, not just the mathematical
+        // correlation. See docs/CV_MASKED_PROJECTION_NUMERICS.md.
+        const int ch=image.channels();const double tau=std::max(0.,double(threshold)-1.5e-6);const double tau2=tau*tau;
+        output.create(image.rows-templ.extent.height+1,image.cols-templ.extent.width+1,CV_32F);
+        // Contiguous adjacent windows replace two expensive BGR gathers per
+        // direction with two eight-byte loads. Only pixels, never match
+        // results, are reused after the outer cache verifies frame bytes.
+        if(!projection_prepared || projection_planes.cols!=image.cols || projection_planes.rows!=image.rows*ch){
+            projection_planes.create(image.rows*ch,image.cols,CV_8U);
+            if(ch==1)image.copyTo(projection_planes);
+            else {cv::Mat planes[3];for(int c=0;c<3;++c)planes[c]=projection_planes.rowRange(c*image.rows,(c+1)*image.rows);cv::split(image,planes);}
+            projection_constant=true;
+            for(int c=0;c<ch&&projection_constant;++c){const auto*first=projection_planes.ptr<uint8_t>(c*image.rows);
+                for(int x=1;x<image.cols&&projection_constant;++x)projection_constant=first[x]==first[0];
+                for(int y=1;y<image.rows&&projection_constant;++y)projection_constant=std::memcmp(first,projection_planes.ptr<uint8_t>(c*image.rows+y),image.cols)==0;}
+            projection_prepared=true;
+        }
+        if(projection_constant){output.setTo(-1);return;}
+        std::array<MaskedProjectionLimit,16> limits{};size_t limit_count=0;
+        for(const auto&stage:templ.projection_stages){const double d=stage.energy-(1-tau2)*2*templ.energy;
+            const double guard=2*templ.energy_error+64*DBL_EPSILON*(stage.energy+templ.energy+1);
+            if(d>guard){limits[limit_count++]={stage.end,d-guard,static_cast<float>((d-guard)*(1-32*FLT_EPSILON))};}}
+        if(!limit_count){output.setTo(1);return;}
+        projection_offsets.resize(templ.projection_pairs.size()*2);
+        for(size_t k=0;k<templ.projection_pairs.size();++k){auto p=templ.projection_pairs[k];int c=templ.projection_channels[k];projection_offsets[2*k]=uint32_t((c*image.rows+p.first.y)*projection_planes.step+p.first.x);projection_offsets[2*k+1]=uint32_t((c*image.rows+p.second.y)*projection_planes.step+p.second.x);}
+        for(int y=0;y<output.rows;++y){auto*dst=output.ptr<float>(y);int first=0;
+#if defined(AIENGINE_CV_AVX2)
+            if(cv::checkHardwareSupport(CV_CPU_AVX2))first=masked_projection_candidates_avx2(projection_planes.ptr<uint8_t>(y),projection_offsets.data(),templ.projection_differences.data(),limits.data(),limit_count,output.cols,dst);
+#endif
+            for(int x=first;x<output.cols;++x){int64_t dot=0;uint64_t q=0;size_t k=0;bool excluded=false;
+                const auto*base=projection_planes.ptr<uint8_t>(y)+x;
+                for(size_t level=0;level<limit_count;++level){const auto&stage=limits[level];
+                    for(;k<stage.end;++k){const int v=int(base[projection_offsets[2*k+1]])-base[projection_offsets[2*k]];q+=v*v;dot+=v*templ.projection_differences[k];}
+                    if(q==0){excluded=true;break;}
+                    const double upper=std::max(0.,double(dot));
+                    if(upper*upper*(1+16*DBL_EPSILON)<double(q)*stage.exact*(1-16*DBL_EPSILON)){excluded=true;break;}
+                }dst[x]=excluded?-1.f:1.f;
+            }
+        }return;
+    }
     prepare(image, templ);
     output.create(image.rows - templ.extent.height + 1, image.cols - templ.extent.width + 1, CV_32F);
     if (!templ.active_channels) { output.setTo(1); numerator.release(); return; }
@@ -414,6 +474,8 @@ void MaskedCorrelationWorkspace::upper_bounds(const cv::Mat& image,
 }
 
 void MaskedCorrelationWorkspace::discard() noexcept {
+    std::vector<uint32_t>().swap(projection_offsets);
+    projection_planes.release();projection_prepared=false;
     fft.discard();
     for (auto& s : spectra) s.release();
     plane.release(); product.release(); accumulated.release(); numerator.release();
@@ -421,7 +483,7 @@ void MaskedCorrelationWorkspace::discard() noexcept {
 }
 
 size_t MaskedCorrelationWorkspace::retained_bytes() const noexcept {
-    size_t result = fft.retained_bytes() + bytes(plane) + bytes(product) + bytes(accumulated) + bytes(numerator);
+    size_t result = bytes(projection_planes) + projection_offsets.capacity()*sizeof(uint32_t) + fft.retained_bytes() + bytes(plane) + bytes(product) + bytes(accumulated) + bytes(numerator);
     for (const auto& s : spectra) result += bytes(s);
     return result;
 }

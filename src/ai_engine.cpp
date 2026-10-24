@@ -51,6 +51,7 @@
 #include <cstring>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <fstream>
 #include <memory>
 #include <mutex>
@@ -1707,6 +1708,12 @@ struct CVWorkspace {
     OwnedImage gray;
     CVTemplateThreadScratch scratch;
     ai::cv_detail::CorrelationWorkspace correlation;
+    std::array<ai::cv_detail::CorrelationWorkspace,8> parallel_correlation;
+    std::array<cv::Mat,8> parallel_tile_scores;
+    std::array<cv::Mat, 2> parallel_scores;
+    cv::Size parallel_image_geometry;
+    cv::Size parallel_tile_geometry;
+    bool parallel_image_valid = false;
     ai::cv_detail::MaskedCorrelationWorkspace masked_correlation;
     int masked_image_mode = -1;
     bool correlation_image_valid = false;
@@ -1716,7 +1723,12 @@ struct CVWorkspace {
         const auto mat_bytes = [](const cv::Mat& mat) -> size_t {
             return mat.data ? static_cast<size_t>(mat.datalimit - mat.datastart) : 0;
         };
-        return correlation.retained_bytes() + masked_correlation.retained_bytes() + color.pixels.capacity() + gray.pixels.capacity() +
+        size_t parallel_bytes=0;
+        for (size_t k=0;k<parallel_correlation.size();++k)
+            parallel_bytes+=parallel_correlation[k].retained_bytes()+mat_bytes(parallel_tile_scores[k]);
+        return correlation.retained_bytes() + parallel_bytes +
+            mat_bytes(parallel_scores[0]) + mat_bytes(parallel_scores[1]) +
+            masked_correlation.retained_bytes() + color.pixels.capacity() + gray.pixels.capacity() +
             mat_bytes(scratch.score) + mat_bytes(scratch.local_max) + mat_bytes(scratch.peak_kernel) +
             scratch.peak_points.capacity() * sizeof(cv::Point) +
             (scratch.candidates.capacity() + scratch.selected.capacity()) * sizeof(CVMatchResult) +
@@ -1730,6 +1742,10 @@ struct CVWorkspace {
     void discard() noexcept {
         correlation_image_valid = correlation_sums_valid = false;
         correlation.discard();
+        for (auto &worker : parallel_correlation) worker.discard();
+        for (auto &score : parallel_tile_scores) score.release();
+        for (auto &score : parallel_scores) score.release();
+        parallel_image_valid=false; parallel_image_geometry={}; parallel_tile_geometry={};
         masked_correlation.discard(); masked_image_mode = -1;
         std::vector<uint8_t>().swap(color.pixels);
         std::vector<uint8_t>().swap(gray.pixels);
@@ -2294,6 +2310,7 @@ int32_t find_cv_matches_opencv(
     cv_test_fault(1);
     if (refresh_bgr_cache(big_image, &workspace.color)) {
         workspace.correlation_image_valid = workspace.correlation_sums_valid = false;
+        workspace.parallel_image_valid = false;
         workspace.masked_correlation.invalidate();
     }
     bool gray_ready=false;
@@ -2304,6 +2321,7 @@ int32_t find_cv_matches_opencv(
     const cv::Mat image = owned_image_mat(match_mode == 1 ? workspace.gray : workspace.color);
     cv::Mat candidate_image;
     bool correlation_ready = false;
+    size_t parallel_begin = entries.size();
 #if defined(AIENGINE_CV_TEST_HOOKS)
     bool correlation_prepared_now = false;
 #endif
@@ -2444,6 +2462,10 @@ int32_t find_cv_matches_opencv(
             && !g_cv_reference
 #endif
         ) {
+            const bool batched=template_index >= parallel_begin && template_index - parallel_begin < 2;
+            if (batched) {
+                std::swap(scratch.score,workspace.parallel_scores[template_index-parallel_begin]);
+            } else {
             if (!correlation_ready) {
                 // Exact byte equality of the owned frame permits reuse of its
                 // transform/statistics. Correlation, peaks and results are still
@@ -2468,15 +2490,16 @@ int32_t find_cv_matches_opencv(
                 }
                 spectrum = entry->spectrum;
             }
-            workspace.correlation.match(templ, *spectrum, entry->color_stats.sums,
-                entry->color_stats.energy, !best_only, scratch.score,
-                best_only ? -1.0f : std::max(0.0f,min_score-2e-6f));
+                workspace.correlation.match(templ, *spectrum, entry->color_stats.sums,
+                    entry->color_stats.energy, !best_only, scratch.score,
+                    best_only ? -1.0f : std::max(0.0f,min_score-2e-6f));
 #if defined(AIENGINE_CV_TEST_HOOKS)
             g_cv_times[1]=correlation_prepared_now ? workspace.correlation.timings[0] : 0;
             g_cv_times[2]=correlation_prepared_now ? workspace.correlation.timings[1] : 0;
             g_cv_times[3]+=workspace.correlation.timings[2];
             g_cv_times[4]+=workspace.correlation.timings[3];
 #endif
+            }
         } else if (candidate_mask == nullptr) {
 #if defined(AIENGINE_CV_TEST_HOOKS)
             const auto rough_started = std::chrono::steady_clock::now();
@@ -2665,8 +2688,78 @@ int32_t find_cv_matches_opencv(
         g_cv_times[5]+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-prof_post).count();
 #endif
     };
-    for (size_t template_index = 0; template_index < entries.size(); ++template_index) {
-        match_entry(template_index);
+    for (size_t template_index = 0; template_index < entries.size();) {
+        const auto eligible = [&](size_t index) {
+            const auto &entry = entries[index];
+            const auto templ = owned_image_mat(entry->color);
+            return templ.cols <= image.cols && templ.rows <= image.rows &&
+                templ.cols <= (image.cols+3)/4 && templ.rows <= (image.rows+1)/2 &&
+                !(transparent && template_contains_transparent_color(entry, transparent_rgb));
+        };
+        bool pair = !best_only && match_mode == 0 && image.total() >= 64u*1024u &&
+            image.total() <= 512u*1024u && template_index+1 < entries.size() &&
+            eligible(template_index) && eligible(template_index+1);
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        pair = pair && !g_cv_reference;
+#endif
+        parallel_begin = entries.size();
+        if (pair) {
+            // Eight bounded overlapping tiles. Each legal output
+            // position is written once; overlap supplies every template pixel.
+            // The same FFT/normalization and sequential peak/NMS rules apply.
+            const int step_x=(image.cols+3)/4, step_y=(image.rows+1)/2;
+            const int max_height=std::max(entries[template_index]->color.view.height,
+                entries[template_index+1]->color.view.height);
+            const int max_width=std::max(entries[template_index]->color.view.width,
+                entries[template_index+1]->color.view.width);
+            const cv::Size extent(std::min(image.cols,step_x+max_width-1),
+                std::min(image.rows,step_y+max_height-1));
+            const bool prepare=!workspace.parallel_image_valid ||
+                workspace.parallel_image_geometry!=image.size() || workspace.parallel_tile_geometry!=extent;
+            workspace.parallel_image_valid=false;
+            std::array<std::shared_ptr<const ai::cv_detail::TemplateSpectrum>,2> spectra;
+            const auto geometry=ai::cv_detail::spectrum_geometry(extent);
+            for (size_t k=0;k<2;++k) {
+                const auto &entry=entries[template_index+k];
+                const auto templ=owned_image_mat(entry->color);
+                workspace.parallel_scores[k].create(image.rows-templ.rows+1,image.cols-templ.cols+1,CV_32F);
+                std::lock_guard<std::mutex> lock(entry->spectrum_mutex);
+                if (!entry->spectrum || entry->spectrum->geometry!=geometry)
+                    entry->spectrum=std::make_shared<const ai::cv_detail::TemplateSpectrum>(
+                        ai::cv_detail::make_spectrum(templ,geometry));
+                spectra[k]=entry->spectrum;
+            }
+            const auto calculate=[&](int task) {
+                auto &worker=workspace.parallel_correlation[task];
+                const int first_x=(task%4)*step_x, first_y=(task/4)*step_y;
+                const int origin_x=std::min(first_x,image.cols-extent.width);
+                const int origin_y=std::min(first_y,image.rows-extent.height);
+                if (prepare) worker.prepare(image(cv::Rect(origin_x,origin_y,extent.width,extent.height)),true);
+                for (size_t k=0;k<2;++k) {
+                    const auto &entry=entries[template_index+k];
+                    const auto templ=owned_image_mat(entry->color);
+                    auto &score=workspace.parallel_scores[k];
+                    const int last_x=std::min(first_x+step_x,score.cols), last_y=std::min(first_y+step_y,score.rows);
+                    if (first_x>=last_x || first_y>=last_y) continue;
+                    auto &local=workspace.parallel_tile_scores[task];
+                    worker.match(templ,*spectra[k],entry->color_stats.sums,entry->color_stats.energy,
+                        true,local,std::max(0.0f,min_score-2e-6f));
+                    local(cv::Rect(first_x-origin_x,first_y-origin_y,last_x-first_x,last_y-first_y))
+                        .copyTo(score(cv::Rect(first_x,first_y,last_x-first_x,last_y-first_y)));
+                }
+            };
+            // Join all helpers before releasing any borrowed input or workspace,
+            // including on exceptions. No helper survives the public DLL call.
+            std::array<std::future<void>,7> helpers;
+            for (int k=0;k<7;++k) helpers[k]=std::async(std::launch::async,[&,k]{calculate(k);});
+            calculate(7);
+            for (auto &helper:helpers) helper.get();
+            workspace.parallel_image_valid=true;
+            workspace.parallel_image_geometry=image.size(); workspace.parallel_tile_geometry=extent;
+            parallel_begin=template_index;
+        }
+        match_entry(template_index++);
+        if (pair) match_entry(template_index++);
     }
     const int32_t error = match_error.load(std::memory_order_relaxed);
     if (error < 0) return error;

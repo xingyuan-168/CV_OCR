@@ -21,6 +21,14 @@ Each DirectML Session serializes Run; each TensorRT slot owns its context, strea
 and buffers. BMP views, reusable workspaces and request IDs cover the common path.
 OCR retains devices0..2 and ORT. CV runs in the host DLL.
 
+Transparent compatibility matching excludes candidates using bounds over actual
+visible pixels, then confirms scores with integer moments. Sparse masks use
+orthogonal pixel-pair projection; larger masks retain the complete FFT fallback.
+Ordinary color multi-template matching can use eight overlapping tiles within
+one leased workspace, with at most seven temporary helpers. Final exact scores,
+NMS and result ordering remain sequential. All scratch storage counts toward
+the bounded workspace pool. See [numerical/resource details](CV_MASKED_PROJECTION_NUMERICS.md).
+
 At load time `yolo_model.h` reads bounded ONNX metadata and graph descriptors,
 skipping weights. A model pool shares the immutable descriptor with every slot.
 The decoder handles dense, objectness and native end-to-end outputs through

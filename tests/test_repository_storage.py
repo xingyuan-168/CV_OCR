@@ -52,5 +52,8 @@ class StorageTests(unittest.TestCase):
         script = Path(__file__).with_name('cleanup_safety_test.ps1')
         for shell in filter(None,[shutil.which('powershell'),shutil.which('pwsh')]):
             with self.subTest(shell=shell), tempfile.TemporaryDirectory() as root:
-                run = subprocess.run([shell,'-NoProfile','-File',str(script),'-Root',root],capture_output=True)
+                # Run this repository-owned test in a temporary directory even
+                # when the host's default script policy is Restricted. This
+                # process-only switch never changes the machine/user policy.
+                run = subprocess.run([shell,'-NoProfile','-ExecutionPolicy','Bypass','-File',str(script),'-Root',root],capture_output=True)
                 self.assertEqual(run.returncode,0,run.stderr.decode('utf-8',errors='replace'))

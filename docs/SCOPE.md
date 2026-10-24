@@ -8,7 +8,9 @@ stability, paired-binary/document verification and actual governance gates.
 Reuse pinned OpenCV5.0/IPP/AVX2, true masked correlation and exact integer
 verification. Only accepted matches participate in NMS; no coarse-score pruning
 or candidate cap may discard a qualifying match. Preserve existing gray rules,
-ordinary CV paths, alpha-API score semantics and all public ABI/protocol facts.
+ordinary CV scoring/results, alpha-API score semantics and all public ABI/protocol facts.
+The affected old ordinary color multi-template path may use bounded overlapping
+tiles internally; final exact scoring, NMS and output order remain sequential.
 No scaling, rotation, PNG import, lighting strategy, OCR fixes or business YOLO
 tuning is part of this task. Published validation never applies to new binaries
 without fresh evidence. Planned candidate0.14.9/v23.9; failing5ms means no promotion.

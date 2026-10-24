@@ -5,6 +5,20 @@
 
 namespace ai::cv_detail {
 
+struct MaskedProjectionStage {
+    size_t end = 0;
+    double energy = 0;
+};
+struct MaskedProjectionLimit {
+    size_t end = 0;
+    double exact = 0;
+    float vector = 0;
+};
+
+int masked_projection_candidates_avx2(const uint8_t* origin,
+    const uint32_t* offsets, const int32_t* differences,
+    const MaskedProjectionLimit* stages, size_t stage_count, int columns, float* output);
+
 struct MaskedAccumulators {
     uint64_t sums[3]{};
     uint64_t squares[3]{};

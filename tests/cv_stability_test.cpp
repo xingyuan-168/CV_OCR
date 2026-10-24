@@ -168,6 +168,26 @@ int main(int argc, char** argv) {
     // independently known from placement, then checked against a serial call.
     struct Case { Bytes data; std::string names, expected; };
     std::vector<Case> cases;
+    // Odd geometry crosses every internal tile seam. Alternate template sizes,
+    // cache geometries, single/pair/odd batches and a bottom/right-edge match.
+    for (int i=0;i<16;++i) {
+        const int width=315+(i%2)*2,height=253+(i%3);
+        Case c{bmp(width,height,0x123456+i),"0.bmp|1.bmp|2.bmp",""};
+        const int x=(width+3)/4-3,y=(height+1)/2-3;
+        paste(c.data,width,templates[0],8,8,x,y);
+        paste(c.data,width,templates[1],9,8,width-9,height-8);
+        c.expected="0,"+std::to_string(x)+","+std::to_string(y)+"|1,"+
+            std::to_string(width-9)+","+std::to_string(height-8);
+#if defined(AIENGINE_CV_TEST_HOOKS)
+        CVTest_Reference(1);
+        assert(call(handle,c.names.c_str(),"",.999f,0,c.data)==c.expected);
+        CVTest_Reference(0);
+#endif
+        assert(call(handle,c.names.c_str(),"",.999f,0,c.data)==c.expected);
+        assert(call(handle,"0.bmp","",.999f,0,c.data)=="0,"+std::to_string(x)+","+std::to_string(y));
+        assert(call(handle,c.names.c_str(),"",.999f,0,c.data)==c.expected);
+        cases.push_back(std::move(c));
+    }
     for (int i=0;i<32;++i) for(int v=0;v<4;++v) {
         int j=(i+1)%32;
         Case c{bmp(160,96,10000+i*9+v),std::to_string(i)+".bmp|"+std::to_string(j)+".bmp",""};

@@ -55,7 +55,7 @@ def register(package, wheel, select=False):
             if (validation/name).is_file():
                 dest=stage/'evidence'/name; copy(validation/name,dest)
                 m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
-        for source in validation.glob('cv-*.json'):
+        for source in list(validation.glob('cv-*.json')) + list(validation.glob('legacy-timing-*.json')):
             dest=stage/'evidence'/source.name; copy(source,dest)
             m['evidence'][source.name]=dict(file='evidence/'+source.name,size=dest.stat().st_size,sha256=digest(dest))
         local_detail=validation/'YOLO26_LOCAL_20MS_SUMMARY.json'
@@ -63,6 +63,11 @@ def register(package, wheel, select=False):
             dest=stage/'evidence'/local_detail.name; copy(local_detail,dest)
             m['evidence'][local_detail.name]=dict(file='evidence/'+local_detail.name,size=dest.stat().st_size,sha256=digest(dest))
         for name in ['delivery-staged.json','delivery-output.json']:
+            # Transactional promotion registers the verified stage first. The
+            # actual output probe can only exist after the pointer/output swap;
+            # retain it separately rather than relabeling a staged probe.
+            if name == 'delivery-output.json' and not (package/name).is_file():
+                continue
             dest=stage/'evidence'/name; copy(package/name,dest)
             m['evidence'][name]=dict(file='evidence/'+name,size=dest.stat().st_size,sha256=digest(dest))
         m['formal_release']=m['target_performance_validation']=='passed'

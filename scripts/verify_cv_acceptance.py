@@ -17,6 +17,8 @@ REQUIRED_CASES = {
     "new_color", "new_gray", "new_multi", "new_changed_color", "new_changed_gray",
     "new_changed_multi", "new_miss", "new_gray_miss", "new_multi_miss",
 }
+LEGACY_CASES = {"threshold_single", "single", "transparent_single", "multi_text",
+                "transparent_multi_text", "changing_multi", "changing_transparent"}
 
 
 def required(metadata: dict) -> bool:
@@ -24,18 +26,19 @@ def required(metadata: dict) -> bool:
     return version >= (0, 14, 9) or "cv_transparent_validation" in metadata
 
 
-def verify_timing(report: dict, expected_sha: str, architecture: str) -> None:
+def verify_timing(report: dict, expected_sha: str, architecture: str, *, legacy: bool = False) -> None:
     if report["dll_sha256"].lower() != expected_sha.lower():
         raise ValueError("CV timing used a different DLL")
     if report.get("architecture") != architecture or report.get("test_hooks") is not False:
         raise ValueError("CV acceptance requires the correct architecture and production DLL")
-    if report.get("input_sha256") != INPUT_HASHES:
+    if not legacy and report.get("input_sha256") != INPUT_HASHES:
         raise ValueError("CV acceptance used different frozen images")
     if (report["warmup"] != 64 or report["samples"] != 1000 or report["rounds"] != 3
             or report["limit_ms"] != LIMIT_MS):
         raise ValueError("CV acceptance requires warmup64/sample1000/three rounds/5ms")
     cases = report["cases"]
-    if len(cases) != len(REQUIRED_CASES) or {c["name"] for c in cases} != REQUIRED_CASES:
+    required_cases = LEGACY_CASES if legacy else REQUIRED_CASES
+    if len(cases) != len(required_cases) or {c["name"] for c in cases} != required_cases:
         raise ValueError("CV acceptance is missing required old/new scenarios")
     for case in cases:
         if len(case["rounds"]) != 3:
@@ -74,13 +77,17 @@ def verify_candidate_cv(metadata: dict, validation: Path, binaries: dict) -> dic
         item = evidence[f"timing_{architecture}"]
         expected = binaries["CQ_X86.dll"]["sha256"] if architecture == "x86" else metadata["cv_x64_sha256"]
         verify_timing(read_evidence(item), expected, architecture)
+        verify_timing(read_evidence(evidence[f"legacy_{architecture}"]), expected, architecture, legacy=True)
         reports[architecture] = item
         for threads in (1, 4, 16):
             stress = read_evidence(evidence[f"stress_{architecture}_{threads}"])
             if (stress["dll_sha256"] != expected or stress["threads"] != threads
                     or stress.get("architecture") != architecture or stress.get("test_hooks") is not False
                     or not math.isfinite(stress["elapsed_s"]) or stress["elapsed_s"] < 600
-                    or stress["errors"] != 0 or stress.get("calls", 0) <= 0):
+                    or stress["errors"] != 0 or stress.get("calls", 0) <= 0
+                    or stress.get("changed_cases", 0) < 7
+                    or stress.get("template_release_passed") is not True
+                    or stress.get("memory_growth_detected") is not False):
                 raise ValueError("CV stress evidence failed or used a different DLL")
     if metadata.get("cv_independent_reference_validation") != "passed":
         raise ValueError("Independent exhaustive CV reference did not pass")

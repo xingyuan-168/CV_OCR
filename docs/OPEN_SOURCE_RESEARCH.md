@@ -28,6 +28,25 @@ updated_at: 2026-10-23
 decision: extract
 reason: Extend the existing native primitives with complete masked candidate evaluation, preserving scores and public contracts. First establish independent correctness, then measure and optimize toward the user-confirmed5ms hard gate. A candidate failing correctness or any5ms round remains unpromoted; no finite candidate cap, old coarse suppression or relaxed threshold is an acceptable performance shortcut. Diagnosis evidence is outpush/cv-transparent-20261023/ROOT_CAUSE_AND_REPAIR_PLAN_CN.md.
 
+### Performance follow-up — 2026-10-24
+
+Fresh x86/x64 probes show20,769 candidates for the old miss template,18,404 with
+zero full masked source energy. Gray leaves17,319 candidates;128 sampled points
+reduce this to1 but the bound still costs about7.8ms. Changed frames pay the full
+source transform cost even with one exact candidate. Detailed evidence and the
+implementation decision are in [the5ms improvement plan](CV_TRANSPARENT_5MS_IMPROVEMENT_PLAN_CN.md).
+
+Decision: independently implement and verify a mask-only orthogonal-projection
+upper bound using incremental integer sample moments, then compare a spatial
+SIMD cascade against the existing FFT path. This is a proposed optimization,
+not measured5ms success. Preserve uncertainty for exact scoring, including score
+rounding and degenerate templates. Keep the old path as a correctness fallback;
+a fallback exceeding any formal5ms scenario still prevents delivery.
+Reuse existing OpenCV/IPP/AVX2 and add no runtime dependency. Intel's DFT API
+requires plan/work buffers, already reused here:
+https://www.intel.com/content/www/us/en/docs/ipp/developer-guide-reference/2022-2/dftfwd.html .
+Do not attribute regression to missing plan reuse or remove FFT numerical guards.
+
 ## Prior research — REQ-YOLO-003
 
 ## Requirement

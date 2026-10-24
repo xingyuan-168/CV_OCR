@@ -9,7 +9,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from verify_cv_acceptance import INPUT_HASHES, REQUIRED_CASES, required, verify_candidate_cv, verify_timing
+from verify_cv_acceptance import INPUT_HASHES, REQUIRED_CASES, LEGACY_CASES, required, verify_candidate_cv, verify_timing
 import package_delivery
 
 
@@ -45,6 +45,15 @@ class CvAcceptanceTests(unittest.TestCase):
         self.assertTrue(required({"project_version":"0.14.9"}))
         self.assertEqual(verify_candidate_cv({"project_version":"0.14.8"},Path("unused"),{}),{})
 
+    def test_legacy_slow_scenario_cannot_be_omitted_or_averaged(self):
+        r=self.report()
+        r["cases"]=[dict(name=n,rounds=copy.deepcopy(r["cases"][0]["rounds"])) for n in LEGACY_CASES]
+        verify_timing(r,"abc","x86",legacy=True)
+        r["cases"][0]["rounds"][1]["p95_ms"]=5.01
+        with self.assertRaises(ValueError):verify_timing(r,"abc","x86",legacy=True)
+        r["cases"].pop(0)
+        with self.assertRaises(ValueError):verify_timing(r,"abc","x86",legacy=True)
+
     def test_failed_candidate_cannot_be_promoted(self):
         with self.assertRaisesRegex(ValueError,"has not passed"):
             verify_candidate_cv(dict(project_version="0.14.9",cv_transparent_validation="failed"),Path("unused"),{})
@@ -61,9 +70,13 @@ class CvAcceptanceTests(unittest.TestCase):
             for arch in ("x86", "x64"):
                 timing = self.report(); timing["architecture"] = arch
                 write("timing_" + arch, timing)
+                legacy = copy.deepcopy(timing)
+                legacy["cases"] = [dict(name=n,rounds=copy.deepcopy(timing["cases"][0]["rounds"])) for n in LEGACY_CASES]
+                write("legacy_" + arch, legacy)
                 for threads in (1, 4, 16):
                     write(f"stress_{arch}_{threads}", dict(dll_sha256="abc", architecture=arch,
-                          threads=threads, test_hooks=False, elapsed_s=600, errors=0, calls=100))
+                          threads=threads, test_hooks=False, elapsed_s=600, errors=0, calls=100,
+                          changed_cases=7, template_release_passed=True, memory_growth_detected=False))
             metadata = dict(project_version="0.14.9", cv_transparent_validation="passed",
                             cv_transparent_p95_limit_ms=5, cv_transparent_evidence=evidence,
                             cv_x64_sha256="abc", cv_independent_reference_validation="passed")

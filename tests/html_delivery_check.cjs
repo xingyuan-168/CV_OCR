@@ -36,6 +36,6 @@ context.filterNav('nonexistent-test-query-abcdef');assert(links.every(x=>x.hidde
 assert.equal(index['search-count'].textContent,'找到 0 项');
 context.filterNav('');assert(links.every(x=>!x.hidden));
 context.location.hash='#YOLO_InferJson';events.load();assert(index.YOLO_InferJson.classList.contains('active'));
-const result={passed:true,html_sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),sections:sections.length,navigation_links:links.length,offline_assets:true,navigation:true,search:true,hash_navigation:true,method:'actual inline JavaScript with deterministic DOM fixture',visual_browser_preview:'unverified: browser security policy blocks local file URLs'};
+const result={passed:true,html_sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),sections:sections.length,navigation_links:links.length,offline_assets:true,navigation:true,search:true,hash_navigation:true,method:'actual inline JavaScript with deterministic DOM fixture',visual_browser_preview:'not performed by this deterministic DOM test'};
 if(report)fs.writeFileSync(report,JSON.stringify(result,null,2));
 console.log(JSON.stringify(result));

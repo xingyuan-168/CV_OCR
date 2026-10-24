@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <opencv2/core.hpp>
+#include "cv_masked_score_avx2.h"
 
 namespace ai::cv_detail {
 
@@ -45,10 +46,14 @@ struct MaskedTemplateSpectrum {
     int channels = 0;
     unsigned active_channels = 0;
     size_t count = 0;
-    double energy = 0, numerator_error = 0;
+    double energy = 0, energy_error = 0, numerator_error = 0;
     std::array<cv::Mat, 3> centered;
     std::vector<cv::Point> visible;
     std::vector<std::pair<cv::Point, cv::Point>> pairs;
+    std::vector<std::pair<cv::Point, cv::Point>> projection_pairs;
+    std::vector<int> projection_channels;
+    std::vector<int32_t> projection_differences;
+    std::vector<MaskedProjectionStage> projection_stages;
 };
 
 struct MaskedCorrelationWorkspace {
@@ -59,7 +64,11 @@ struct MaskedCorrelationWorkspace {
     unsigned constant_channels = 0;
     cv::Size geometry;
     int channels = 0;
-    void invalidate() noexcept { prepared_channels = constant_channels = 0; }
+    std::vector<uint32_t> projection_offsets;
+    cv::Mat projection_planes;
+    bool projection_prepared = false;
+    bool projection_constant = false;
+    void invalidate() noexcept { prepared_channels = constant_channels = 0; projection_prepared=false; }
     void prepare(const cv::Mat& image, const MaskedTemplateSpectrum& templ);
     void upper_bounds(const cv::Mat& image, const MaskedTemplateSpectrum& templ,
                       float threshold, cv::Mat& output);

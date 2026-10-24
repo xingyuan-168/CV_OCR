@@ -334,7 +334,10 @@ def main():
     if package: artifacts["nvidia_zip"] = package
     caches = {}
     for name, binary_dir in (('x86', args.x86), ('worker', args.worker.parent), ('x64', args.x64)):
-        path = binary_dir.parent / "CMakeCache.txt"
+        # Ninja writes binaries beside its cache; multi-config generators put
+        # them in Release/ below it. Read the actual build, never a copied cache.
+        path = binary_dir / "CMakeCache.txt"
+        if not path.is_file(): path = binary_dir.parent / "CMakeCache.txt"
         if not path.is_file(): raise ValueError(f'Missing build provenance: {path}')
         selected = {}
         for line in path.read_text(encoding="utf-8").splitlines():
